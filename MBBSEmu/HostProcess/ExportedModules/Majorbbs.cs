@@ -2769,8 +2769,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void insbtv()
         {
-            if (!insertBtv(LogLevel.Critical))
-                throw new SystemException("Failed to insert database record");
+            var result = insertBtv();
+            if (result != BtrieveError.Success)
+                throw new SystemException($"Failed to insert database record: {result}");
         }
 
         /// <summary>
@@ -2781,10 +2782,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void dinsbtv()
         {
-            Registers.AX = insertBtv(LogLevel.Debug) ? (ushort)1 : (ushort)0;
+            var result = insertBtv();
+            if (result != BtrieveError.Success &&
+                result != BtrieveError.DuplicateKeyValue)
+                throw new SystemException($"Failed to insert database record: {result}");
+
+            Registers.AX = result == BtrieveError.Success ? (ushort)1 : (ushort)0;
         }
 
-        private bool insertBtv(LogLevel logLevel)
+        private BtrieveError insertBtv()
         {
             var btrieveRecordPointer = GetParameterPointer(0);
 
@@ -2792,7 +2798,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
-            return currentBtrieveFile.Insert(dataToWrite.ToArray()) != 0;
+            return currentBtrieveFile.InsertWithStatus(dataToWrite.ToArray());
         }
 
 

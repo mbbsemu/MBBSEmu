@@ -167,6 +167,22 @@ namespace MBBSEmu.Tests.Btrieve
         }
 
         [Fact]
+        public void InsertWithStatus_ReturnsNativeInsertStatus()
+        {
+            using var processor = OpenFromDisk();
+
+            var record = new MBBSEmuRecordStruct
+            {
+                Key0 = "Paladine",
+                Key1 = 31337,
+                Key2 = "Status test"
+            };
+
+            processor.InsertWithStatus(record.Data).Should().Be(BtrieveError.Success);
+            processor.InsertWithStatus(record.Data).Should().Be(BtrieveError.DuplicateKeyValue);
+        }
+
+        [Fact]
         public void Update_ExistingRecord_PersistsChange()
         {
             using var processor = OpenFromDisk();

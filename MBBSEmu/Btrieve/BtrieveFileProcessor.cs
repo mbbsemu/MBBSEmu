@@ -420,14 +420,21 @@ namespace MBBSEmu.Btrieve
         /// <return>Position of the newly inserted item, or 0 on failure</return>
         public uint Insert(byte[] record)
         {
-            int dwDataBufferLength = record.Length;
-            if (Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Insert, unmanagedPosBlock, record,
-                                       ref dwDataBufferLength, null, 0xFF) != 0)
-            {
+            if (InsertWithStatus(record) != BtrieveError.Success)
                 return 0;
-            }
 
             return Position;
+        }
+
+        /// <summary>
+        ///     Inserts a new Btrieve Record and returns the native Btrieve status.
+        /// </summary>
+        public BtrieveError InsertWithStatus(byte[] record)
+        {
+            int dwDataBufferLength = record.Length;
+            return (BtrieveError)Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Insert,
+                                                        unmanagedPosBlock, record, ref dwDataBufferLength,
+                                                        null, 0xFF);
         }
 
         /// <summary>
