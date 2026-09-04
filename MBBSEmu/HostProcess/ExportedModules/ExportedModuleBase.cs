@@ -446,6 +446,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     }
 
                     //Process Precision
+                    var hasPrecision = IsPrintfPrecision(stringToParse.Slice(i, 1));
                     var stringPrecision = 0;
                     var stringPrecisionValue = string.Empty;
                     while (InSpan(PRINTF_PRECISION, stringToParse.Slice(i, 1)))
@@ -698,8 +699,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                                     floatValue = Module.Memory.GetArray(Registers.SS, parameterValue, 8).ToArray();
                                 }
 
-                                msFormattedValue.Write(
-                                    Encoding.ASCII.GetBytes(((float)BitConverter.ToDouble(floatValue)).ToString()));
+                                var value = BitConverter.ToDouble(floatValue);
+                                var precision = hasPrecision ? stringPrecision : 6;
+                                msFormattedValue.Write(Encoding.ASCII.GetBytes(
+                                    value.ToString($"F{precision}", CultureInfo.InvariantCulture)));
 
                                 break;
                             }
