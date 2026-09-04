@@ -89,6 +89,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public const ushort Segment = 0xFFFF;
 
+        internal const ushort NORMRS = 0;
+        internal const ushort NANSRS = 'N';
+
         /// <summary>
         ///     Repository with Account Key Information
         /// </summary>
@@ -153,6 +156,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("USER", (ushort)(User.Size * _numberOfChannels), true);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
+            Module.Memory.AllocateVariable("RSMODES", (ushort)(sizeof(ushort) * _numberOfChannels), true);
             Module.Memory.AllocateVariable("CHANNEL", 0x1FE); //255 channels * 2 bytes
             Module.Memory.AllocateVariable("MARGC", sizeof(ushort));
             Module.Memory.AllocateVariable("MARGN", 0x200); //max 128 pointers * 4 bytes each
@@ -462,6 +466,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return nterms;
                 case 625:
                     return user;
+                case 504:
+                    return rsmodes;
                 case 637:
                     return vdaptr;
                 case 401:
@@ -3180,6 +3186,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         private ReadOnlySpan<byte> user => Module.Memory.GetVariablePointer("*USER").Data;
+
+        /// <summary>
+        ///     Pointer to the per-channel reset mode array.
+        ///
+        ///     Signature: int *rsmodes;
+        /// </summary>
+        private ReadOnlySpan<byte> rsmodes => Module.Memory.GetVariablePointer("*RSMODES").Data;
+
+        internal void SetResetModes(ushort resetMode)
+        {
+            var resetModesPointer = Module.Memory.GetVariablePointer("RSMODES");
+
+            for (var channel = 0; channel <= _configuration.BBSChannels; channel++)
+                Module.Memory.SetWord(resetModesPointer + (channel * sizeof(ushort)), resetMode);
+        }
 
 
         /// <summary>

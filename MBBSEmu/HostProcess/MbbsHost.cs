@@ -100,6 +100,11 @@ namespace MBBSEmu.HostProcess
         private readonly Timer _cleanupTimer;
 
         /// <summary>
+        ///     Timer that marks the beginning of the nightly cleanup grace period
+        /// </summary>
+        private readonly Timer _cleanupStartTimer;
+
+        /// <summary>
         ///     Timer that triggers when nightly cleanup warning messages should start
         /// </summary>
         private Timer _cleanupWarningTimer;
@@ -131,6 +136,7 @@ namespace MBBSEmu.HostProcess
         ///     Flag that controls whether the main loop will perform a nightly cleanup
         /// </summary>
         private bool _performCleanup = false;
+        private bool _prepareCleanup = false;
         private EventWaitHandle _cleanupRestartEvent = null;
 
         /// <summary>
@@ -192,7 +198,12 @@ namespace MBBSEmu.HostProcess
 
             //Setup Cleanup Restart Event
             _cleanupTime = _configuration.CleanupTime;
-            _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime + _cleanupGracePeriod), TimeSpan.FromDays(1));
+            var cleanupStartDue = NowUntil(_cleanupTime);
+            var cleanupDue = NowUntil(_cleanupTime + _cleanupGracePeriod);
+            if (cleanupDue < cleanupStartDue)
+                _prepareCleanup = true;
+            _cleanupStartTimer = new Timer(_ => _prepareCleanup = true, null, cleanupStartDue, TimeSpan.FromDays(1));
+            _cleanupTimer = new Timer(_ => _performCleanup = true, null, cleanupDue, TimeSpan.FromDays(1));
             _cleanupWarningTimer = SetupCleanupWarningTimer();
 
             if (_configuration.TimerHertz > 0)
@@ -272,6 +283,7 @@ namespace MBBSEmu.HostProcess
         public void Stop()
         {
             _isRunning = false;
+            _cleanupStartTimer?.Dispose();
             _cleanupTimer?.Dispose();
             _cleanupWarningTimer?.Dispose();
             _tickTimer?.Dispose();
@@ -1458,6 +1470,13 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private void ProcessNightlyCleanup()
         {
+            if (_prepareCleanup)
+            {
+                Logger.Info("Beginning nightly cleanup grace period.");
+                _prepareCleanup = false;
+                SetCleanupResetModes();
+            }
+
             if (_performCleanup)
             {
                 Logger.Info($"Beginning nightly cleanup process.");
@@ -1487,6 +1506,9 @@ namespace MBBSEmu.HostProcess
             foreach (var localConsoleSession in _channelDictionary.Values.OfType<LocalConsoleSession>())
                 localConsoleSession.StopHostOnStop = false;
 
+            // MajorBBS sets the modes again in hupall() before invoking each module's HUPROU.
+            SetCleanupResetModes();
+
             // removes all sessions before module cleanup
             RemoveSessions(session => true);
 
@@ -1509,6 +1531,16 @@ namespace MBBSEmu.HostProcess
             Logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
 
             Start(moduleConfigurations);
+        }
+
+        private void SetCleanupResetModes()
+        {
+            foreach (var module in _modules.Values)
+            {
+                if (module.ExportedModuleDictionary.TryGetValue(Majorbbs.Segment, out var exportedModule) &&
+                    exportedModule is Majorbbs majorbbs)
+                    majorbbs.SetResetModes(Majorbbs.NANSRS);
+            }
         }
 
         /// <summary>
