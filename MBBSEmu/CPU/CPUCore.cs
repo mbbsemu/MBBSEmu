@@ -442,6 +442,12 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Jg:
                     Op_Jg();
                     return;
+                case Mnemonic.Jp:
+                    Op_Jp();
+                    return;
+                case Mnemonic.Jnp:
+                    Op_Jnp();
+                    return;
                 case Mnemonic.Js:
                     Op_Js();
                     return;
@@ -2758,6 +2764,32 @@ namespace MBBSEmu.CPU
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Jp()
+        {
+            if (Registers.ParityFlag)
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.Length;
+            }
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Jnp()
+        {
+            if (!Registers.ParityFlag)
+            {
+                Registers.IP = _currentInstruction.Immediate16;
+            }
+            else
+            {
+                Registers.IP += (ushort)_currentInstruction.Length;
+            }
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Js()
         {
             //SF == 1
@@ -3604,6 +3636,7 @@ namespace MBBSEmu.CPU
         private void Op_Sahf()
         {
             Registers.SignFlag = Registers.AH.IsFlagSet((byte)EnumFlags.SF);
+            Registers.ParityFlag = Registers.AH.IsFlagSet((byte)EnumFlags.PF);
             Registers.ZeroFlag = Registers.AH.IsFlagSet((byte)EnumFlags.ZF);
             Registers.AuxiliaryCarryFlag = Registers.AH.IsFlagSet((byte)EnumFlags.AF);
             Registers.CarryFlag = Registers.AH.IsFlagSet((byte)EnumFlags.CF);
@@ -5736,6 +5769,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Flags_EvaluateSignZero(byte result)
         {
+            Registers.ParityFlag = result.Parity();
             if (result == 0)
             {
                 Registers.SignFlag = false;
@@ -5755,6 +5789,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Flags_EvaluateSignZero(ushort result)
         {
+            Registers.ParityFlag = result.Parity();
             if (result == 0)
             {
                 Registers.SignFlag = false;
@@ -5774,6 +5809,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Flags_EvaluateSignZero(uint result)
         {
+            Registers.ParityFlag = result.Parity();
             if (result == 0)
             {
                 Registers.SignFlag = false;

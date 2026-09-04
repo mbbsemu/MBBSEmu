@@ -21,7 +21,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(0x0ED1, mbbsEmuCpuRegisters.F);
+            Assert.Equal(0x0ED5, mbbsEmuCpuRegisters.F);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
 
@@ -42,7 +42,7 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             // subset of all the flags
-            Assert.Equal(0x00000ED1, mbbsEmuCpuRegisters.F);
+            Assert.Equal(0x00000ED5, mbbsEmuCpuRegisters.F);
             Assert.Equal(originalSP, mbbsEmuCpuRegisters.SP);
         }
     }

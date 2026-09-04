@@ -48,6 +48,7 @@ namespace MBBSEmu.CPU
         public bool DirectionFlag { get => Registers.DirectionFlag; set => Registers.DirectionFlag = value; }
         public bool AuxiliaryCarryFlag { get => Registers.AuxiliaryCarryFlag; set => Registers.AuxiliaryCarryFlag = value; }
         public bool InterruptFlag { get => Registers.InterruptFlag; set => Registers.InterruptFlag = value; }
+        public bool ParityFlag { get => Registers.ParityFlag; set => Registers.ParityFlag = value; }
         public bool Halt { get => Registers.Halt; set => Registers.Halt = value; }
 
         public void Zero() => Registers.Zero();

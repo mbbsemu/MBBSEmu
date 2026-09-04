@@ -66,7 +66,7 @@ namespace MBBSEmu.Extensions
                     setBits++;
             }
 
-            return setBits != 0 && setBits % 2 == 0;
+            return setBits % 2 == 0;
         }
 
         /// <summary>
