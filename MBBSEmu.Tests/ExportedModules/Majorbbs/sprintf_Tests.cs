@@ -42,6 +42,11 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%%%%% ", "%%% ", null)] //Escaped & Unescaped %
         [InlineData("%-8s", "gold crowns", "gold crowns")]
         [InlineData("%-8s", "gold    ", "gold")]
+        [InlineData("%f", "12.345600", 12.3456)]
+        [InlineData("%.2f", "12.35", 12.3456)]
+        [InlineData("%.0f", "12", 12.3456)]
+        [InlineData("%8.2f", "   12.35", 12.3456)]
+        [InlineData("%-8.2f", "12.35   ", 12.3456)]
         //Hex conversions (#683): accepted by PRINTF_SPECIFIERS but previously unimplemented
         [InlineData("%x", "ff", (ushort)255)]
         [InlineData("%X", "FF", (ushort)255)]

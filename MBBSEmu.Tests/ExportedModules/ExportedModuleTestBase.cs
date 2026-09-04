@@ -303,6 +303,15 @@ namespace MBBSEmu.Tests.ExportedModules
                             parameters.Add(BitConverter.ToUInt16(longBytes, 2));
                             break;
                         }
+                    case double @parameterDouble:
+                        {
+                            var doubleBytes = BitConverter.GetBytes(@parameterDouble);
+                            parameters.Add(BitConverter.ToUInt16(doubleBytes, 0));
+                            parameters.Add(BitConverter.ToUInt16(doubleBytes, 2));
+                            parameters.Add(BitConverter.ToUInt16(doubleBytes, 4));
+                            parameters.Add(BitConverter.ToUInt16(doubleBytes, 6));
+                            break;
+                        }
                     case ushort @parameterUInt:
                         parameters.Add(@parameterUInt);
                         break;
