@@ -25,5 +25,27 @@ namespace MBBSEmu.Tests.CPU
 
             Assert.Equal(ST0Value % ST1Value, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }
+
+        [Fact]
+        public void FPREM_BorlandFmodSequence()
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = 5.3d; // ST0
+            mbbsEmuCpuCore.FpuStack[0] = 2d; // ST1
+
+            // FPREM; FNSTSW AX; SAHF; JP back to FPREM
+            CreateCodeSegment(new byte[] { 0xD9, 0xF8, 0xDF, 0xE0, 0x9E, 0x7A, 0xF9 });
+
+            mbbsEmuCpuCore.Tick();
+            mbbsEmuCpuCore.Tick();
+            mbbsEmuCpuCore.Tick();
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(5.3d % 2d, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.False(mbbsEmuCpuRegisters.ParityFlag);
+            Assert.Equal(7, mbbsEmuCpuRegisters.IP);
+        }
     }
 }

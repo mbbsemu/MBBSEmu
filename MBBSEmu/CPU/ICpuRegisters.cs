@@ -69,6 +69,7 @@ namespace MBBSEmu.CPU
         bool DirectionFlag { get; set; }
         bool AuxiliaryCarryFlag { get; set; }
         bool InterruptFlag { get; set; }
+        bool ParityFlag { get; set; }
         bool Halt { get; set; }
 
         void Zero();

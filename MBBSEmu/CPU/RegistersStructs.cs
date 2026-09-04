@@ -241,6 +241,8 @@ namespace MBBSEmu.CPU
 
         [FieldOffset(50)]
         public FpuRegistersStruct Fpu;
+        [FieldOffset(54)]
+        public bool ParityFlag;
 
         public ushort F()
         {
@@ -253,6 +255,7 @@ namespace MBBSEmu.CPU
             if (SignFlag) f |= (ushort)EnumFlags.SF;
             if (ZeroFlag) f |= (ushort)EnumFlags.ZF;
             if (InterruptFlag) f |= (ushort)EnumFlags.IF;
+            if (ParityFlag) f |= (ushort)EnumFlags.PF;
 
             return f;
         }
@@ -268,6 +271,7 @@ namespace MBBSEmu.CPU
             SignFlag = flags.IsFlagSet((ushort)EnumFlags.SF);
             ZeroFlag = flags.IsFlagSet((ushort)EnumFlags.ZF);
             InterruptFlag = flags.IsFlagSet((ushort)EnumFlags.IF);
+            ParityFlag = flags.IsFlagSet((ushort)EnumFlags.PF);
         }
 
         public void SetEF(uint flags) => SetF((ushort)flags);
@@ -548,6 +552,7 @@ namespace MBBSEmu.CPU
             output.AppendLine($"BP={this.BP:X4} ");
             output.Append("F=");
             output.Append(this.CarryFlag ? "C" : "c");
+            output.Append(this.ParityFlag ? "P" : "p");
             output.Append(this.ZeroFlag ? "Z" : "z");
             output.Append(this.SignFlag ? "S" : "s");
             output.Append(this.OverflowFlag ? "O" : "o");
