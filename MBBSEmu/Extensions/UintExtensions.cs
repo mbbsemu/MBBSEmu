@@ -56,16 +56,7 @@ namespace MBBSEmu.Extensions
         /// </summary>
         /// <param name="b"></param>
         /// <returns>1 == Even, 0 == Odd</returns>
-        public static bool Parity(this uint b)
-        {
-            var setBits = 0;
-            for (var i = 0; i <= 7; i++)
-            {
-                if (b.IsBitSet(i))
-                    setBits++;
-            }
-
-            return setBits % 2 == 0;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Parity(this uint b) => ParityTable.Table[(byte)b];
     }
 }
