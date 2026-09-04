@@ -32,6 +32,7 @@ namespace MBBSEmu.Session.Telnet
         private ParseState _parseState = ParseState.Normal;
         private EnumIacVerbs _currentVerb;
         private EnumIacOptions _currentSubnegotiationOption;
+        private bool _lastCharacterWasCarriageReturn;
 
         public class IacVerbReceivedEventArgs : EventArgs
         {
@@ -75,7 +76,7 @@ namespace MBBSEmu.Session.Telnet
                     _parseState = ParseState.FoundIAC;
                     break;
                 case ParseState.Normal:
-                    _memoryStream.WriteByte(b);
+                    WriteDataByte(b);
                     break;
                 case ParseState.FoundIAC when b == SB:
                     _parseState = ParseState.SBStart;
@@ -127,6 +128,28 @@ namespace MBBSEmu.Session.Telnet
                     _parseState = ParseState.SBValue;
                     break;
             }
+        }
+
+        /// <summary>
+        ///     Normalizes common Telnet terminal input to the bytes MajorBBS expects.
+        /// </summary>
+        private void WriteDataByte(byte b)
+        {
+            if (_lastCharacterWasCarriageReturn)
+            {
+                _lastCharacterWasCarriageReturn = false;
+
+                // CR LF and CR NUL each represent one carriage return in NVT mode.
+                if (b == 0x0A || b == 0x00)
+                    return;
+            }
+
+            // Some clients send LF alone for Enter.
+            if (b == 0x0A)
+                b = 0x0D;
+
+            _memoryStream.WriteByte(b);
+            _lastCharacterWasCarriageReturn = b == 0x0D;
         }
     }
 }

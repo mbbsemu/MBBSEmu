@@ -103,6 +103,29 @@ namespace MBBSEmu.Tests.Session.Telnet
                 stream.ToArray());
         }
 
+        [Theory]
+        [InlineData(new byte[] { (byte)'A', 0x0D, 0x0A, (byte)'B' }, new byte[] { (byte)'A', 0x0D, (byte)'B' })]
+        [InlineData(new byte[] { (byte)'A', 0x0D, 0x00, (byte)'B' }, new byte[] { (byte)'A', 0x0D, (byte)'B' })]
+        [InlineData(new byte[] { (byte)'A', 0x0A, (byte)'B' }, new byte[] { (byte)'A', 0x0D, (byte)'B' })]
+        public void NormalizesTerminalInput(byte[] input, byte[] expected)
+        {
+            var (bytes, length) = iacFilter.ProcessIncomingClientData(input, input.Length);
+
+            Assert.Equal(expected, new ReadOnlySpan<byte>(bytes).Slice(0, length).ToArray());
+        }
+
+        [Theory]
+        [InlineData(0x0A)]
+        [InlineData(0x00)]
+        public void NormalizesCarriageReturnSequenceAcrossPackets(byte trailingByte)
+        {
+            var (bytes, length) = iacFilter.ProcessIncomingClientData(new byte[] { (byte)'A', 0x0D }, 2);
+            Assert.Equal(new byte[] { (byte)'A', 0x0D }, new ReadOnlySpan<byte>(bytes).Slice(0, length).ToArray());
+
+            (bytes, length) = iacFilter.ProcessIncomingClientData(new byte[] { trailingByte, (byte)'B' }, 2);
+            Assert.Equal(new byte[] { (byte)'B' }, new ReadOnlySpan<byte>(bytes).Slice(0, length).ToArray());
+        }
+
         private static byte[] Concat(params byte[][] arrays)
         {
             var length = 0;
