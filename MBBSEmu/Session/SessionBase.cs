@@ -342,6 +342,50 @@ namespace MBBSEmu.Session
 
         public abstract void Stop();
 
+        /// <summary>
+        ///     Resets a connected session so it can begin a new login without replacing its
+        ///     underlying transport.
+        /// </summary>
+        public void ResetForLogin()
+        {
+            UsrPtr = new User();
+            UsrAcc = new UserAccount();
+            ExtUsrAcc = new ExtUser();
+            CurrentModule = null;
+            Status = new Queue<EnumUserStatus>();
+            SessionTimer.Reset();
+
+            while (DataToClient.TryTake(out _)) { }
+            while (DataFromClient.TryTake(out _)) { }
+
+            EchoBuffer.SetLength(0);
+            InputBuffer.SetLength(0);
+            InputCommand = new byte[] { 0x0 };
+            CharacterReceived = 0;
+            CharacterProcessed = 0;
+            CharacterInterceptor = default;
+            PollingRoutine = default;
+            PromptCharacter = 0;
+            DataToProcess = false;
+            TransparentMode = false;
+            Monitored = false;
+            Monitored2 = false;
+            Password = string.Empty;
+            Email = string.Empty;
+            OutputEnabled = true;
+            OutputEmptyStatus = false;
+            InputLockout = false;
+            EchoEmptyInvoke = false;
+            EchoEmptyInvokeEnabled = false;
+            EchoSecureEnabled = false;
+            VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
+            TerminalColumns = DEFAULT_TERMINAL_COLUMNS;
+            WordWrapWidth = 0;
+            BinaryOutputMode = false;
+            ResetScreenPauseState();
+            SessionState = EnumSessionState.Unauthenticated;
+        }
+
         protected SessionBase(IMbbsHost mbbsHost, string sessionId, EnumSessionState startingSessionState, ITextVariableService textVariableService)
         {
             _mbbsHost = mbbsHost;

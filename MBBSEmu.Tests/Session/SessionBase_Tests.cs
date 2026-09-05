@@ -1,5 +1,7 @@
 using FluentAssertions;
+using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.Session;
+using MBBSEmu.Session.Enums;
 using System;
 using System.Text;
 using Xunit;
@@ -114,6 +116,42 @@ namespace MBBSEmu.Tests.Session
             // should be no lines left to read
             Assert.Throws<TimeoutException>(() => testSession.GetLine(TimeSpan.FromMilliseconds(100)));
 
+        }
+
+        [Fact]
+        public void ResetForLogin_ClearsPriorSessionState()
+        {
+            var session = new TestSession(null, null)
+            {
+                Password = "password",
+                Email = "sysop@example.com",
+                DataToProcess = true,
+                InputLockout = true,
+                EchoSecureEnabled = true,
+                BinaryOutputMode = true
+            };
+
+            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
+            session.DataFromClient.Add((byte)'x');
+            session.DataToClient.Add(Encoding.ASCII.GetBytes("pending"));
+            session.InputBuffer.WriteByte((byte)'x');
+            session.EchoBuffer.WriteByte((byte)'x');
+
+            session.ResetForLogin();
+
+            Assert.Equal(EnumSessionState.Unauthenticated, session.SessionState);
+            Assert.Empty(session.Username);
+            Assert.Empty(session.Password);
+            Assert.Empty(session.Email);
+            Assert.Empty(session.Status);
+            Assert.Empty(session.DataFromClient);
+            Assert.Empty(session.DataToClient);
+            Assert.Equal(0, session.InputBuffer.Length);
+            Assert.Equal(0, session.EchoBuffer.Length);
+            Assert.False(session.DataToProcess);
+            Assert.False(session.InputLockout);
+            Assert.False(session.EchoSecureEnabled);
+            Assert.False(session.BinaryOutputMode);
         }
     }
 }

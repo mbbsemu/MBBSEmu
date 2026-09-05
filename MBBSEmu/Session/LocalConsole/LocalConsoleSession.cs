@@ -24,8 +24,6 @@ namespace MBBSEmu.Session.LocalConsole
         private readonly Thread _consoleOutputThread;
         private bool _consoleInputThreadIsRunning;
         private readonly bool _processClientData;
-        public bool StopHostOnStop { get; set; } = true;
-
         public LocalConsoleSession(IMessageLogger logger, string sessionId, IMbbsHost host, ITextVariableService textVariableService, bool processClientData = true, bool disableLogging = true) : base(host, sessionId, EnumSessionState.Unauthenticated, textVariableService)
         {
             _logger = logger;
@@ -123,8 +121,7 @@ namespace MBBSEmu.Session.LocalConsole
 
             _consoleInputThreadIsRunning = false;
             _timer.Dispose();
-            if (StopHostOnStop)
-                _host?.Stop();
+            _host?.Stop();
 
             Console.Clear();
             // the thread is stuck in ReadKey, the user needs to free that thread to end the
