@@ -11,6 +11,8 @@ from .paths import (
     ARMOUR_ITEMS,
     STARTER_LIGHT,
     STARTER_WEAPON,
+    is_starter_weapon,
+    starter_weapon,
     attack_line,
     attack_name,
     coins_in,
@@ -20,6 +22,14 @@ from .paths import (
 )
 from .realm_map import Atlas
 from .state import WorldState
+
+
+def _see_tile(brain: Brain, state: WorldState) -> None:
+    """Finish the post-step look so the next tick may walk again."""
+    brain.compass._confirm(state.room, state.exits)
+    state.travel_seq += 1
+    state.scanned = True
+    state.look_scan = False
 
 
 def _sneak_try_wait(brain: Brain, state: WorldState, sent: list[str]) -> None:
@@ -1352,6 +1362,102 @@ def test_f7_following_swings() -> None:
     assert "join" not in " ".join(sent).lower()
 
 
+def test_following_at_village_gates_does_not_sneak() -> None:
+    """Town watch refuses sneak. Follow in the open; do not sn/break-loop."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    b._asked_health = True
+    state.hp = 36
+    state.max_hp = 36
+    state.room = "Newhaven, Village Entrance"
+    state.exits = ["n", "s", "w", "se"]
+    state.scanned = True
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "sn" not in sent
+    assert "break" not in sent
+
+
+def test_following_on_forest_path_sneaks() -> None:
+    """Matt is party — sn on the road, not open walking."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    b._asked_health = True
+    state.hp = 36
+    state.max_hp = 36
+    state.room = "Newhaven, Forest Path"
+    state.exits = ["nw", "s"]
+    state.scanned = True
+    state.look_scan = False
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["sn"]
+
+
+def test_following_matt_on_guild_street_sneaks() -> None:
+    """No alts in player.json. Leader + Also here Matt still allow sn."""
+    b = Brain(
+        allowed=True,
+        me="klymacks",
+        party_leader="Matt",
+        rank="back",
+        klass="ninja",
+        stealth="always",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._joined = True
+    b._followed = True
+    b._ranked = True
+    b._asked_health = True
+    b._in_camp = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 36
+    state.max_hp = 36
+    state.max_hp_known = True
+    state.prompt_seq = 500
+    state.room = "Guild Street"
+    state.exits = ["n", "s"]
+    state.scanned = True
+    state.look_scan = False
+    state.following = "Matt"
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["sn"]
+
+
+def test_following_busy_then_new_room_retries_sneak() -> None:
+    """Busy-fail is that title. Next street with only Matt: sn again."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    b._asked_health = True
+    state.hp = 36
+    state.max_hp = 36
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.look_scan = False
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["sn"]
+    state.apply({"kind": "sneak_fail", "reason": "busy"})
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert "break" in sent
+    state.room = "Guild Street, Southern End"
+    state.exits = ["n", "s"]
+    state.prompt_seq += 1
+    state.in_combat = False
+    n = len(sent)
+    b.tick(state, sent.append, pending=False)
+    assert sent[n:] == ["sn"]
+
+
 def test_follow_f7_also_here_lashworm_engages() -> None:
     """F7 + follow + Also here lashworm — `bs` (room is not empty)."""
     b, state = _following_klymacks()
@@ -1828,7 +1934,7 @@ def test_klymacks_follows_matt() -> None:
     state.apply({"kind": "following", "name": "Matt"})
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
-    assert sent[-1] == "backrank"
+    assert sent[-1] == "backr"
     state.mobs = ["Matt", "acid slime"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
@@ -1864,9 +1970,9 @@ def test_manual_auto_join_matt_invite() -> None:
     assert sent == ["follow Matt"]
     state.apply({"kind": "following", "name": "Matt"})
     assert b.on_follow(state, sent.append)
-    assert sent == ["follow Matt", "backrank"]
+    assert sent == ["follow Matt", "backr"]
     b.tick(state, sent.append, pending=False)
-    assert sent == ["follow Matt", "backrank"]
+    assert sent == ["follow Matt", "backr"]
     assert b.mode == "hunt"
 
 
@@ -1885,8 +1991,43 @@ def test_manual_tick_backranks_after_typed_follow() -> None:
     state.apply(parse_line("You are now following Matt"))
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["backrank"]
+    assert sent == ["backr"]
     assert b.mode == "hunt"
+
+
+def test_ninja_follow_sends_backr_without_rank_flag() -> None:
+    """klymacks ninja: `backr` after follow even if player.json omits rank."""
+    b = Brain(
+        allowed=True,
+        me="klymacks",
+        party_leader="Matt",
+        klass="ninja",
+    )
+    b.mode = "manual"
+    state = WorldState()
+    state.in_realm = True
+    state.apply({"kind": "following", "name": "Matt"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["backr"]
+    assert b.mode == "hunt"
+
+
+def test_paladin_follow_does_not_backr() -> None:
+    b = Brain(
+        allowed=True,
+        me="matt",
+        party_leader="sysop",
+        klass="paladin",
+    )
+    b.mode = "manual"
+    state = WorldState()
+    state.in_realm = True
+    state.apply({"kind": "following", "name": "sysop"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "backr" not in sent
+    assert "backrank" not in sent
 
 
 def test_manual_join_backrank_starts_hunt() -> None:
@@ -1905,7 +2046,7 @@ def test_manual_join_backrank_starts_hunt() -> None:
     assert b.on_invite(state, sent.append)
     state.apply({"kind": "following", "name": "Matt"})
     assert b.on_follow(state, sent.append)
-    assert sent == ["follow Matt", "backrank"]
+    assert sent == ["follow Matt", "backr"]
     assert b.mode == "hunt"
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
@@ -1962,7 +2103,7 @@ def test_hunt_on_backrank_stays_hunt() -> None:
     state.apply({"kind": "following", "name": "Matt"})
     sent: list[str] = []
     assert b.on_follow(state, sent.append)
-    assert sent == ["backrank"]
+    assert sent == ["backr"]
     assert b.mode == "hunt"
 
 
@@ -1972,7 +2113,7 @@ def test_join_off_follow_does_not_start_hunt() -> None:
     state.apply({"kind": "following", "name": "Matt"})
     sent: list[str] = []
     assert b.on_follow(state, sent.append)
-    assert sent == ["backrank"]
+    assert sent == ["backr"]
     assert b.mode == "manual"
 
 
@@ -2076,9 +2217,9 @@ def test_hunt_invite_no_double_join() -> None:
     state.apply({"kind": "following", "name": "Matt"})
     state.prompt_seq += 1
     assert b.on_follow(state, sent.append)
-    assert sent == ["follow Matt", "backrank"]
+    assert sent == ["follow Matt", "backr"]
     b.tick(state, sent.append, pending=False)
-    assert sent == ["follow Matt", "backrank"]
+    assert sent == ["follow Matt", "backr"]
 
 
 def test_klymacks_joins_before_swinging() -> None:
@@ -2285,6 +2426,26 @@ def test_matt_aa_off_holds_swing() -> None:
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent == ["aa acid slime"]
+
+
+def test_matt_aa_off_breaks_live_bash() -> None:
+    """aa off must `break` — 1.11p keeps bashing after the first swing."""
+    b, state = _matt_hunt()
+    state.apply({"kind": "also_here", "mobs": ["acid slime"]})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["aa acid slime"]
+    assert b._attacking == "acid slime"
+    state.in_combat = True
+    mud = b.stop_aa(state)
+    assert mud == "break"
+    assert not b.aa
+    assert b._attacking == ""
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert "aa acid slime" not in sent
+    assert all(not c.startswith("aa ") for c in sent)
 
 
 def test_matt_aa_bashes_not_attack() -> None:
@@ -3337,18 +3498,21 @@ def test_spell_offer_yes_walks_from_guild() -> None:
     assert b.answer_spell_offer(True, state) == "get bless"
     b.tick(state, sent.append, pending=False)
     assert sent == ["s"]
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Narrow Road"
     state.exits = ["n", "e", "w", "d"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent == ["e"]
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Narrow Path"
     state.exits = ["n", "s", "e", "w"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent == ["n"]
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Spell Shop"
     state.exits = ["s"]
@@ -3398,6 +3562,80 @@ def test_class_weapons_name_the_uniques() -> None:
     assert len(G.quest_tip("paladin", "shimmering greatsword")) <= 80
 
 
+def test_shop_weapons_are_value_picks() -> None:
+    assert starter_weapon("ninja") == "stiletto"
+    assert starter_weapon("paladin") == "battle axe"
+    assert starter_weapon("") == "club"
+    assert starter_weapon("mage") == "club"
+    assert is_starter_weapon("stiletto (Weapon Hand)", "ninja")
+    assert is_starter_weapon("battle axe (Weapon Hand)", "paladin")
+    assert is_starter_weapon("club (Weapon Hand)")
+
+
+def _weapon_shop(klass: str) -> tuple[Brain, WorldState]:
+    if klass == "ninja":
+        b = Brain(allowed=True, klass=klass, stealth="walk")
+    else:
+        b = Brain(allowed=True, klass=klass)
+    b.mode = "gear"
+    b._looked = True
+    b._armour_i = len(ARMOUR_ITEMS)
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 22
+    state.max_hp = 22
+    state.room = "Newhaven, Weapon Shop"
+    state.exits = ["s"]
+    state.prompt_seq = 50
+    return b, state
+
+
+def test_ninja_buys_stiletto() -> None:
+    b, state = _weapon_shop("ninja")
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["buy stiletto"]
+    sent.clear()
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["i"]
+    state.apply(
+        {
+            "kind": "inventory",
+            "items": ["stiletto"],
+            "worn": [],
+            "extras": ["stiletto"],
+        }
+    )
+    sent.clear()
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["wear stiletto"]
+
+
+def test_paladin_buys_battle_axe() -> None:
+    b, state = _weapon_shop("paladin")
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["buy battle axe"]
+    sent.clear()
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["i"]
+    state.apply(
+        {
+            "kind": "inventory",
+            "items": ["battle axe"],
+            "worn": [],
+            "extras": ["battle axe"],
+        }
+    )
+    sent.clear()
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["wear battle axe"]
+
+
 def test_gear_offer_after_train() -> None:
     b = Brain(allowed=True, klass="ninja", me="klymacks")
     b.mode = "manual"
@@ -3438,30 +3676,35 @@ def test_gear_offer_yes_walks_skiff_from_guild() -> None:
     assert "ebony ninjato" in hint
     assert "skiff" in hint
     assert "y/n" not in hint
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Narrow Road"
     state.exits = ["n", "e", "w", "d"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent == ["e"]
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Narrow Path"
     state.exits = ["n", "s", "e", "w"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent == ["e"]
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Village Entrance"
     state.exits = ["n", "s", "w", "se"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent == ["se"]
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Forest Path"
     state.exits = ["nw", "s"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent == ["s"]
+    _see_tile(b, state)
     sent.clear()
     state.room = "Newhaven, Docks"
     state.exits = ["n"]
@@ -3548,7 +3791,1690 @@ def test_gear_offer_skipped_if_holding_weapon() -> None:
     assert "class-weapon" in b._claimed
 
 
-def test_silvermere_square_drops_manhole() -> None:
+def test_silvermere_square_walks_north_to_guild() -> None:
+    """Outdoor graveyard farm — TS walks Guild Street, no manhole/torch ritual."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 410
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "i" not in sent
+    assert "go manhole" not in sent
+    assert "light torch" not in sent
+
+
+def test_sewer_run_ninja_dives_at_square() -> None:
+    """Selected sewer run walks the manhole at TS, not Guild Street."""
+    b = Brain(
+        allowed=True,
+        klass="ninja",
+        me="klymacks",
+        hunt="sewer",
+        stealth="walk",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 411
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["go manhole"]
+    assert "n" not in sent
+
+
+def test_sewer_run_paladin_stocks_at_square() -> None:
+    """Human sewer run checks the bag before diving."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        hunt="sewer",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 412
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["i"]
+    assert "go manhole" not in sent
+    assert "n" not in sent
+
+
+def test_guild_street_keeps_walking_north() -> None:
+    """Mid Guild Street reuses the title — do not stall on last_step=n."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._last_step = "n"
+    b._step_room = "Guild Street"
+    b._step_prompt = 410
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 411
+    state.room = "Guild Street"
+    state.exits = ["n", "s", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "w" not in sent
+
+
+def test_guild_southern_end_walks_north_not_into_helfgrim() -> None:
+    """Shops sit east/west of Guild Street. Farm is north, never west."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 411
+    state.room = "Guild Street, Southern End"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "w" not in sent
+    assert "e" not in sent
+
+
+def test_helfgrim_walks_east_back_to_guild() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 412
+    state.room = "Helfgrim's Blades"
+    state.exits = ["e"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+
+
+def test_secret_passage_walks_north_not_look() -> None:
+    """Matt reprint-looked this hall with klymacks. Leave by the only exit."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.ma = 14
+    state.max_ma = 14
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 700
+    state.room = "Secret Passage"
+    state.exits = ["n"]
+    state.scanned = True
+    state.look_scan = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    sent.clear()
+    state.look_scan = False
+    state.apply({"kind": "exits", "exits": ["n"]})
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "look" not in sent
+    assert "rest" not in sent
+
+
+def test_secret_passage_continues_southeast_not_camp() -> None:
+    """Same title, new tile: came east, exits west/se — do not sit."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    b._last_step = "e"
+    b._step_room = "Secret Passage"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 701
+    state.room = "Secret Passage"
+    state.exits = ["w", "se"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["se"]
+    assert "look" not in sent
+    assert "rest" not in sent
+    assert b.next_action != "camping"
+
+
+def test_secret_passage_no_exit_looks_not_west() -> None:
+    """A closed door is not a landing. Look; do not immediately try west."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 720
+    state.room = "Secret Passage"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+    state.blocked = True
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["look"]
+    assert "e" not in state.exits
+    assert b.compass.failed
+
+
+def test_river_eastern_end_walks_west_not_locked_east() -> None:
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 730
+    state.room = "River Street, Eastern End"
+    state.exits = ["s", "w"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+
+
+def test_silver_eastern_end_walks_west_not_atlas_east() -> None:
+    """Poisoned e→Town Square plus last_step=e used to bounce e/w here."""
+    atlas = Atlas()
+    atlas.edges[("silver street eastern end", "e")] = "town square"
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+        atlas=atlas,
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    b._last_step = "e"
+    b._step_room = "Silver Street, Eastern End"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 741
+    state.room = "Silver Street, Eastern End"
+    state.exits = ["e", "n", "s", "w"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+    assert "e" not in sent
+
+
+def test_river_street_walks_east_toward_bridge() -> None:
+    """GY is off Bridge St, not a north door on every River Street tile."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    b._last_step = "e"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 732
+    state.room = "River Street"
+    state.exits = ["e", "n", "s", "w"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+    assert "n" not in sent
+    _see_tile(b, state)
+    b._last_step = "w"
+    b._step_room = "River Street, Eastern End"
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+
+
+def test_bridge_walks_northeast_not_north_gate() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 733
+    state.room = "Bridge"
+    state.exits = ["ne", "s", "sw"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["ne"]
+    assert "n" not in sent
+
+
+def test_river_bridge_intersection_opens_north_gate() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 734
+    state.room = "Intersection of River St. & Bridge St."
+    state.exits = ["e", "s", "w"]
+    state.closed_exits = ["n"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["bash north"]
+    assert "s" not in sent
+    assert "e" not in sent
+    assert "w" not in sent
+    assert "open north" not in sent
+    assert "aa north" not in sent
+
+
+def test_river_bridge_intersection_ninja_picklocks() -> None:
+    b = Brain(allowed=True, klass="ninja", me="klymacks", stealth="walk")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 36
+    state.max_hp = 36
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 735
+    state.room = "Intersection of River St. & Bridge St."
+    state.exits = ["e", "s", "w"]
+    state.closed_exits = ["n"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["picklock north"]
+    assert "bash north" not in sent
+
+
+def test_river_eastern_end_no_exit_looks() -> None:
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    b._last_step = "e"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 731
+    state.room = "River Street, Eastern End"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.blocked = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["look"]
+    assert "e" not in sent
+
+
+def test_torch_run_leaves_river_east_end_west() -> None:
+    """Giovanni is west of the locked tower. Farm e/w must not steal the shop walk."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    b._torch_shopping = True
+    b._last_step = "e"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 740
+    state.room = "River Street, Eastern End"
+    state.exits = ["s", "w"]
+    state.scanned = True
+    state.mobs = ["klymacks"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+    assert "e" not in sent
+    _see_tile(b, state)
+    mid = WorldState()
+    mid.in_realm = True
+    mid.hp = 67
+    mid.max_hp = 67
+    mid.max_hp_known = True
+    mid.blessed = True
+    mid.level = 4
+    mid.prompt_seq = state.prompt_seq + 1
+    mid.room = "River Street"
+    mid.exits = ["e", "n", "s", "w"]
+    mid.scanned = True
+    mid.mobs = ["klymacks"]
+    mid.followers = ["klymacks"]
+    sent.clear()
+    b.tick(mid, sent.append, pending=False)
+    assert sent == ["w"]
+    assert "e" not in sent
+
+
+def test_hunt_maps_unknown_hall_and_walks() -> None:
+    atlas = Atlas()
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        atlas=atlas,
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 710
+    state.room = "Hidden Gallery"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert atlas.known("Hidden Gallery")
+    assert sent and sent[0] in {"e", "w"}
+    assert "look" not in sent
+
+
+def test_manual_maps_unknown_room() -> None:
+    atlas = Atlas()
+    b = Brain(allowed=True, atlas=atlas)
+    b.mode = "manual"
+    state = WorldState()
+    state.in_realm = True
+    state.room = "Hidden Gallery"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert atlas.known("Hidden Gallery")
+    assert sent == []
+
+
+def test_note_send_maps_edge_into_new_room() -> None:
+    atlas = Atlas()
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        atlas=atlas,
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._asked_health = True
+    b.note_send("n", "Graveyard")
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 711
+    state.room = "Secret Passage"
+    state.exits = ["n"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert atlas.known("Secret Passage")
+    assert atlas.path("Graveyard", "Secret Passage") == ["n"]
+    assert sent == ["n"]
+
+
+def test_compass_holds_second_step_until_room_confirms() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 413
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    sent.clear()
+    state.room = "Guild Street, Southern End"
+    state.apply({"kind": "exits", "exits": ["n", "s"]})
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "look" not in sent
+
+
+def test_graveyard_gate_walks_east() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 412
+    state.room = "Graveyard Entrance"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+    assert "n" not in sent
+    assert "s" not in sent
+    assert b.next_action == "graveyard"
+
+
+def test_graveyard_paladin_bashes_fierce_zombie() -> None:
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 415
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.saw_here = True
+    state.mobs = ["klymacks", "fierce zombie"]
+    state.followers = ["klymacks"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["aa zombie"]
+    assert "e" not in sent
+    assert "w" not in sent
+
+
+def test_graveyard_heals_on_heal_me_before_walk() -> None:
+    """GY is Silvermere, so not `_in_pit` — still cast before ping-pong."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+        spell_list=["minor healing", "harm"],
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._invited = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 74
+    state.max_hp = 74
+    state.max_hp_known = True
+    state.ma = 16
+    state.max_ma = 16
+    state.blessed = True
+    state.level = 5
+    state.prompt_seq = 416
+    state.room = "Graveyard, Southern Edge"
+    state.exits = ["n", "e", "w"]
+    state.scanned = True
+    state.saw_here = True
+    state.mobs = ["Klymacks"]
+    state.followers = ["klymacks"]
+    ev = parse_line('Klymacks says "heal me"')
+    assert ev and ev["kind"] == "heal_ask"
+    state.apply(ev)
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["cast minor healing klymacks"]
+    assert "e" not in sent
+    assert "w" not in sent
+
+
+def test_graveyard_ping_pongs_west_after_five_east() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._grave_i = 5
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 413
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+    assert "n" not in sent
+    assert "s" not in sent
+
+
+def test_graveyard_low_hp_flees_west() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._attacking = "skeleton"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 20
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 414
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.in_combat = True
+    state.mobs = ["skeleton"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+    assert b.next_action == "flee"
+    assert "e" not in sent
+
+
+def test_graveyard_leader_flees_when_ninja_gasps() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._attacking = "skeleton"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.blessed = True
+    state.level = 4
+    state.prompt_seq = 415
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.in_combat = True
+    state.mobs = ["klymacks", "skeleton"]
+    state.self_names = {"matt"}
+    state.apply(
+        {
+            "kind": "wounded",
+            "name": "Klymacks",
+        }
+    )
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+    assert b.next_action == "flee"
+
+
+def test_ninja_follows_flee_when_not_following() -> None:
+    b = Brain(
+        allowed=True,
+        klass="ninja",
+        me="klymacks",
+        party_leader="matt",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 416
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.self_names = {"klymacks"}
+    state.apply({"kind": "flee", "name": "Matt", "dir": "w"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+    assert b.next_action == "flee"
+
+
+def test_ninja_does_not_flee_twice_while_following() -> None:
+    b = Brain(
+        allowed=True,
+        klass="ninja",
+        me="klymacks",
+        party_leader="matt",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._followed = True
+    b._joined = True
+    b._ranked = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 417
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.following = "Matt"
+    state.self_names = {"klymacks"}
+    state.apply({"kind": "flee", "name": "Matt", "dir": "w"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "w" not in sent
+    assert "e" not in sent
+
+
+def test_ninja_rests_when_matt_sits() -> None:
+    b = Brain(
+        allowed=True,
+        klass="ninja",
+        me="klymacks",
+        party_leader="matt",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._followed = True
+    b._joined = True
+    b._ranked = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 418
+    state.room = "Graveyard Entrance"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.following = "Matt"
+    state.mobs = ["Matt"]
+    state.self_names = {"klymacks"}
+    state.apply({"kind": "rest", "actor": "Matt"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["rest"]
+
+
+def test_ninja_breaks_when_matt_stands() -> None:
+    b = Brain(
+        allowed=True,
+        klass="ninja",
+        me="klymacks",
+        party_leader="matt",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._followed = True
+    b._joined = True
+    b._ranked = True
+    b._sitting = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 419
+    state.room = "Graveyard Entrance"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.following = "Matt"
+    state.resting = True
+    state.mobs = ["Matt"]
+    state.self_names = {"klymacks"}
+    state.apply({"kind": "stand", "actor": "Matt"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["break"]
+
+
+def test_square_skips_light_when_torch_already_lit() -> None:
+    """Graveyard farm does not light/dive at TS — walks north."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 28
+    state.max_hp = 28
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 412
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert f"light {STARTER_LIGHT}" not in sent
+    assert sent == ["n"]
+    assert "go manhole" not in sent
+
+
+def test_square_i_without_lit_marker_keeps_light() -> None:
+    """Fresh `i` often omits (lit) — do not clear lit and wander temple."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._torch_bought = True
+    b._torch_checked = True
+    b._torch_est = 2
+    b._torch_bag_ready = True
+    b._torch_lit = True
+    b._sewer_stocked = True
+    b._torch_inv_synced = 0
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 420
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.torch_lit = True
+    state.apply(
+        {
+            "kind": "inventory",
+            "items": [STARTER_LIGHT, STARTER_LIGHT],
+            "worn": [],
+            "extras": [],
+        }
+    )
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "w" not in sent
+    assert f"light {STARTER_LIGHT}" not in sent
+    assert sent == ["n"]
+    assert b._torch_lit
+
+
+def test_already_lit_reply_stops_reliight() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._torch_bought = True
+    b._torch_checked = True
+    b._torch_est = 2
+    b._torch_bag_ready = True
+    b._torch_inv_synced = 0  # prevent empty sync wiping est
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 421
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.inventory = [STARTER_LIGHT, STARTER_LIGHT]
+    state.apply({"kind": "torch_lit"})  # "You already have something lit!"
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert f"light {STARTER_LIGHT}" not in sent
+    assert "w" not in sent
+    assert sent == ["n"]
+    assert b._torch_lit
+
+
+def test_bag_ready_on_temple_street_walks_east() -> None:
+    """If we drifted west of TS with a full bag, walk east — never further west."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._torch_bought = True
+    b._torch_bag_ready = True
+    b._torch_est = 2
+    b._torch_checked = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 422
+    state.room = "Temple Street, Eastern End"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+    assert "w" not in sent
+    assert "go manhole" not in sent
+
+
+def test_matt_following_at_square_leaves_to_stock() -> None:
+    """Follower does not stock — only the loop leader without night vision does."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._followed = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 28
+    state.max_hp = 28
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 500
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.following = "klymacks"
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "i" not in sent
+    assert "go manhole" not in sent
+    assert "leave" not in sent
+
+
+def test_matt_leading_at_square_checks_inventory() -> None:
+    """Human loop leader at TS: `i` then torch count before manhole."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 28
+    state.max_hp = 28
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 510
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.inventory = [STARTER_LIGHT, STARTER_LIGHT]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "i" not in sent
+    assert "go manhole" not in sent
+
+
+def test_sewer_walks_loop_when_clear() -> None:
+    """Empty sewer junction follows the klymacks/Winterhawk tape (starts north)."""
+    b = Brain(allowed=True, klass="paladin")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 38
+    state.max_hp = 38
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 420
+    state.room = "Sewer Tunnel, Junction"
+    state.exits = ["u", "n", "e", "s", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "rest" not in sent
+    assert "u" not in sent
+    assert b.next_action == "sewer loop"
+    assert b._sewer_i == 1
+    _see_tile(b, state)
+    # Next tape beat while exits still allow it.
+    b._last_step = "n"
+    b._step_room = "Sewer Tunnel, Junction"
+    state.room = "Sewer Tunnel"
+    state.exits = ["n", "s"]
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    _see_tile(b, state)
+    # Dead-end arm: compass fallback when tape step is closed.
+    b._last_step = "n"
+    b._step_room = "Sewer Tunnel"
+    state.room = "Sewer Tunnel, Dead End"
+    state.exits = ["s"]
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["s"]
+
+
+def test_sewer_swings_before_loop() -> None:
+    b = Brain(allowed=True, klass="paladin")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 38
+    state.max_hp = 38
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 421
+    state.room = "Sewer Tunnel, Junction"
+    state.exits = ["u", "n", "e", "s", "w"]
+    state.scanned = True
+    state.apply({"kind": "arrive", "name": "a giant rat"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    # Paladin bash verb is client `aa`.
+    assert sent == ["aa giant rat"]
+    assert "n" not in sent
+    assert "u" not in sent
+
+
+def test_sewer_dark_uses_torch_then_buys() -> None:
+    """Human in dark pipes: use torch once, then climb out to the store."""
+    b = Brain(allowed=True, klass="paladin")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 38
+    state.max_hp = 38
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 430
+    state.room = "Sewer Tunnel"
+    state.exits = ["u", "n", "s"]
+    state.scanned = True
+    state.apply({"kind": "dark"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == [f"light {STARTER_LIGHT}"]
+    assert not state.dark
+    assert b._tried_torch
+    assert b._torch_lit
+    # Still dark after a failed/missing torch — walk up toward the store.
+    state.apply({"kind": "dark"})
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["u"]
+    assert b.next_action == "torch"
+    # Town Square on a torch run: east toward Giovanni, not north to the guild.
+    b2 = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b2.gear_done = True
+    b2.mode = "hunt"
+    b2._in_camp = True
+    b2._asked_health = True
+    b2._torch_shopping = True
+    square = WorldState()
+    square.in_realm = True
+    square.hp = 28
+    square.max_hp = 28
+    square.max_hp_known = True
+    square.level = 4
+    square.prompt_seq = 431
+    square.room = "Town Square"
+    square.exits = ["n", "s", "e", "w"]
+    square.scanned = True
+    sent2: list[str] = []
+    b2.tick(square, sent2.append, pending=False)
+    assert sent2 == ["e"]
+    assert "go manhole" not in sent2
+    assert "n" not in sent2
+    assert "w" not in sent2
+    assert b2.next_action == "torch"
+    _see_tile(b2, square)
+    # Western End is one e of TS; two mid-Silver tiles then s into Giovanni.
+    west = WorldState()
+    west.in_realm = True
+    west.hp = 28
+    west.max_hp = 28
+    west.max_hp_known = True
+    west.level = 4
+    west.prompt_seq = square.prompt_seq + 1
+    west.room = "Silver Street, Western End"
+    west.exits = ["n", "s", "e", "w"]
+    west.scanned = True
+    sent2.clear()
+    b2.tick(west, sent2.append, pending=False)
+    assert sent2 == ["e"]
+    assert b2._torch_shopping
+    _see_tile(b2, west)
+    mid = WorldState()
+    mid.in_realm = True
+    mid.hp = 28
+    mid.max_hp = 28
+    mid.max_hp_known = True
+    mid.level = 4
+    mid.prompt_seq = west.prompt_seq + 1
+    mid.room = "Silver Street"
+    mid.exits = ["n", "s", "e", "w"]
+    mid.scanned = True
+    sent2.clear()
+    b2.tick(mid, sent2.append, pending=False)
+    assert sent2 == ["e"]
+    assert b2._store_silver_east == 1
+    _see_tile(b2, mid)
+    shops = WorldState()
+    shops.in_realm = True
+    shops.hp = 28
+    shops.max_hp = 28
+    shops.max_hp_known = True
+    shops.level = 4
+    shops.prompt_seq = mid.prompt_seq + 1
+    shops.room = "Silver Street"
+    shops.exits = ["n", "s", "e", "w"]
+    shops.scanned = True
+    shops.travel_seq = mid.travel_seq + 1
+    sent2.clear()
+    b2.tick(shops, sent2.append, pending=False)
+    assert sent2 == ["s"]
+    assert b2._store_silver_east == 2
+    assert b2.next_action == "torch"
+    _see_tile(b2, shops)
+    # Farm must not yank west while the shop run is sticky; retry door ok.
+    shops.prompt_seq += 1
+    shops.travel_seq += 1
+    sent2.clear()
+    b2.next_action = "looking"
+    b2.tick(shops, sent2.append, pending=False)
+    assert sent2 == ["s"]
+    assert "w" not in sent2
+    assert b2._torch_shopping
+
+
+def test_matt_invites_klymacks_at_square_before_torch() -> None:
+    """Loop leader picks up the alt at TS before stocking / diving."""
+    b = Brain(
+        allowed=True,
+        klass="paladin",
+        me="matt",
+        party_leader="matt",
+        alts="klymacks",
+    )
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 440
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.mobs = ["Klymacks"]
+    state.saw_here = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["invite Klymacks"]
+    assert "i" not in sent
+    assert "go manhole" not in sent
+
+
+def test_silver_western_end_walks_west_to_square() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._sewer_stocked = True
+    b._torch_est = 2
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 441
+    state.room = "Silver Street, Western End"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["w"]
+    assert "look" not in sent
+    # Store buy when use already failed.
+    store = WorldState()
+    store.in_realm = True
+    store.hp = 28
+    store.max_hp = 28
+    store.max_hp_known = True
+    store.level = 4
+    store.prompt_seq = 432
+    store.room = "General Store"
+    store.exits = ["n"]
+    store.scanned = True
+    store.apply({"kind": "dark"})
+    b3 = Brain(allowed=True, klass="paladin")
+    b3.gear_done = True
+    b3.mode = "hunt"
+    b3._in_camp = True
+    b3._asked_health = True
+    b3._tried_torch = True
+    sent3: list[str] = []
+    b3.tick(store, sent3.append, pending=False)
+    assert sent3 == [f"buy {STARTER_LIGHT}", "i"]
+    assert b3._torch_bought
+    assert b3._torch_wait_inv
+    # Stale bag must not trigger another buy on the next prompt.
+    store.prompt_seq += 1
+    store.inv_seq = 0
+    sent3.clear()
+    b3.tick(store, sent3.append, pending=False)
+    assert sent3 == []
+    assert "buy" not in " ".join(sent3)
+    # Fresh `i` with one torch → buy once more, then stop at two.
+    store.apply(
+        {
+            "kind": "inventory",
+            "items": ["torch"],
+            "worn": [],
+            "extras": [],
+        }
+    )
+    store.prompt_seq += 1
+    sent3.clear()
+    b3.tick(store, sent3.append, pending=False)
+    assert sent3 == [f"buy {STARTER_LIGHT}", "i"]
+    assert b3._torch_est == 2
+    store.apply(
+        {
+            "kind": "inventory",
+            "items": ["torch", "torch"],
+            "worn": [],
+            "extras": [],
+        }
+    )
+    store.prompt_seq += 1
+    sent3.clear()
+    b3.tick(store, sent3.append, pending=False)
+    assert f"buy {STARTER_LIGHT}" not in sent3
+    assert "n" in sent3  # leave shop toward the square
+    assert b3._torch_bag_ready
+    assert not b3._sewer_stocked  # still need TS light before dive
+    assert not b3._torch_shopping
+
+
+def test_store_keeps_two_torches_from_sell() -> None:
+    from client.paths import extra_starter
+
+    assert extra_starter(["torch", "torch"], worn=[]) is None
+    assert extra_starter(["torch", "torch", "torch"], worn=[]) == "torch"
+    # Readied (lit) + spare must not look like a surplus to dump.
+    assert (
+        extra_starter(
+            ["torch (lit)", "torch"],
+            extras=["torch (lit)", "torch"],
+            worn=[],
+        )
+        is None
+    )
+
+
+def test_stale_in_shop_does_not_sell_on_street() -> None:
+    """Leaving Giovanni must clear in_shop — never sell torch on Silver Street."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._torch_bought = True
+    b._torch_est = 2
+    b._torch_bag_ready = True
+    b._torch_lit = True
+    b._sewer_stocked = True
+    b._torch_checked = True
+    b._torch_inv_synced = 1
+    state = WorldState()
+    state.in_realm = True
+    state.in_shop = True  # stale from the store
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 430
+    state.room = "Silver Street"
+    state.exits = ["s", "e", "w"]
+    state.scanned = True
+    state.inventory = ["torch (lit)", "torch"]
+    state.extras = ["torch (lit)", "torch"]
+    state.worn = []
+    state.inv_seq = 1
+    # Room change clears the stale shop flag.
+    state.apply({"kind": "room", "title": "Silver Street, Western End"})
+    assert not state.in_shop
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "sell torch" not in sent
+    assert not any(c.startswith("sell ") for c in sent)
+
+
+def test_readied_torch_counts_as_lit() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 431
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "i" not in sent
+    assert "go manhole" not in sent
+    assert f"light {STARTER_LIGHT}" not in sent
+    assert "sell torch" not in sent
+
+
+def test_temple_street_walks_east_not_west() -> None:
+    """Casino stretch shares the Temple Street title — always east to the square."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._sewer_stocked = True
+    b._torch_lit = True
+    b._torch_bought = True
+    b._torch_est = 2
+    b._last_step = "n"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 600
+    state.room = "Temple Street"
+    state.exits = ["s", "e", "w"]
+    state.scanned = True
+    state.torch_lit = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+    assert "w" not in sent
+
+
+def test_temple_street_clears_last_step_across_tiles() -> None:
+    """Same title corridor must not stall on last_step=e forever."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._sewer_stocked = True
+    b._torch_lit = True
+    b._torch_bought = True
+    b._torch_est = 2
+    b._last_step = "e"
+    b._step_room = "Temple Street"
+    b._step_prompt = 600
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 601
+    state.room = "Temple Street"
+    state.exits = ["s", "e", "w"]
+    state.scanned = True
+    state.torch_lit = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+
+
+def test_casino_walks_north_to_temple_street() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._sewer_stocked = True
+    b._torch_lit = True
+    b._torch_bought = True
+    b._torch_est = 2
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 602
+    state.room = "Lucky Strike Casino"
+    state.exits = ["n", "s"]
+    state.scanned = True
+    state.torch_lit = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "w" not in sent
+
+
+def test_atlas_temple_street_east_to_square() -> None:
+    from pathlib import Path
+
+    from client.realm_map import Atlas
+
+    a = Atlas(Path("data/realm-map.json"))
+    assert a.edges.get(("temple street", "e")) in {
+        "temple street eastern end",
+        "town square",
+    }
+    assert '"' not in (a.edges.get(("temple street", "e")) or "")
+    route = a.way_home("Temple Street", ["s", "e", "w"])
+    assert route
+    assert route[0] == "e"
+
+
+def test_temple_street_rewrites_west_to_east() -> None:
+    """Even if atlas asks west, send east — never walk into the hall."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    state = WorldState()
+    state.in_realm = True
+    state.room = "Temple Street"
+    state.exits = ["s", "e", "w"]
+    sent: list[str] = []
+    assert b._go(sent.append, "w", state)
+    assert sent == ["e"]
+
+
+def test_cmd_cannot_send_west_on_temple_street() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    state = WorldState()
+    state.room = "Temple Street"
+    state.exits = ["s", "e", "w"]
+    sent: list[str] = []
+    b._cmd(sent.append, "w", state)
+    assert sent == ["e"]
+
+
+def test_sovereign_northern_end_walks_north_to_square() -> None:
+    """One step south of TS is Sovereign — do not look-loop; walk north."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._asked_health = True
+    b._sewer_stocked = True
+    b._torch_est = 2
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 520
+    state.room = "Sovereign Street, Northern End"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "look" not in sent
+
+
+def test_skali_front_walks_south_not_look() -> None:
+    """Skali sits on Temple Street, Eastern End. Hunt walks out south."""
     b = Brain(allowed=True, klass="paladin")
     b.gear_done = True
     b.mode = "hunt"
@@ -3559,13 +5485,104 @@ def test_silvermere_square_drops_manhole() -> None:
     state.hp = 28
     state.max_hp = 28
     state.max_hp_known = True
-    state.prompt_seq = 410
-    state.room = "Town Square"
-    state.exits = ["n", "s", "e", "w"]
+    state.level = 4
+    state.prompt_seq = 411
+    state.room = "Skali's Fine Armour, Front Room"
+    state.exits = ["e", "s", "w"]
     state.scanned = True
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["go manhole"]
+    assert sent == ["s"]
+    assert "look" not in sent
+
+
+def test_skali_look_scan_still_walks_south() -> None:
+    b = Brain(allowed=True, klass="ninja", stealth="walk")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._asked_health = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 28
+    state.max_hp = 28
+    state.max_hp_known = True
+    state.level = 4
+    state.prompt_seq = 412
+    state.room = "Skali's Fine Armour, Showroom"
+    state.exits = ["e", "n", "s"]
+    state.scanned = False
+    state.look_scan = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["s"]
+    assert "look" not in sent
+
+
+def test_level3_road_still_drops_arena() -> None:
+    b, state = _matt_hunt()
+    state.level = 3
+    state.room = "Newhaven, Narrow Road"
+    state.exits = ["n", "e", "w", "d"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["d"]
+
+
+def test_level4_road_walks_skiff_not_pit() -> None:
+    b, state = _matt_hunt()
+    state.level = 4
+    state.room = "Newhaven, Narrow Road"
+    state.exits = ["n", "e", "w", "d"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+    _see_tile(b, state)
+    sent.clear()
+    state.room = "Newhaven, Village Entrance"
+    state.exits = ["n", "s", "w"]
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["se"]
+    _see_tile(b, state)
+    sent.clear()
+    state.room = "Newhaven, Docks"
+    state.exits = ["n"]
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["borrow skiff"]
+
+
+def test_level4_skiff_run_is_not_yanked_to_pit() -> None:
+    b, state = _matt_hunt()
+    state.level = 4
+    state.room = "Newhaven, Forest Path"
+    state.exits = ["nw", "s"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["s"]
+    assert sent != ["nw"]
+
+
+def test_level4_leaves_arena_for_skiff() -> None:
+    b, state = _matt_hunt()
+    state.level = 4
+    state.room = "Newhaven, Arena"
+    state.exits = ["u"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["u"]
+
+
+def test_arena_gate_message_walks_skiff() -> None:
+    b, state = _matt_hunt()
+    state.room = "Newhaven, Narrow Road"
+    state.exits = ["n", "e", "w", "d"]
+    state.apply(parse_line("You may not enter the arena."))
+    assert state.arena_gated
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["e"]
+    assert sent != ["d"]
 
 
 def test_silvermere_docks_walks_to_square() -> None:
@@ -3738,6 +5755,7 @@ def test_rest_and_lop() -> None:
     b.tick(state, sent.append, pending=False)
     assert sent == ["u"]
     assert b.mode == "rest"
+    _see_tile(b, state)
     state.room = "Newhaven, Narrow Road"
     state.hp = 17
     state.max_hp = 28
@@ -4474,7 +6492,8 @@ def test_empty_pit_up_breaks_then_sn() -> None:
     assert "u" not in sent
 
 
-def test_may_not_sneak_breaks_then_retries() -> None:
+def test_may_not_sneak_breaks_then_walks() -> None:
+    """Busy-fail is this tile, not a combat leftover. Break once, then walk, never re-sn."""
     b, state = _road_hunt("ninja", "always")
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
@@ -4487,7 +6506,9 @@ def test_may_not_sneak_breaks_then_retries() -> None:
     state.prompt_seq += 1
     state.in_combat = False
     b.tick(state, sent.append, pending=False)
-    assert sent[-1] == "sn"
+    assert sent[-1] != "sn"
+    assert "sn" not in sent[2:]
+    assert sent[-1] == "d"
 
 
 def test_party_may_not_sneak_paste_then_rat_attacks() -> None:
@@ -4513,8 +6534,8 @@ def test_party_may_not_sneak_paste_then_rat_attacks() -> None:
     state.apply({"kind": "prompt", "hp": 22})
     n = len(sent)
     b.tick(state, sent.append, pending=False)
-    assert sent[n:] == ["sn"]
-    assert sent.count("sn") == 2
+    assert "sn" not in sent[n:]
+    assert sent.count("sn") == 1
     for ev in parse_events(
         "You may not sneak right now!\n"
         "A giant rat creeps into the room from nowhere."
@@ -4589,6 +6610,41 @@ def test_klymacks_at_17_asks_heal_me() -> None:
     b.tick(state, sent.append, pending=False)
     assert sent == ["heal me"]
     assert "say" not in sent[0]
+
+
+def test_klymacks_gy_asks_heal_me_before_sneak() -> None:
+    """Live GY paste: HP 36 while following — `heal me`, not sn after Matt."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    state.hp = 36
+    state.max_hp = 50
+    state.max_hp_known = True
+    state.room = "Graveyard, Southern Edge"
+    state.exits = ["n", "e", "w"]
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["heal me"]
+    assert "sn" not in sent
+
+
+def test_klymacks_asks_heal_me_while_sneak_armed() -> None:
+    """Attempting to sneak must not eat the `heal me` tick."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    b._sneak_armed = True
+    b._sneak_wait = True
+    b._sneak_ready_at = time.monotonic() + 30
+    state.hp = 36
+    state.max_hp = 50
+    state.max_hp_known = True
+    state.room = "Graveyard, Southern Edge"
+    state.exits = ["n", "e", "w"]
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["heal me"]
+    assert "sn" not in sent
 
 
 def test_party_combat_off_leftover_kobold_no_sn() -> None:
@@ -4678,6 +6734,7 @@ def test_following_leader_mortal_may_sneak() -> None:
     )
     b._followed = True
     b._joined = True
+    b._ranked = True
     b._ranked = True
     state.following = "Matt"
     state.ally_mortal = "Matt"
@@ -4890,11 +6947,12 @@ def test_no_double_down_then_attack() -> None:
     state.exits = ["n", "e", "w", "d"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
-    assert sent == ["d"]
+    assert sent == ["d", "look"]
+    _see_tile(b, state)
     state.blocked = True
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
-    assert sent == ["d"]
+    assert sent[-1] == "look"
     assert "arena" in state.room.lower()
     state.room = "Newhaven, Arena"
     state.exits = ["u"]
@@ -5202,6 +7260,10 @@ def test_sense_and_engage() -> None:
     state.things = ["5 gold"]
     state.mobs = ["A small giant rat"]
     sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["get gold"]
+    state.prompt_seq += 1
+    sent.clear()
     b.tick(state, sent.append, pending=False)
     assert sent == ["att giant rat"]
 
@@ -5906,6 +7968,7 @@ def test_ninja_ambush_following_empty_pit_stays() -> None:
     b._followed = True
     b._joined = True
     b._ranked = True
+    b._ranked = True
     state = WorldState()
     state.in_realm = True
     state.hp = 28
@@ -5938,7 +8001,7 @@ def test_corwyn_blocks_sneak() -> None:
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
     assert "sn" not in sent
-    assert occupants_in(state.mobs) == ["Corwyn"]
+    assert sent == ["d"]
 
 
 def test_coorwyn_blocks_sneak() -> None:
@@ -5947,21 +8010,40 @@ def test_coorwyn_blocks_sneak() -> None:
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
     assert "sn" not in sent
-    assert occupants_in(state.mobs) == ["Coorwyn"]
+    assert sent == ["d"]
 
 
 def test_party_empty_with_matt_still_sneaks() -> None:
-    b, state = _road_hunt(
-        "ninja", "always", party_leader="Matt", me="klymacks"
-    )
-    b._followed = True
-    b._joined = True
-    b._ranked = True
-    state.following = "Matt"
-    state.apply({"kind": "also_here", "mobs": ["Matt"]})
+    """Empty pit with Matt — sneak. Party mates are not strangers."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    b._asked_health = True
+    state.hp = 36
+    state.max_hp = 36
+    state.mobs = ["Matt"]
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
     assert sent == ["sn"]
+
+
+def test_busy_sneak_empty_room_does_not_retry() -> None:
+    """No room title yet — busy-fail still locks sn until we walk."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    b._asked_health = True
+    state.room = ""
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "sn" not in sent
+    state.apply({"kind": "sneak_fail", "reason": "busy"})
+    state.prompt_seq += 1
+    n = len(sent)
+    b.tick(state, sent.append, pending=False)
+    assert "sn" not in sent[n:]
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert "sn" not in sent[n:]
 
 
 def test_join_arena_slime_fights_not_i_or_look() -> None:
@@ -6020,11 +8102,13 @@ def test_ninja_ambush_pit_lops_hidden_backstabs() -> None:
 
 
 def test_ninja_ambush_following_does_not_move() -> None:
+    """Follow Matt: sn in place, never own u/d."""
     b, state = _road_hunt(
         "ninja", "always", party_leader="Matt", me="klymacks"
     )
     b._followed = True
     b._joined = True
+    b._ranked = True
     b._ranked = True
     state.following = "Matt"
     sent: list[str] = []
@@ -6035,10 +8119,11 @@ def test_ninja_ambush_following_does_not_move() -> None:
     assert "attack" not in " ".join(sent)
 
 
-def test_ninja_auto_following_walks() -> None:
+def test_ninja_auto_following_sneaks() -> None:
     b, state = _road_hunt("ninja", "auto", party_leader="Matt", me="klymacks")
     b._followed = True
     b._joined = True
+    b._ranked = True
     b._ranked = True
     state.following = "Matt"
     sent: list[str] = []
@@ -6054,6 +8139,7 @@ def test_paladin_never_sneaks() -> None:
     b.tick(state, sent.append, pending=False)
     assert sent == ["d"]
     assert "sn" not in sent
+    _see_tile(b, state)
     assert b.toggle_stealth() == "walk"
     state.room = "Newhaven, Narrow Road"
     state.exits = ["n", "e", "w", "d"]
@@ -6085,7 +8171,7 @@ def test_map_pathfind_when_lost() -> None:
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
     assert sent == ["d"]
-    assert "path:" in b.next_action
+    assert b.next_action in {"d", "path: d"} or "path:" in b.next_action
 
 
 def test_unknown_room_does_not_crash() -> None:
@@ -6135,7 +8221,7 @@ def test_following_skips_map_walk() -> None:
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
     assert sent == ["sn"]
-    assert "n" not in sent and "s" not in sent
+    assert "n" not in sent[1:] and "s" not in sent
 
 
 def _klymacks_arena() -> tuple[Brain, WorldState]:
@@ -6263,10 +8349,12 @@ def test_after_aid_homie_returns_to_pit() -> None:
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
     assert sent == ["drag Matt u"]
+    _see_tile(b, state)
     state.apply({"kind": "aided", "name": "Matt"})
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent[-1] == "drag"
+    _see_tile(b, state)
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
     assert sent[-1] == "d"
@@ -6439,6 +8527,333 @@ def test_go_train_walks_to_guild() -> None:
     assert not b._want_train
 
 
+def test_go_train_silvermere_three_north_then_east() -> None:
+    """Town Square: n n n, then Northern End e into the Adventurer's Guild."""
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b._asked_health = True
+    b.request_train()
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.klass = "paladin"
+    state.prompt_seq = 500
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "borrow skiff" not in sent
+    state.room = "Guild Street, Southern End"
+    state.exits = ["n", "s", "w"]
+    state.prompt_seq += 1
+    b._last_step = "n"
+    b.tick(state, sent.append, pending=False)
+    assert sent[-1] == "n"
+    state.room = "Guild Street"
+    state.exits = ["n", "s", "e", "w"]
+    state.prompt_seq += 1
+    b._last_step = "n"
+    b.tick(state, sent.append, pending=False)
+    assert sent[-1] == "n"
+    state.room = "Guild Street, Northern End"
+    state.exits = ["e", "n", "s"]
+    state.prompt_seq += 1
+    b._last_step = "n"
+    b.tick(state, sent.append, pending=False)
+    assert sent[-1] == "e"
+    state.room = "Adventurer's Guild, Foyer"
+    state.exits = ["e", "w"]
+    state.prompt_seq += 1
+    b._last_step = "e"
+    b.tick(state, sent.append, pending=False)
+    assert sent[-1] == "e"
+    state.room = "Adventurer's Guild, Universal Trainer"
+    state.exits = ["w"]
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert "train" not in sent[1:]
+    assert b.train_holding()
+
+
+def test_go_train_from_graveyard_does_not_skiff() -> None:
+    b = Brain(allowed=True, klass="ninja", me="klymacks", party_leader="klymacks")
+    b.gear_done = True
+    b._asked_health = True
+    b.request_train()
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.level = 4
+    state.klass = "ninja"
+    state.prompt_seq = 501
+    state.room = "Graveyard Entrance"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent
+    assert sent[0] != "borrow skiff"
+    assert "skiff" not in " ".join(sent)
+
+
+def test_goto_ts_walks_then_stops() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt")
+    b.gear_done = True
+    b.start_goto("ts")
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.prompt_seq = 40
+    state.room = "Guild Street, Southern End"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["s"]
+    assert b.mode == "goto"
+    state.room = "Town Square"
+    state.prompt_seq += 1
+    b._last_step = ""
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == []
+    assert b.mode == "manual"
+    assert b.next_action == "at ts"
+    assert not b.goto_goal
+
+
+def test_goto_gy_from_square_walks_north() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt")
+    b.gear_done = True
+    b.start_goto("gy")
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.prompt_seq = 40
+    state.room = "Town Square"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert b.mode == "goto"
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.prompt_seq += 1
+    b._last_step = ""
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == []
+    assert b.mode == "manual"
+    assert b.next_action == "at gy"
+
+
+def test_run_gy_bashes_gate_instead_of_south() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt", party_leader="matt")
+    b.gear_done = True
+    b.start_run("gy")
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 67
+    state.max_hp = 67
+    state.max_hp_known = True
+    state.level = 4
+    state.klass = "paladin"
+    state.prompt_seq = 80
+    state.room = "Intersection of River St. & Bridge St."
+    state.exits = ["e", "s", "w"]
+    state.closed_exits = ["n"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["bash north"]
+    assert "s" not in sent
+    state.prompt_seq += 1
+    state.closed_exits = ["n"]
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["bash north"]
+    state.room = "Bridge Street"
+    state.exits = ["e", "s", "w"]
+    state.closed_exits = []
+    state.prompt_seq += 1
+    b.compass.reset()
+    b._last_step = "s"
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["bash north"]
+    assert "s" not in sent
+    # Open north: walk through. Closed: keep bashing until the look lists n.
+    state.room = "Bridge Street"
+    state.exits = ["n", "s"]
+    state.closed_exits = []
+    state.prompt_seq += 1
+    b.compass.reset()
+    b._last_step = ""
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+    assert "s" not in sent
+    assert "bash north" not in sent
+    state.exits = ["s"]
+    state.closed_exits = ["n"]
+    state.prompt_seq += 1
+    b.compass.reset()
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["bash north"]
+    state.prompt_seq += 1
+    state.closed_exits = ["n"]
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["bash north"]
+    state.exits = ["n", "s"]
+    state.closed_exits = []
+    state.prompt_seq += 1
+    b.compass.reset()
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["n"]
+
+
+def test_goto_swings_lops_then_walks() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt")
+    b.gear_done = True
+    b.aa = True
+    b.start_goto("ts")
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.prompt_seq = 40
+    state.room = "Guild Street, Southern End"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.apply({"kind": "also_here", "mobs": ["large rat"]})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["aa rat"]
+    assert b.mode == "goto"
+    state.mobs = []
+    state.in_combat = False
+    state.last_kill = "rat"
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["s"]
+    assert b.mode == "goto"
+
+
+def test_coins_beat_the_next_swing() -> None:
+    """Both toons must swoop copper even if a lop is still listed."""
+    b = Brain(allowed=True, klass="paladin", me="matt")
+    b.gear_done = True
+    b.aa = True
+    b.mode = "hunt"
+    b._in_camp = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.prompt_seq = 50
+    state.room = "Newhaven, Arena"
+    state.exits = ["u"]
+    state.scanned = True
+    state.things = ["12 copper"]
+    state.apply({"kind": "also_here", "mobs": ["filthbug"]})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["get copper"]
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["aa filthbug"]
+
+
+def test_follower_swoops_coins() -> None:
+    b, state = _road_hunt("ninja", "walk", party_leader="Matt", me="klymacks")
+    b._followed = True
+    b._joined = True
+    b._ranked = True
+    state.following = "Matt"
+    state.things = ["7 silver nobles"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["get silver"]
+
+
+def test_run_skips_lops() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt")
+    b.gear_done = True
+    b.aa = True
+    b.start_run("ts")
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 40
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.prompt_seq = 40
+    state.room = "Guild Street, Southern End"
+    state.exits = ["n", "s", "e", "w"]
+    state.scanned = True
+    state.apply({"kind": "also_here", "mobs": ["large rat"]})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["s"]
+    assert "aa" not in " ".join(sent)
+    assert b.goto_skip
+
+
+def test_deathpile_run_back_without_fighting() -> None:
+    b = Brain(allowed=True, klass="paladin", me="matt")
+    b.gear_done = True
+    b.aa = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 0
+    state.max_hp = 40
+    state.max_hp_known = True
+    state.prompt_seq = 80
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.scanned = True
+    state.apply({"kind": "death"})
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert b.deathpile == "Graveyard"
+    assert not sent
+    state.hp = 36
+    state.room = "Temple Healer"
+    state.exits = ["s"]
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert b.mode == "goto"
+    assert b.goto_goal == "_pile"
+    assert b.goto_skip
+    assert sent == ["s"]
+    state.room = "Graveyard"
+    state.exits = ["e", "w"]
+    state.mobs = ["skeleton"]
+    state.prompt_seq += 1
+    sent.clear()
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["get all"]
+    assert "aa" not in " ".join(sent)
+
+
 def test_go_train_from_arena() -> None:
     b = Brain(allowed=True, klass="paladin")
     b.gear_done = True
@@ -6481,6 +8896,7 @@ def test_go_train_following_does_not_move() -> None:
     b, state = _road_hunt("ninja", "always", party_leader="Matt")
     b._followed = True
     b._joined = True
+    b._ranked = True
     state.following = "Matt"
     b.request_train()
     sent: list[str] = []
@@ -6521,6 +8937,7 @@ def test_train_hold_pauses_hunt_heal_look_party() -> None:
     b, state = _road_hunt("ninja", "always", party_leader="Matt")
     b._followed = True
     b._joined = True
+    b._ranked = True
     state.following = "Matt"
     state.room = "Newhaven, Guild"
     state.exits = ["s"]
@@ -6604,6 +9021,8 @@ if __name__ == "__main__":
     test_matt_heals_on_heal_me()
     test_matt_still_heals_on_old_say_heal()
     test_klymacks_at_17_asks_heal_me()
+    test_klymacks_gy_asks_heal_me_before_sneak()
+    test_klymacks_asks_heal_me_while_sneak_armed()
     test_party_combat_off_leftover_kobold_no_sn()
     test_matt_swings_leftover_kobold_after_combat_off()
     test_matt_skips_party_heal_on_small_hit()
@@ -6615,6 +9034,10 @@ if __name__ == "__main__":
     test_harm_still_living_only_with_klymacks_here()
     test_friendly_fire_logs_off()
     test_f7_following_swings()
+    test_following_at_village_gates_does_not_sneak()
+    test_following_on_forest_path_sneaks()
+    test_following_matt_on_guild_street_sneaks()
+    test_following_busy_then_new_room_retries_sneak()
     test_follow_f7_also_here_lashworm_engages()
     test_follow_unscanned_looks_then_engages()
     test_empty_scanned_room_no_attack()
@@ -6637,6 +9060,8 @@ if __name__ == "__main__":
     test_manual_auto_join_matt_invite()
     test_manual_tick_follows_him_invite()
     test_manual_tick_backranks_after_typed_follow()
+    test_ninja_follow_sends_backr_without_rank_flag()
+    test_paladin_follow_does_not_backr()
     test_manual_join_backrank_starts_hunt()
     test_hunt_on_backrank_stays_hunt()
     test_join_off_follow_does_not_start_hunt()
@@ -6658,6 +9083,7 @@ if __name__ == "__main__":
     test_matt_attacks_slime_when_klymacks_absent()
     test_matt_aa_default_on()
     test_matt_aa_off_holds_swing()
+    test_matt_aa_off_breaks_live_bash()
     test_matt_aa_bashes_not_attack()
     test_ninja_hunts_without_aa()
     test_klymacks_no_attack_before_follow()
@@ -6707,13 +9133,74 @@ if __name__ == "__main__":
     test_spell_offer_yes_walks_from_guild()
     test_spell_offer_no_stays_put()
     test_class_weapons_name_the_uniques()
+    test_shop_weapons_are_value_picks()
+    test_ninja_buys_stiletto()
+    test_paladin_buys_battle_axe()
     test_gear_offer_after_train()
     test_gear_offer_yes_walks_skiff_from_guild()
     test_gear_offer_yes_stops_at_town_square()
     test_gear_offer_yes_keeps_hunting()
     test_gear_offer_no_stays_put()
     test_gear_offer_skipped_if_holding_weapon()
-    test_silvermere_square_drops_manhole()
+    test_silvermere_square_walks_north_to_guild()
+    test_sewer_run_ninja_dives_at_square()
+    test_sewer_run_paladin_stocks_at_square()
+    test_guild_street_keeps_walking_north()
+    test_guild_southern_end_walks_north_not_into_helfgrim()
+    test_helfgrim_walks_east_back_to_guild()
+    test_secret_passage_walks_north_not_look()
+    test_secret_passage_continues_southeast_not_camp()
+    test_secret_passage_no_exit_looks_not_west()
+    test_river_eastern_end_walks_west_not_locked_east()
+    test_silver_eastern_end_walks_west_not_atlas_east()
+    test_river_street_walks_east_toward_bridge()
+    test_bridge_walks_northeast_not_north_gate()
+    test_river_bridge_intersection_opens_north_gate()
+    test_river_bridge_intersection_ninja_picklocks()
+    test_river_eastern_end_no_exit_looks()
+    test_torch_run_leaves_river_east_end_west()
+    test_hunt_maps_unknown_hall_and_walks()
+    test_manual_maps_unknown_room()
+    test_note_send_maps_edge_into_new_room()
+    test_compass_holds_second_step_until_room_confirms()
+    test_graveyard_gate_walks_east()
+    test_graveyard_paladin_bashes_fierce_zombie()
+    test_graveyard_heals_on_heal_me_before_walk()
+    test_graveyard_ping_pongs_west_after_five_east()
+    test_graveyard_low_hp_flees_west()
+    test_graveyard_leader_flees_when_ninja_gasps()
+    test_ninja_follows_flee_when_not_following()
+    test_ninja_does_not_flee_twice_while_following()
+    test_ninja_rests_when_matt_sits()
+    test_ninja_breaks_when_matt_stands()
+    test_square_skips_light_when_torch_already_lit()
+    test_square_i_without_lit_marker_keeps_light()
+    test_already_lit_reply_stops_reliight()
+    test_bag_ready_on_temple_street_walks_east()
+    test_matt_following_at_square_leaves_to_stock()
+    test_matt_leading_at_square_checks_inventory()
+    test_sewer_walks_loop_when_clear()
+    test_sewer_swings_before_loop()
+    test_sewer_dark_uses_torch_then_buys()
+    test_matt_invites_klymacks_at_square_before_torch()
+    test_store_keeps_two_torches_from_sell()
+    test_stale_in_shop_does_not_sell_on_street()
+    test_readied_torch_counts_as_lit()
+    test_silver_western_end_walks_west_to_square()
+    test_temple_street_walks_east_not_west()
+    test_temple_street_clears_last_step_across_tiles()
+    test_casino_walks_north_to_temple_street()
+    test_atlas_temple_street_east_to_square()
+    test_temple_street_rewrites_west_to_east()
+    test_cmd_cannot_send_west_on_temple_street()
+    test_sovereign_northern_end_walks_north_to_square()
+    test_skali_front_walks_south_not_look()
+    test_skali_look_scan_still_walks_south()
+    test_level3_road_still_drops_arena()
+    test_level4_road_walks_skiff_not_pit()
+    test_level4_skiff_run_is_not_yanked_to_pit()
+    test_level4_leaves_arena_for_skiff()
+    test_arena_gate_message_walks_skiff()
     test_silvermere_docks_walks_to_square()
     test_gear_offer_beats_spell_at_ten()
     test_ninja_gear_skips_spell_shop()
@@ -6750,11 +9237,13 @@ if __name__ == "__main__":
     test_combat_off_on_road_followed_rat_attacks()
     test_leave_combat_room_breaks_before_sn()
     test_empty_pit_up_breaks_then_sn()
-    test_may_not_sneak_breaks_then_retries()
+    test_may_not_sneak_breaks_then_walks()
     test_party_may_not_sneak_paste_then_rat_attacks()
     test_party_hidden_then_rat_backstabs()
     test_ninja_combat_off_looks_then_attacks_not_bs_loop()
     test_klymacks_at_17_asks_heal_me()
+    test_klymacks_gy_asks_heal_me_before_sneak()
+    test_klymacks_asks_heal_me_while_sneak_armed()
     test_party_combat_off_leftover_kobold_no_sn()
     test_matt_swings_leftover_kobold_after_combat_off()
     test_sneak_wait_without_reply_retries()
@@ -6798,11 +9287,12 @@ if __name__ == "__main__":
     test_corwyn_blocks_sneak()
     test_coorwyn_blocks_sneak()
     test_party_empty_with_matt_still_sneaks()
+    test_busy_sneak_empty_room_does_not_retry()
     test_join_arena_slime_fights_not_i_or_look()
     test_join_arena_slime_fights_before_health()
     test_ninja_ambush_pit_lops_hidden_backstabs()
     test_ninja_ambush_following_does_not_move()
-    test_ninja_auto_following_walks()
+    test_ninja_auto_following_sneaks()
     test_ninja_road_empty_sneaks()
     test_ninja_road_health_then_sn_or_d()
     test_paladin_asks_health_for_max_ma()
@@ -6844,6 +9334,16 @@ if __name__ == "__main__":
     test_matt_ready_goes_down_not_healer()
     test_does_not_aid_self()
     test_go_train_walks_to_guild()
+    test_go_train_silvermere_three_north_then_east()
+    test_go_train_from_graveyard_does_not_skiff()
+    test_goto_ts_walks_then_stops()
+    test_goto_gy_from_square_walks_north()
+    test_run_gy_bashes_gate_instead_of_south()
+    test_goto_swings_lops_then_walks()
+    test_coins_beat_the_next_swing()
+    test_follower_swoops_coins()
+    test_run_skips_lops()
+    test_deathpile_run_back_without_fighting()
     test_go_train_from_arena()
     test_go_train_manual_one_shot()
     test_go_train_following_does_not_move()

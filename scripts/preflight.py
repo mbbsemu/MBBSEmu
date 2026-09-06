@@ -197,7 +197,6 @@ def addon_status(path: Path, stage: str) -> tuple[str, str]:
 
 def leftover_stash_files() -> list[tuple[str, Path]]:
     return [
-        ("activation-later.txt", DATA / "activation-later.txt"),
         ("wccaddon.sys.saved", DATA / "wccaddon.sys.saved"),
         ("WCCADDON.SYS.saved", MODULE / "WCCADDON.SYS.saved"),
     ]
@@ -207,6 +206,39 @@ def leftover_stash_status(path: Path) -> tuple[str, str]:
     if not path.is_file():
         return OK, "absent"
     return FAIL, "leftover stash — delete; do not paste these back into MSG"
+
+
+def addon_live_lines() -> list[str]:
+    path = MODULE / "WCCADDON.SYS"
+    if not path.is_file():
+        return []
+    return [ln.strip() for ln in path.read_text(errors="replace").splitlines() if ln.strip()]
+
+
+def write_activation_later(mud: str | None, plus: str | None) -> Path:
+    """Copy live BTURNO / ACTIVATE / addons into data/activation-later.txt."""
+    DATA.mkdir(parents=True, exist_ok=True)
+    settings = CONFIG / "appsettings.json"
+    board = ""
+    if settings.is_file():
+        board = str(json.loads(settings.read_text()).get("GSBL.BTURNO", "")).strip()
+    addons = addon_live_lines()
+    lines = [
+        "# Rewritten each Check / preflight from the live files. Do not hand-edit.",
+        f"GSBL.BTURNO: {board}",
+        f"MajorMUD ACTIVATE: {mud or ''}",
+        f"MajorMUD Plus ACTIVATE: {plus or ''}",
+        "",
+        "WCCADDON.SYS:",
+    ]
+    if addons:
+        lines.extend(addons)
+    else:
+        lines.append("(none)")
+    lines.append("")
+    dest = DATA / "activation-later.txt"
+    dest.write_text("\n".join(lines))
+    return dest
 
 
 def compiled_activate_status(path: Path, msg_token: str | None) -> tuple[str, str]:
@@ -311,6 +343,8 @@ def last_boot_status() -> tuple[str, str]:
 
 def character_status(chars: list[tuple[str, str]], stage: str) -> tuple[str, str]:
     if not chars:
+        if stage in ("mud-code", "plus-demo", "addons"):
+            return WARN, "none yet — create after this licensed boot if N>0"
         if stage == "character":
             return WARN, "none yet — enter the realm and create one before any codes"
         return FAIL, "no character — stay in DEMO and create one"
@@ -372,6 +406,9 @@ def main() -> int:
 
     tone, note = addon_status(MODULE / "WCCADDON.SYS", stage)
     rows.append((tone, "WCCADDON.SYS", note, MODULE / "WCCADDON.SYS"))
+
+    later = write_activation_later(mud, plus)
+    rows.append((OK, "activation-later.txt", "snapshot of live BTURNO / ACTIVATE / addons", later))
 
     for label, path in leftover_stash_files():
         tone, note = leftover_stash_status(path)
@@ -437,11 +474,15 @@ def main() -> int:
     )
 
     if fails:
-        print("Do not launch. Stage is slow on purpose: character first, codes last.")
-        print("Start clean:  ./scripts/reset-game.sh")
+        print("Do not launch. Fix FAILs first.")
+        print("Start clean:  ./scripts/reset-game.sh --no-boot")
         return 1
     if warns:
-        print("Launch allowed. Stay on DEMO. Do not paste codes.")
+        if stage in ("mud-code", "plus-demo", "addons"):
+            print("Launch allowed. First boot must show N>0 users and 1.11p-WG.")
+            print("If N=0 or version vd: stop, restore DEMO, do not keep that pair.")
+        else:
+            print("Launch allowed. Stay on DEMO. Do not paste codes.")
         return 2
     print("Safe to launch. Play DEMO. Codes stay blocked until you change data/finns-stage.")
     return 0

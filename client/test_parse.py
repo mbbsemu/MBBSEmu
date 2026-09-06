@@ -5,14 +5,19 @@ import time
 from .parse import events_from_payload, harvest_screen, parse_events, parse_line
 from .paths import (
     attack_name,
+    at_sewer,
     extra_starter,
+    has_lit_torch,
+    inventory_entries,
     inventory_extras,
     inventory_names,
     inventory_worn,
     in_silvermere,
+    is_given_name,
     is_player,
     is_general_store,
     is_spell_shop,
+    is_armour_shop,
     is_weapon_shop,
     leave_dead_end,
     lop_in,
@@ -20,13 +25,17 @@ from .paths import (
     players_in,
     is_special_step,
     is_trainer,
+    on_skiff_run,
+    watchful_room,
+    sewer_loop_step,
     step_toward_arena,
+    step_toward_farm,
     step_toward_guild,
     step_toward_silvermere,
     step_toward_spell_shop,
     step_toward_store,
 )
-from .state import WorldState
+from .state import SESSION_IDLE, WorldState
 from .transcript import Transcript
 
 
@@ -50,6 +59,9 @@ def test_prompt_and_room() -> None:
     assert s.max_hp == 22
     assert s.hp_label() == "HP 17/22"
     assert s.room == "The Town Square"
+    hall = parse_line("A Dark Hall")
+    assert hall == {"kind": "room", "title": "A Dark Hall"}
+    assert parse_line("A large rat") is None or parse_line("A large rat").get("kind") != "room"
     assert "n" in s.exits and "s" in s.exits
     assert lop_in(s.mobs) == "rat"
     assert lop_in(["Betram", "filthbug"]) == "filthbug"
@@ -66,7 +78,15 @@ def test_prompt_and_room() -> None:
     assert lop_in(["nasty lashworm"]) == "lashworm"
     assert lop_in(["klymacks", "nasty acid slime"]) == "acid slime"
     assert players_in(["klymacks", "a filthbug"]) == ["klymacks"]
+    assert "a town guard" in occupants_in(["a town guard", "Matt"])
+    assert occupants_in(["a large rat", "a town guard"]) == ["a town guard"]
+    assert occupants_in(["You", "Matt"]) == ["Matt"]
     assert lop_in(["klymacks"]) is None
+    assert lop_in(["fierce zombie"]) == "zombie"
+    assert lop_in(["a fierce zombie"]) == "zombie"
+    assert attack_name("fierce zombie") == "zombie"
+    assert not is_player("fierce zombie")
+    assert not is_given_name("Zombie")
     assert occupants_in(["Corwyn", "acid slime"]) == ["Corwyn"]
     assert occupants_in(["Coorwyn", "acid slime"]) == ["Coorwyn"]
     assert occupants_in(["acid slime"]) == []
@@ -207,6 +227,12 @@ def test_combat_and_shop() -> None:
     assert ev and ev["kind"] == "combat" and "filthbug" in str(ev.get("name")).lower()
     assert parse_line("Closed door north") is None
     assert parse_line("The door is closed!")["kind"] == "cannot"
+    gate_shut = parse_line("The gate is closed.")
+    assert gate_shut and gate_shut["kind"] == "cannot"
+    blocked = WorldState()
+    blocked.exits = ["n", "s"]
+    blocked.apply(gate_shut)
+    assert blocked.blocked
     assert parse_line("Your club hits, but glances off its armour!")["kind"] == "combat"
     assert parse_line("You are typing too quickly - command ignored")["kind"] == "flood"
     assert parse_line("Why don't you slow down for a few seconds?")["kind"] == "flood"
@@ -229,6 +255,9 @@ def test_combat_and_shop() -> None:
     assert parse_line("Attempting to sneak...")["kind"] == "sneak_try"
     assert parse_line("Sneaking...")["kind"] == "sneak_ok"
     assert parse_line("You don't think you're sneaking.")["kind"] == "sneak_fail"
+    assert parse_line("You are no longer hidden.")["kind"] == "sneak_fail"
+    assert parse_line("You are no longer sneaking.")["kind"] == "sneak_fail"
+    assert parse_line("You are no longer following Matt.")["kind"] == "left"
     blocked = parse_line("You may not sneak right now!")
     assert blocked and blocked["kind"] == "sneak_fail" and blocked.get("reason") == "busy"
     assert parse_line("You make a sound when entering the room!")["kind"] == "sneak_fail"
@@ -417,17 +446,17 @@ def test_combat_and_shop() -> None:
     progress = WorldState()
     progress.hp = 28
     progress.apply(exp_lv)
-    assert progress.exp_label() == "EXP 762/2300 33%"
+    assert progress.exp_label() == "EXP 33% 762/2300"
     assert progress.exp_known and not progress.can_train()
     progress.apply({"kind": "experience", "amount": 40})
     assert progress.exp == 802
     assert progress.exp_needed == 1498
     assert progress.exp_pct == 34
-    assert progress.exp_label() == "EXP 802/2300 34%"
+    assert progress.exp_label() == "EXP 34% 802/2300"
     official = parse_line("Exp: 802 Level: 1 Exp needed for next level: 1498 (2300) [34%]")
     progress.apply(official)
     assert progress.exp == 802
-    assert progress.exp_label() == "EXP 802/2300 34%"
+    assert progress.exp_label() == "EXP 34% 802/2300"
     counted = WorldState()
     counted.hp = 28
     counted.apply(exp_lv)
@@ -435,12 +464,12 @@ def test_combat_and_shop() -> None:
     counted.apply({"kind": "killed", "name": "giant rat"})
     assert counted.exp == 802
     assert not counted.needs_exp()
-    assert counted.exp_label() == "EXP 802/2300 34%"
+    assert counted.exp_label() == "EXP 34% 802/2300"
     progress.apply({"kind": "killed", "name": "giant rat"})
     assert progress.has_exp_reading()
     assert not progress.needs_exp()
     assert not progress.exp_stale
-    assert progress.exp_label() == "EXP 802/2300 34%"
+    assert progress.exp_label() == "EXP 34% 802/2300"
     progress.apply({"kind": "experience", "amount": 10})
     assert not progress.exp_stale
     assert progress.exp == 812
@@ -481,6 +510,11 @@ def test_combat_and_shop() -> None:
     assert ready.exp_label() == "TRAIN 100%"
     assert is_trainer("Newhaven, Guild")
     assert is_trainer("Paladin Training Room")
+    assert is_trainer("Adventurer's Guild, Universal Trainer")
+    assert not is_trainer("Adventurer's Guild, Foyer")
+    assert not is_trainer("Adventurer's Guild, Main Room")
+    assert not is_trainer("Ninja Training Room", "paladin")
+    assert is_trainer("Ninja Training Room", "ninja")
     assert not is_trainer("Newhaven, Narrow Road")
     assert not is_trainer("Guild Street, Southern End")
     assert not is_trainer("Intersection of Guild St. & River St.")
@@ -559,6 +593,10 @@ def test_combat_and_shop() -> None:
     assert ask and ask["kind"] == "heal_ask" and str(ask.get("name")) == "Klymacks"
     comma = parse_line('Klymacks says, "heal me"')
     assert comma and comma["kind"] == "heal_ask"
+    please = parse_line('Klymacks says "heal me please"')
+    assert not please or please.get("kind") != "heal_ask"
+    wrap = parse_line('Klymacks says "heal me pleas"')
+    assert not wrap or wrap.get("kind") != "heal_ask"
     old_heal = parse_line('Klymacks says "heal"')
     assert old_heal and old_heal["kind"] == "heal_ask"
     old_say = parse_line('Klymacks says "say heal"')
@@ -616,6 +654,13 @@ def test_backspace_exits() -> None:
     closed = parse_line("Obvious exits: closed door north, up.")
     assert closed and closed["kind"] == "exits"
     assert closed["exits"] == ["u"]
+    assert closed.get("closed") == ["n"]
+    gy = parse_line(
+        "Obvious exits: closed gate north, south, east, west"
+    )
+    assert gy and gy["kind"] == "exits"
+    assert gy["exits"] == ["s", "e", "w"]
+    assert gy.get("closed") == ["n"]
     t2 = Transcript()
     glued_lines = t2.feed(b"A giant rat creeps into the room from nowhere.[HP=28]:")
     glued_evs = [e for line in glued_lines for e in parse_events(line)]
@@ -819,6 +864,50 @@ def test_inventory_geared() -> None:
     assert extra_starter(list(ev["items"])) == "club"  # type: ignore[arg-type]
     assert ev.get("extras") == ["club"]
     assert extra_starter(s.inventory, s.extras) == "club"
+    lit = inventory_entries("You are carrying a torch (lit), a torch.")
+    assert ("torch (lit)", False) in lit
+    assert ("torch", False) in lit
+    assert has_lit_torch(["torch (lit)", "torch"])
+    assert not has_lit_torch(["torch", "torch"])
+    readied = inventory_entries(
+        "You are carrying torch (Readied/77), battle axe (Weapon Hand), torch"
+    )
+    assert ("torch (lit)", False) in readied
+    assert ("torch", False) in readied
+    assert ("torch", True) not in readied
+    assert has_lit_torch([n for n, _ in readied])
+    assert (
+        extra_starter(
+            [n for n, _ in readied],
+            [n for n, w in readied if not w],
+            worn=[n for n, w in readied if w],
+        )
+        is None
+    )
+    assert parse_line("You light a torch.") == {"kind": "torch_lit"}
+    assert parse_line("You already have something lit!") == {"kind": "torch_lit"}
+    assert parse_line("Your torch goes out.") == {"kind": "torch_out"}
+    assert parse_line("You have been killed!") == {"kind": "death"}
+    assert parse_line("MUD Internal Error - Please tell your sysop") is None
+    assert parse_line(
+        "monbadroom 7402 (214 - fat Templar) is 303:1 vs. 222:1 (50), townsman."
+    ) is None
+    jammed = parse_events(
+        "monbadroom 7402 (214 - fat Templar) is 241:1 vs. 324:1 (50)Obvious exits:\n"
+        "north, south, east, west\n"
+    )
+    assert any(
+        e.get("kind") == "exits" and e.get("exits") == ["n", "s", "e", "w"]
+        for e in jammed
+    )
+    stuck = parse_line(
+        "Also here: nasty black cat, fat black cat, elite "
+        "MUD Internal Error - Please tell your sysop"
+    )
+    assert stuck and stuck["kind"] == "also_here"
+    mobs = [m.lower() for m in stuck["mobs"]]  # type: ignore[index]
+    assert "nasty black cat" in mobs
+    assert not any("internal" in m or "sysop" in m for m in mobs)
 
 
 def test_inventory_wrapped_padded_set() -> None:
@@ -938,9 +1027,37 @@ def test_nathaniel_steps_south() -> None:
 
 def test_general_store_is_torch_shop() -> None:
     assert is_general_store("Newhaven, General Store")
+    assert is_general_store("General Store")
     assert step_toward_store("Newhaven, Village Entrance") == "w"
     assert step_toward_store("Newhaven, Narrow Path") == "s"
     assert step_toward_store("Newhaven, General Store") is None
+    assert step_toward_store("Sewer Tunnel, Junction", ["u", "n", "e", "s", "w"]) == "u"
+    assert step_toward_store("Town Square", ["n", "s", "e", "w"]) == "e"
+    assert step_toward_store(
+        "Sovereign Street, Northern End", ["n", "s", "e", "w"]
+    ) == "n"
+    assert step_toward_store(
+        "Silver Street, Western End", ["n", "s", "e", "w"]
+    ) == "e"
+    assert step_toward_store("Silver Street", ["n", "s", "e", "w"], silver_east=1) == "e"
+    assert step_toward_store("Silver Street", ["n", "s", "e", "w"], silver_east=2) == "s"
+    assert step_toward_store("Silver Street", ["n", "s", "e", "w"], last_step="s") == "s"
+    assert (
+        step_toward_store(
+            "Intersection of Silver St. & Brass St.", ["n", "e", "s", "w"]
+        )
+        == "w"
+    )
+    assert step_toward_farm(
+        "Sovereign Street, Northern End", ["n", "s", "e", "w"], 4
+    ) == "n"
+    assert step_toward_farm(
+        "Silver Street, Western End", ["n", "s", "e", "w"], 4
+    ) == "w"
+    assert in_silvermere("Sovereign Street, Northern End")
+    assert in_silvermere("Silver Street, Western End")
+    assert step_toward_store("General Store", ["n"]) is None
+    assert step_toward_store("Homely Hearth", ["n", "e", "w"]) == "n"
 
 
 def test_spell_shop_steps() -> None:
@@ -964,12 +1081,59 @@ def test_silvermere_titles_and_skiff() -> None:
     assert not in_silvermere("Newhaven, Docks")
     assert is_special_step("borrow skiff")
     assert is_special_step("go manhole")
-    assert step_toward_arena("Town Square", ["n", "s", "e", "w"]) == "go manhole"
+    assert is_special_step("open north")
+    assert is_special_step("bash north")
+    assert is_special_step("picklock north")
+    assert not is_special_step("bash kobold thief")
+    assert step_toward_arena("Town Square", ["n", "s", "e", "w"]) == "n"
+    assert step_toward_arena("Sewer Tunnel, Junction", ["u", "n", "e", "s", "w"]) is None
     assert step_toward_arena("Sewer Tunnel, Junction (below TS)", ["u"]) is None
+    assert at_sewer("Sewer Tunnel, Junction")
+    assert sewer_loop_step(["u", "n", "e", "s", "w"], "") == "n"
+    assert sewer_loop_step(["u", "n", "e", "s", "w"], "n") == "e"
+    assert sewer_loop_step(["s"], "n") == "s"
+    assert sewer_loop_step(["u"], "n") is None
+    assert sewer_loop_step(["n", "s"], "n") == "n"
     assert step_toward_silvermere("Newhaven, Village Entrance", ["n", "s", "w", "se"]) == "se"
+    assert step_toward_silvermere("Newhaven, Village Entrance", ["n", "s", "w"]) == "se"
     assert step_toward_silvermere("Newhaven, Docks", ["n"]) == "borrow skiff"
     assert step_toward_silvermere("Town Square") is None
+    assert on_skiff_run("Newhaven, Forest Path")
+    assert watchful_room("Newhaven, Village Entrance")
+    assert watchful_room("Gates of Silvermere")
+    assert not watchful_room("Graveyard Entrance")
+    assert not watchful_room("Newhaven, Narrow Road")
+    assert step_toward_farm("Newhaven, Narrow Road", ["n", "e", "w", "d"], 3) == "d"
+    assert step_toward_farm("Newhaven, Narrow Road", ["n", "e", "w", "d"], 4) == "e"
+    assert step_toward_farm("Newhaven, Arena", ["u"], 4) == "u"
+    assert step_toward_farm(
+        "Newhaven, Narrow Road", ["n", "e", "w", "d"], None, gated=True
+    ) == "e"
+    assert step_toward_farm("Newhaven, Forest Path", ["nw", "s"], 4) == "s"
+    assert step_toward_farm("Town Square", ["n", "s", "e", "w"], 4) == "n"
+    assert in_silvermere("Skali's Fine Armour, Front Room")
+    assert not is_armour_shop("Skali's Fine Armour, Front Room")
+    assert is_armour_shop("Newhaven, Armour Shop")
+    assert step_toward_farm(
+        "Skali's Fine Armour, Front Room", ["e", "s", "w"], 4
+    ) == "s"
+    assert step_toward_farm(
+        "Skali's Fine Armour, Showroom", ["e", "n", "s"], 4
+    ) == "s"
+    assert step_toward_farm(
+        "Skali's Fine Armour, Back Room", ["s"], 4
+    ) == "s"
+    skali = parse_line("Skali's Fine Armour, Front Room")
+    assert skali and skali["kind"] == "room"
     assert step_toward_guild("Guild Street, Southern End", ["n", "s"]) is None
+    gate = parse_line("You may not enter the arena.")
+    assert gate and gate["kind"] == "cannot" and gate.get("arena")
+    high = parse_line("You are too high a level to enter the arena.")
+    assert high and high["kind"] == "cannot" and high.get("arena")
+    s = WorldState()
+    s.exits = ["n", "e", "w", "d"]
+    s.apply(gate)
+    assert s.arena_gated and "d" not in s.exits
 
 
 def test_learn_scroll_lines() -> None:
@@ -996,7 +1160,7 @@ def test_learn_scroll_lines() -> None:
 
 
 def test_outgoing_hits_feed_dps() -> None:
-    now = time.monotonic()
+    now = 1_000.0
     s = WorldState()
     s.apply(parse_line("You whap nasty giant rat for 5 damage!"))
     s.apply(parse_line("You critically whap filthbug for 23 damage!"))
@@ -1006,10 +1170,130 @@ def test_outgoing_hits_feed_dps() -> None:
     idle = WorldState()
     assert idle.dps() is None
     assert idle.dps_label() == "DPS —"
-    idle.note_dealt(10, now=now - 9)
+    idle.note_dealt(10, now=now - SESSION_IDLE - 2)
     assert idle.dps(now) is None
     idle.note_dealt(12, now=now - 1)
     assert idle.dps(now) == 12
+    assert idle.dps_label(now) == "DPS 12"
+
+
+def _steady_loop(state: WorldState, first: float, last: float) -> None:
+    t = first
+    while t <= last:
+        state.note_dealt(24, now=t)
+        t += 16.0
+
+
+def test_dps_long_loop_vs_short_trend() -> None:
+    now = 5_000.0
+    s = WorldState()
+    # 24 dmg each 8s round + 8s walk, long enough for a stable loop norm.
+    _steady_loop(s, now - 2400.0, now - 16.0)
+    assert s.dps(now) == 12
+    assert s.dps_long(now) == 12
+    assert s.dps_trend(now) == "even"
+    assert s.dps_label(now) == "DPS 12·12"
+
+    s.note_dealt(48, now=now - 1.0)
+    assert s.dps(now) == 20
+    assert s.dps_long(now) == 12
+    assert s.dps_trend(now) == "ahead"
+    assert s.dps_label(now) == "DPS 12↑20"
+
+    lag = WorldState()
+    _steady_loop(lag, now - 2400.0, now - 64.0)
+    lag.note_dealt(8, now=now - 1.0)
+    assert lag.dps(now) == 8
+    assert lag.dps_long(now) == 12
+    assert lag.dps_trend(now) == "behind"
+    assert lag.dps_label(now) == "DPS 12↓8"
+
+    quiet = WorldState()
+    _steady_loop(quiet, now - 2400.0, now - 64.0)
+    assert quiet.dps(now) is None
+    assert quiet.dps_long(now) == 12
+    assert quiet.dps_label(now) == "DPS 12"
+
+    stale = WorldState()
+    stale.note_dealt(24, now=now - SESSION_IDLE - 1)
+    assert stale.dps(now) is None
+    assert stale.dps_long(now) is None
+    assert stale.dps_label(now) == "DPS —"
+
+    ding = WorldState()
+    _steady_loop(ding, now - 80.0, now - 16.0)
+    assert ding.dps_long(now) is not None
+    ding.apply({"kind": "trained", "level": 2})
+    assert ding.dps(now) is None
+    assert ding.dps_long(now) is None
+
+
+def test_stat_dump_parses_attack_and_ac() -> None:
+    """`stat` lines feed Strength/Agility/Attack/AC. Health: 50 is not HP."""
+    assert parse_line("Health:    17/28    [60%]")["kind"] == "hits"
+    attr = parse_line("Health: 50")
+    assert attr and attr["kind"] == "stats" and attr.get("health_stat") == 50
+    pair = parse_line("Strength: 70         Intellect: 50")
+    assert pair and pair["kind"] == "stats"
+    assert pair.get("strength") == 70 and pair.get("intellect") == 50
+    agi = parse_line("Willpower: 50        Agility: 80")
+    assert agi and agi["kind"] == "stats" and agi.get("agility") == 80
+    atk = parse_line("Attack: 32           AC: 4")
+    assert atk and atk["kind"] == "stats"
+    assert atk.get("attack") == 32 and atk.get("ac") == 4
+    blob = (
+        b"Strength: 70         Intellect: 50\r\n"
+        b"Willpower: 50        Agility: 80\r\n"
+        b"Charm: 50            Health: 50\r\n"
+        b"Attack: 32           AC: 14\r\n"
+    )
+    kinds = [e["kind"] for e in events_from_payload(blob)]
+    assert kinds.count("stats") >= 4
+    s = WorldState()
+    s.hp = 28
+    for ev in events_from_payload(blob):
+        s.apply(ev)
+    assert s.strength == 70 and s.agility == 80
+    assert s.attack == 32 and s.ac == 14
+    assert s.hp == 28
+    assert s.stat_known
+    assert not s.needs_stat()
+    s.level = 1
+    s.apply({"kind": "level", "level": 2})
+    assert not s.stat_known
+    assert s.needs_stat()
+
+
+def test_party_cadence_lines() -> None:
+    rest = parse_line("Matt sits down and begins to rest.")
+    assert rest and rest["kind"] == "rest" and rest.get("actor") == "Matt"
+    stand = parse_line("Matt stands up.")
+    assert stand and stand["kind"] == "stand" and stand.get("actor") == "Matt"
+    you_stand = parse_line("You stand up.")
+    assert you_stand and you_stand["kind"] == "stand"
+    fled = parse_line("Matt panics and flees west!")
+    assert fled and fled["kind"] == "flee" and fled.get("name") == "Matt"
+    assert fled.get("dir") == "w"
+    east = parse_line("Klymacks flees to the east.")
+    assert east and east["kind"] == "flee" and east.get("dir") == "e"
+    you = parse_line("You flee to the west.")
+    assert you and you["kind"] == "flee" and you.get("dir") == "w"
+    hurt = parse_line("Klymacks gasps for breath, looking severely wounded.")
+    assert hurt and hurt["kind"] == "wounded" and hurt.get("name") == "Klymacks"
+    watching = WorldState()
+    watching.self_names = {"klymacks"}
+    watching.apply(rest)
+    assert watching.ally_rest == "Matt"
+    assert not watching.resting
+    watching.apply(stand)
+    assert watching.ally_stood
+    assert watching.ally_rest == ""
+    watching.apply(fled)
+    assert watching.ally_fled == "w"
+    leader = WorldState()
+    leader.self_names = {"matt"}
+    leader.apply(hurt)
+    assert leader.ally_wounded == "Klymacks"
 
 
 if __name__ == "__main__":
@@ -1032,4 +1316,7 @@ if __name__ == "__main__":
     test_silvermere_titles_and_skiff()
     test_learn_scroll_lines()
     test_outgoing_hits_feed_dps()
+    test_dps_long_loop_vs_short_trend()
+    test_stat_dump_parses_attack_and_ac()
+    test_party_cadence_lines()
     print("ok")

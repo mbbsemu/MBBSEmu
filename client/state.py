@@ -6,10 +6,16 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
-from . import paths
+from . import combat, paths
 
-# One combat round. Footer DPS is damage landed in this window.
+# One combat round. Long DPS is damage-per-round over the hunt loop
+# (fights + walks). Short is the last few rounds against that norm.
 HIT_WINDOW = 8.0
+SHORT_WINDOW = 48.0
+SESSION_KEEP = 3600.0
+SESSION_IDLE = 180.0
+TREND_WARMUP = 48.0
+TREND_BAND = 0.10
 
 
 def pool_label(
@@ -52,6 +58,7 @@ class WorldState:
     blessed: bool = False
     room: str = ""
     exits: list[str] = field(default_factory=list)
+    closed_exits: list[str] = field(default_factory=list)
     mobs: list[str] = field(default_factory=list)
     things: list[str] = field(default_factory=list)
     in_combat: bool = False
@@ -62,6 +69,7 @@ class WorldState:
     prompt_seq: int = 0
     in_realm: bool = False
     dark: bool = False
+    torch_lit: bool = False
     geared: bool = False
     inventory: list[str] = field(default_factory=list)
     extras: list[str] = field(default_factory=list)
@@ -76,10 +84,13 @@ class WorldState:
     needs_scan: bool = False
     scanned: bool = False
     look_scan: bool = False
+    # Bumps when a move reprint / exits prove we are on a (maybe same-title) tile.
+    travel_seq: int = 0
     saw_here: bool = False
     saw_see: bool = False
     whiff: bool = False
     blocked: bool = False
+    arena_gated: bool = False
     pvp_hit: str = ""
     self_names: set[str] = field(default_factory=set)
     last_actor: str = ""
@@ -94,12 +105,18 @@ class WorldState:
     sneak_fail: bool = False
     sneak_busy: bool = False
     mortal: bool = False
+    just_died: bool = False
     ally_mortal: str = ""
     aided: bool = False
     bleeding: bool = False
     dragging: str = ""
     drag_fail: bool = False
     afraid: bool = False
+    # Observed party cadence — not our own rest.
+    ally_rest: str = ""
+    ally_stood: bool = False
+    ally_fled: str = ""
+    ally_wounded: str = ""
     left_party: bool = False
     # lowercase given name -> spelling we saw. Observed hits only; no invented HP.
     ally_hurt: dict[str, str] = field(default_factory=dict)
@@ -108,6 +125,7 @@ class WorldState:
     # lowercase given name -> they asked for a heal (`heal me`).
     heal_asks: dict[str, str] = field(default_factory=dict)
     # From `exp` / train. Max HP/MA stay put until a level or train.
+    klass: str = ""
     level: int | None = None
     trained: bool = False
     exp: int | None = None
@@ -119,7 +137,16 @@ class WorldState:
     exp_asked: bool = False
     # This fight's `You gain N` already counted. Kill must not re-ask `exp`.
     exp_gained: bool = False
-    # (monotonic, damage) for `You … for N damage` in the last round.
+    strength: int | None = None
+    agility: int | None = None
+    intellect: int | None = None
+    willpower: int | None = None
+    charm: int | None = None
+    attack: int | None = None
+    ac: int | None = None
+    stat_asked: bool = False
+    stat_known: bool = False
+    # (monotonic, damage) for `You … for N damage` this hunt session.
     _dealt: deque[tuple[float, int]] = field(default_factory=deque)
 
     def apply(self, event: dict[str, object]) -> None:
@@ -145,6 +172,8 @@ class WorldState:
         if kind == "trained":
             self.forget_maxes()
             self.forget_exp()
+            self.forget_stat()
+            self._reset_dealt()
             lvl = event.get("level")
             if isinstance(lvl, int) and lvl > 0:
                 self._note_level(lvl)
@@ -154,9 +183,13 @@ class WorldState:
             if isinstance(lvl, int) and lvl > 0:
                 self._note_level(lvl)
             self._note_exp(event)
+            self._reset_dealt()
             return
         if kind == "experience":
             self._gain_exp(event.get("amount"))
+            return
+        if kind == "stats":
+            self._note_stats(event)
             return
         if kind == "cast_fail":
             self.cast_fail = str(event.get("reason") or "fail")
@@ -239,6 +272,7 @@ class WorldState:
             return
         if kind == "exits":
             self.exits = list(event.get("exits") or [])  # type: ignore[arg-type]
+            self.closed_exits = list(event.get("closed") or [])  # type: ignore[arg-type]
             if self.look_scan and not self.saw_here:
                 self.mobs = []
             if self.look_scan and not self.saw_see:
@@ -246,6 +280,7 @@ class WorldState:
             self.look_scan = False
             self.scanned = True
             self.needs_scan = False
+            self.travel_seq += 1
             return
         if kind == "also_here":
             mobs: list[str] = []
@@ -310,6 +345,11 @@ class WorldState:
                 self.exp_asked = False
             self.exp_gained = False
             return
+        if kind == "death":
+            self.just_died = True
+            self.in_combat = False
+            self.mortal = False
+            return
         if kind == "combat":
             self.in_combat = True
             actor = event.get("actor")
@@ -370,6 +410,9 @@ class WorldState:
                 self.worn = [str(x).lower() for x in worn]
             elif blob:
                 self.worn = paths.inventory_worn(blob)
+            # Fresh `i` is truth for burning lights.
+            held = self.inventory + self.worn + self.extras
+            self.torch_lit = paths.has_lit_torch(held)
             self.inv_seq += 1
             return
         if kind == "sold":
@@ -410,11 +453,37 @@ class WorldState:
                 self._drop_ally_hurt(name)
             return
         if kind == "rest":
+            actor = event.get("actor")
+            who = actor.strip() if isinstance(actor, str) else ""
+            if who:
+                self.last_actor = who
+            if who and self._is_toon(who) and not self._is_me(who):
+                self.ally_rest = who
+                self.ally_stood = False
+                return
             self.resting = True
             self.in_combat = False
+            return
+        if kind == "stand":
             actor = event.get("actor")
-            if isinstance(actor, str) and actor.strip():
-                self.last_actor = actor.strip()
+            who = actor.strip() if isinstance(actor, str) else ""
+            if who and self._is_toon(who) and not self._is_me(who):
+                self.ally_stood = True
+                self.ally_rest = ""
+                return
+            self.resting = False
+            return
+        if kind == "flee":
+            who = str(event.get("name") or "").strip()
+            step = str(event.get("dir") or "").strip().lower()
+            if who and self._is_toon(who) and not self._is_me(who):
+                self.ally_fled = step or "w"
+            return
+        if kind == "wounded":
+            who = str(event.get("name") or "").strip()
+            if who and self._is_toon(who) and not self._is_me(who):
+                self.ally_wounded = who
+                self._remember_toon(who)
             return
         if kind == "shop":
             self.in_shop = True
@@ -443,6 +512,7 @@ class WorldState:
                 self.things = []
                 self.scanned = False
                 self.in_combat = False
+                self.in_shop = False
                 self._wipe_allies()
             if _looks_like_place(title) and not self.in_combat:
                 self.look_scan = True
@@ -452,15 +522,56 @@ class WorldState:
         if kind == "dark":
             self.dark = True
             return
+        if kind == "torch_lit":
+            self.torch_lit = True
+            self.dark = False
+            return
+        if kind == "torch_out":
+            self.torch_lit = False
+            return
         if kind == "cannot":
             text = str(event.get("text") or "").lower()
             if "may not drag" in text or "cannot drag" in text or "can't drag" in text:
                 self.drag_fail = True
-            if "no exit" in text or "can't go" in text or "cannot go" in text:
+            if "sell" in text and "shop" in text:
+                self.in_shop = False
+            gated = bool(event.get("arena")) or any(
+                mark in text
+                for mark in (
+                    "arena",
+                    "too experienced",
+                    "too high",
+                    "not permitted",
+                    "no longer",
+                )
+            )
+            if gated:
+                self.arena_gated = True
+                self.blocked = True
+                if "d" in self.exits:
+                    self.exits = [x for x in self.exits if x != "d"]
+                return
+            if (
+                "no exit" in text
+                or "can't go" in text
+                or "cannot go" in text
+                or "gate is closed" in text
+                or "door is closed" in text
+                or "closed door" in text
+                or "closed gate" in text
+            ):
                 self.blocked = True
                 if "d" in self.exits:
                     self.exits = [x for x in self.exits if x != "d"]
             return
+
+    def _is_me(self, name: str) -> bool:
+        """This window's toon — not every Finn's account on the board."""
+        mine = {x.lower() for x in self.self_names if x}
+        if not mine:
+            return False
+        tokens = [w.strip(".,!;:").lower() for w in name.split() if w.strip(".,!;:")]
+        return any(token in mine for token in tokens)
 
     def _is_toon(self, name: str) -> bool:
         extras = self.self_names
@@ -519,6 +630,9 @@ class WorldState:
         self.ally_hurt.clear()
         self.ally_dmg.clear()
         self.heal_asks.clear()
+        self.ally_rest = ""
+        self.ally_stood = False
+        self.ally_wounded = ""
 
     def _drop_ally_hurt(self, raw: str) -> None:
         low = raw.strip().lower()
@@ -572,6 +686,11 @@ class WorldState:
         self.exp_pct = None
         self.exp_gained = False
 
+    def forget_stat(self) -> None:
+        """Level/train changes Attack. Keep last numbers on the bar until `stat`."""
+        self.stat_known = False
+        self.stat_asked = False
+
     def has_exp_reading(self) -> bool:
         """True when chrome has current, total, and percent from `Exp:`."""
         return (
@@ -601,10 +720,10 @@ class WorldState:
         return self.exp_pct is not None and self.exp_pct >= 100
 
     def at_trainer(self) -> bool:
-        return paths.is_trainer(self.room)
+        return paths.is_trainer(self.room, self.klass)
 
     def exp_label(self) -> str:
-        """Footer progress: TRAIN when ready, else EXP current/total percent."""
+        """Footer progress: percent first, then current/next. TRAIN when ready."""
         if self.can_train():
             return pool_label(
                 "EXP",
@@ -615,19 +734,63 @@ class WorldState:
             )
         if self.exp_pct is None:
             return ""
-        return pool_label(
-            "EXP",
-            self.exp,
-            self.exp_next,
-            pct=self.exp_pct,
-            stale=self.exp_stale,
-        )
+        mark = "?" if self.exp_stale else ""
+        if self.exp is not None and self.exp_next:
+            return f"EXP {self.exp_pct}% {self.exp}/{self.exp_next}{mark}"
+        return f"EXP {self.exp_pct}%{mark}"
 
     def _note_level(self, lvl: int) -> None:
         if self.level is not None and lvl > self.level:
             self.forget_maxes()
             self.forget_exp()
+            self.forget_stat()
         self.level = lvl
+
+    def _note_stats(self, event: dict[str, object]) -> None:
+        """Merge Strength/Agility/Attack/AC from a `stat` dump line."""
+        for key in (
+            "strength",
+            "agility",
+            "intellect",
+            "willpower",
+            "charm",
+            "attack",
+            "ac",
+        ):
+            val = event.get(key)
+            if isinstance(val, int):
+                setattr(self, key, val)
+        if self.attack is None:
+            acc = event.get("accuracy")
+            if isinstance(acc, int):
+                self.attack = acc
+        self.stat_asked = True
+        if self.strength is not None and self.agility is not None:
+            self.stat_known = True
+        if self.attack is not None or self.ac is not None:
+            self.stat_known = True
+
+    def needs_stat(self) -> bool:
+        """True once per gap, like `needs_exp`. Combat and pending block the send."""
+        if self.hp is None:
+            return False
+        if self.stat_known or self.stat_asked:
+            return False
+        return True
+
+    def combat_sheet(self, klass: str = "") -> combat.CombatSheet:
+        return combat.sheet(
+            klass=klass or self.klass or "",
+            level=self.level,
+            strength=self.strength,
+            agility=self.agility,
+            attack=self.attack,
+            ac=self.ac,
+            worn=self.worn,
+        )
+
+    def combat_label(self, klass: str = "", *, compact: bool = False) -> str:
+        return self.combat_sheet(klass).label(compact=compact)
 
     def _note_exp(self, event: dict[str, object]) -> None:
         """Set from the `Exp:` status line. Replace current; never add a gain."""
@@ -686,33 +849,98 @@ class WorldState:
             self.max_ma = max(self.max_ma or 0, mx)
 
     def note_dealt(self, dmg: int, now: float | None = None) -> None:
-        """Count outgoing damage for the footer DPS window."""
+        """Count outgoing damage for the hunt-loop DPS aggregate."""
         if dmg <= 0:
             return
         when = time.monotonic() if now is None else now
+        if self._dealt and when - self._dealt[-1][0] > SESSION_IDLE:
+            self._dealt.clear()
         self._dealt.append((when, int(dmg)))
         self._trim_dealt(when)
 
+    def _reset_dealt(self) -> None:
+        self._dealt.clear()
+
     def _trim_dealt(self, now: float) -> None:
-        cut = now - HIT_WINDOW
+        cut = now - SESSION_KEEP
         while self._dealt and self._dealt[0][0] < cut:
             self._dealt.popleft()
+        if self._dealt and now - self._dealt[-1][0] > SESSION_IDLE:
+            self._dealt.clear()
+
+    def _window_damage(self, now: float, span: float) -> int:
+        cut = now - span
+        return sum(dmg for at, dmg in self._dealt if at >= cut)
+
+    def _first_in_window(self, now: float, span: float) -> float | None:
+        cut = now - span
+        for at, _dmg in self._dealt:
+            if at >= cut:
+                return at
+        return None
+
+    def _per_round(self, dmg: int, start: float, now: float) -> int | None:
+        """Damage per combat-round equivalent over [start, now]."""
+        if dmg <= 0:
+            return None
+        elapsed = now - start
+        if elapsed < HIT_WINDOW:
+            elapsed = HIT_WINDOW
+        return max(1, round(dmg * HIT_WINDOW / elapsed))
 
     def dps(self, now: float | None = None) -> int | None:
-        """Damage landed in the last combat round, or None if idle."""
+        """Short-window loop rate, or None if this stretch is idle."""
+        when = time.monotonic() if now is None else now
+        self._trim_dealt(when)
+        dmg = self._window_damage(when, SHORT_WINDOW)
+        first = self._first_in_window(when, SHORT_WINDOW)
+        if dmg <= 0 or first is None:
+            return None
+        return self._per_round(dmg, first, when)
+
+    def dps_long(self, now: float | None = None) -> int | None:
+        """Precise hunt-loop rate after enough wall time, else None."""
         when = time.monotonic() if now is None else now
         self._trim_dealt(when)
         if not self._dealt:
             return None
-        return sum(dmg for _at, dmg in self._dealt)
+        first = self._dealt[0][0]
+        if when - first < TREND_WARMUP:
+            return None
+        total = sum(dmg for _at, dmg in self._dealt)
+        return self._per_round(total, first, when)
+
+    def dps_trend(self, now: float | None = None) -> str | None:
+        """ahead / behind / even versus the long loop norm."""
+        when = time.monotonic() if now is None else now
+        short = self.dps(when)
+        long = self.dps_long(when)
+        if short is None or long is None or long <= 0:
+            return None
+        ratio = short / long
+        if ratio >= 1 + TREND_BAND:
+            return "ahead"
+        if ratio <= 1 - TREND_BAND:
+            return "behind"
+        return "even"
 
     def dps_label(self, now: float | None = None) -> str:
-        raw = self.dps(now)
-        return "DPS —" if raw is None else f"DPS {raw}"
+        when = time.monotonic() if now is None else now
+        short = self.dps(when)
+        long = self.dps_long(when)
+        trend = self.dps_trend(when)
+        if short is None and long is None:
+            return "DPS —"
+        if short is None:
+            return f"DPS {long}"
+        if long is None or trend is None:
+            return f"DPS {short}"
+        mark = {"ahead": "↑", "behind": "↓", "even": "·"}[trend]
+        return f"DPS {long}{mark}{short}"
 
     def stats_label(self, now: float | None = None) -> str:
-        """HP / MA / EXP / DPS for the dedicated stats row."""
-        parts = [self.hp_label(), self.exp_label(), self.dps_label(now)]
+        """DPS, then EXP, then HP/MA — chrome right-aligns the vitals."""
+        parts = [self.dps_label(now), self.exp_label(), self.hp_label()]
         return "   ".join(part for part in parts if part)
 
     def hp_label(self) -> str:
@@ -738,6 +966,11 @@ class WorldState:
             return None
         return self.hp / self.max_hp
 
+    def ma_ratio(self) -> float | None:
+        if self.ma is None or not self.max_ma:
+            return None
+        return self.ma / self.max_ma
+
 
 def _looks_like_place(title: str) -> bool:
     low = title.lower()
@@ -745,8 +978,14 @@ def _looks_like_place(title: str) -> bool:
         word in low
         for word in (
             "newhaven",
+            "silvermere",
             "arena",
             "shop",
+            "armour",
+            "armor",
+            "skali",
+            "sentara",
+            "helfgrim",
             "road",
             "path",
             "entrance",
@@ -754,5 +993,14 @@ def _looks_like_place(title: str) -> bool:
             "healer",
             "square",
             "store",
+            "temple",
+            "sewer",
+            "fountain",
+            "passage",
+            "hall",
+            "cave",
+            "alley",
+            "graveyard",
+            "street",
         )
     )

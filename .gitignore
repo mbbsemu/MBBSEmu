@@ -362,3 +362,8 @@ docker/docker-compose.test.yml
 
 # Finn's Realm packaged deployment (local module files + self-contained emu)
 /dist/
+
+# Live license snapshot (rewritten by preflight from MSG / appsettings)
+/data/activation-later.txt
+/data/activation-later.keep.txt
+/data/finns-mud-try.txt

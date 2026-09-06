@@ -2085,6 +2085,47 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SetPointer(variablePointer);
         }
 
+        private const ushort PrfBufCapacity = 0x4000;
+
+        /// <summary>
+        ///     Append into PRFBUF and leave PRFPTR on the trailing NUL.
+        ///     Inventory of SYS TWEAK COPPER 50000 used to CopyTo past this pad
+        ///     and disable the module.
+        /// </summary>
+        private void AppendPrf(ReadOnlySpan<byte> formattedMessage)
+        {
+            var basePointer = Module.Memory.GetVariablePointer("PRFBUF");
+            var pointerPosition = Module.Memory.GetPointer("PRFPTR");
+            if (pointerPosition.Segment != basePointer.Segment)
+                pointerPosition = basePointer;
+
+            var used = pointerPosition.Offset - basePointer.Offset;
+            if (used >= PrfBufCapacity - 1)
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) prf buffer full; dropping {formattedMessage.Length} bytes");
+                return;
+            }
+
+            var payload = formattedMessage;
+            if (payload.Length > 0 && payload[^1] == 0)
+                payload = payload[..^1];
+
+            var remaining = PrfBufCapacity - used;
+            var copyLength = payload.Length;
+            if (copyLength > remaining - 1)
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) prf write {formattedMessage.Length} exceeds remaining {remaining}; truncating");
+                copyLength = remaining - 1;
+            }
+
+            if (copyLength > 0)
+                Module.Memory.SetArray(pointerPosition, payload[..copyLength]);
+
+            pointerPosition.Offset += (ushort)copyLength;
+            Module.Memory.SetByte(pointerPosition, 0);
+            Module.Memory.SetPointer("PRFPTR", pointerPosition);
+        }
+
         /// <summary>
         ///     Like printf(), except the converted text goes into a buffer
         ///
@@ -2099,13 +2140,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
-
-            var pointerPosition = Module.Memory.GetPointer("PRFPTR");
-            Module.Memory.SetArray(pointerPosition, formattedMessage);
-
-            //Update prfptr value
-            pointerPosition.Offset += (ushort)(formattedMessage.Length - 1);
-            Module.Memory.SetPointer("PRFPTR", pointerPosition);
+            AppendPrf(formattedMessage);
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Added {formattedMessage.Length} bytes to the buffer");
@@ -2210,18 +2245,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var formattedMessage = FormatPrintf(outputMessage, 1);
-
-            var currentPrfPositionPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
-
-            Module.Memory.SetArray(currentPrfPositionPointer, formattedMessage);
-            currentPrfPositionPointer.Offset += (ushort)formattedMessage.Length;
-            Module.Memory.SetByte(currentPrfPositionPointer, 0x0); //Null terminate it
+            AppendPrf(formattedMessage);
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Added {formattedMessage.Length} bytes to the buffer from message number {messageNumber}");
 #endif
-            //Update Pointer
-            Module.Memory.SetPointer("PRFPTR", currentPrfPositionPointer);
         }
 
         /// <summary>
@@ -2847,15 +2875,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
-            if (formattedMessage.Length > 1024)
-                throw new OutOfMemoryException(
-                    $"SPR write is > 1k ({formattedMessage.Length}) and would overflow pre-allocated buffer");
-
+            // Real DOS spr() is a 1k scratch pad. Inventory of SYS TWEAK COPPER 50000
+            // builds a string larger than that; throwing here used to kill the host.
             _sprIndex++;
             _sprIndex &= 0x3;
             var variablePointer = Module.Memory.GetOrAllocateVariablePointer($"SPR-{_sprIndex}", 1024);
-
-            Module.Memory.SetArray(variablePointer, formattedMessage);
+            var copyLength = formattedMessage.Length;
+            if (copyLength > 1023)
+            {
+                _logger.Warn($"({Module.ModuleIdentifier}) SPR write is > 1k ({formattedMessage.Length}); truncating");
+                copyLength = 1023;
+            }
+            Module.Memory.SetArray(variablePointer, formattedMessage.Slice(0, copyLength));
+            Module.Memory.SetByte(variablePointer + copyLength, 0);
 
 #if DEBUG
             //_logger.Debug($"({Module.ModuleIdentifier}) Added {formattedMessage.Length} bytes to the buffer: {Encoding.ASCII.GetString(formattedMessage)}");
@@ -4074,16 +4106,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 1);
-
-            var currentPrfPositionPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
-            Module.Memory.SetArray(currentPrfPositionPointer, formattedMessage);
-            currentPrfPositionPointer.Offset += (ushort)(formattedMessage.Length - 1); //dont count the null terminator
+            AppendPrf(formattedMessage);
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Added {output.Length} bytes to the buffer (Message #: {messageNumber})");
 #endif
-            //Update Pointer
-            Module.Memory.SetPointer("PRFPTR", currentPrfPositionPointer);
         }
 
         /// <summary>
@@ -4597,6 +4624,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void echon()
         {
             ChannelDictionary[ChannelNumber].TransparentMode = false;
+            ChannelDictionary[ChannelNumber].EchoSecureEnabled = false;
         }
 
         /// <summary>
@@ -7358,6 +7386,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             ChannelDictionary[channelNumber].CharacterInterceptor = null;
             ChannelDictionary[channelNumber].TransparentMode = false;
+            ChannelDictionary[channelNumber].EchoSecureEnabled = false;
         }
 
         /// <summary>

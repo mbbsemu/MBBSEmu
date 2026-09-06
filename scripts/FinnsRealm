@@ -109,6 +109,9 @@ if ! port_up; then
     fi
   fi
   echo "Starting Finn's Realm..."
+  # SIGTERM skips MajorMUD finrou, so the lockfile makes the next boot
+  # Recovery Mode (empty crypts, no mummy). Always clear it on a fresh start.
+  rm -f "$ROOT/modules/WCCMMUD/WCCRECOV.FLG"
   cd "$DATA"
   DBR=(-DBREBUILD BBSUSR)
   if [[ ! -f mbbsemu.db ]]; then

@@ -85,7 +85,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             _parameters.Add(stringParameterPointer.Segment);
 
 
-            Assert.Throws<OutOfMemoryException>(() => ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPR_ORDINAL, _parameters));
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SPR_ORDINAL, _parameters);
+            var got = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.GetPointer(), true));
+            Assert.Equal(1023, got.Length);
+            Assert.Equal(new string('X', 1023), got);
         }
 
         [Fact]

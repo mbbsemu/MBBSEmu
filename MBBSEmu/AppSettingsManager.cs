@@ -36,8 +36,12 @@ namespace MBBSEmu
             if (!IsValidJson(File.ReadAllText(ConfigurationFileName)))
                 throw new InvalidDataException($"Invalid JSON detected in [{ConfigurationFileName}]. Please verify the format & contents of the file are valid JSON.");
 
+            // reloadOnChange watches appsettings.json with inotify. Cursor and
+            // desktop apps often exhaust the default 128-instance cap, and the
+            // emu then dies before telnet binds. Finn's Realm does not hot-reload
+            // config; reboot after editing appsettings.json.
             ConfigurationRoot = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile(ConfigurationFileName, false, true)
+                .AddJsonFile(ConfigurationFileName, optional: false, reloadOnChange: false)
                 .Build();
 
             //Set Logging Level from Config File if specified

@@ -127,6 +127,12 @@ fi
 # MajorMUD writes WCCRECOV.FLG while it is up and only deletes it in finrou.
 # SIGTERM skips that, so the leftover lock made every reboot recover.
 rm -f "$ROOT/modules/WCCMMUD/WCCRECOV.FLG"
+# FINNS_RECOVER=1 ./scripts/reboot-board.sh  — plant the flag after that
+# delete so the next boot rebuilds room/monster pointers (monbadroom).
+if [[ "${FINNS_RECOVER:-0}" != 0 ]]; then
+  : > "$ROOT/modules/WCCMMUD/WCCRECOV.FLG"
+  echo "Recovery boot: WCCRECOV.FLG planted. Monsters stay thin until recovery finishes."
+fi
 
 if [[ ! -x "$EMU" ]]; then
   echo "MBBSEmu missing: $EMU"

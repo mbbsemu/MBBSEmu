@@ -61,6 +61,27 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(expectedString, Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("PRFBUF", true)));
         }
 
+        [Fact]
+        public void prf_Truncates_WhenMessageExceedsBuffer()
+        {
+            Reset();
+
+            var inputString = "%s";
+            var huge = new string('X', 20000);
+            var formatPtr = mbbsEmuMemoryCore.AllocateVariable(Guid.NewGuid().ToString(), (ushort)(inputString.Length + 1));
+            mbbsEmuMemoryCore.SetArray(formatPtr, Encoding.ASCII.GetBytes(inputString));
+            parameters.Add(formatPtr.Offset);
+            parameters.Add(formatPtr.Segment);
+            foreach (var p in GenerateParameters(new object[] { huge }))
+                parameters.Add(p);
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, PRF_ORDINAL, parameters);
+
+            var got = Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("PRFBUF", true));
+            Assert.True(got.Length <= 0x4000 - 1);
+            Assert.StartsWith("XXXX", got);
+        }
+
         protected override void Reset()
         {
             parameters = new List<ushort>();

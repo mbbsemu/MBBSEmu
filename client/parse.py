@@ -19,6 +19,8 @@ EventKind = Literal[
     "bought",
     "room",
     "dark",
+    "torch_lit",
+    "torch_out",
     "cannot",
     "combat",
     "combat_off",
@@ -45,6 +47,9 @@ EventKind = Literal[
     "drag_fail",
     "dragging",
     "afraid",
+    "flee",
+    "stand",
+    "wounded",
     "left",
     "trained",
     "level",
@@ -52,6 +57,8 @@ EventKind = Literal[
     "shop_vague",
     "already_worn",
     "sold",
+    "stats",
+    "death",
 ]
 
 PROMPT_RE = re.compile(
@@ -98,7 +105,25 @@ THIRD_HIT_RE = re.compile(
     re.IGNORECASE,
 )
 THIRD_SIT_RE = re.compile(
-    r"^([A-Z][a-z]{1,14}) sits down and meditates",
+    r"^([A-Z][a-z]{1,14}) sits down and (?:meditates|begins to rest)",
+    re.IGNORECASE,
+)
+THIRD_STAND_RE = re.compile(
+    r"^([A-Z][a-z]{1,14}) stands up\b",
+    re.IGNORECASE,
+)
+ALLY_FLEE_RE = re.compile(
+    r"^([A-Z][A-Za-z]{1,14}) (?:panics and )?(?:flees|runs)(?: to the)? "
+    r"(north|south|east|west|up|down|northeast|northwest|southeast|southwest)\b",
+    re.IGNORECASE,
+)
+YOU_FLEE_RE = re.compile(
+    r"^You (?:panic and )?flee(?: to the)? "
+    r"(north|south|east|west|up|down|northeast|northwest|southeast|southwest)\b",
+    re.IGNORECASE,
+)
+WOUNDED_LOOK_RE = re.compile(
+    r"^([A-Z][A-Za-z]{1,14}) gasps for breath(?:, looking severely wounded)?",
     re.IGNORECASE,
 )
 DIR_RE = re.compile(r"\b(north|south|east|west|up|down|northeast|northwest|southeast|southwest)\b", re.I)
@@ -213,6 +238,24 @@ HITS_RE = re.compile(
 HITS_OF_RE = re.compile(r"(-?\d+)\s+of\s+(\d+)\s+hit points", re.IGNORECASE)
 MANA_RE = re.compile(r"mana:\s*(\d+)\s*/\s*(\d+)", re.IGNORECASE)
 LEVEL_STAT_RE = re.compile(r"\bLevel:\s*(\d+)\b", re.IGNORECASE)
+STAT_FIELD_RE = re.compile(
+    r"\b(Strength|Intellect|Willpower|Agility|Charm|Health|"
+    r"Attack|Accuracy|Defense|Armour Class|AC)\s*:\s*(-?\d+)",
+    re.IGNORECASE,
+)
+_STAT_KEYS = {
+    "strength": "strength",
+    "intellect": "intellect",
+    "willpower": "willpower",
+    "agility": "agility",
+    "charm": "charm",
+    "health": "health_stat",
+    "attack": "attack",
+    "accuracy": "accuracy",
+    "defense": "ac",
+    "armour class": "ac",
+    "ac": "ac",
+}
 TRAINED_RE = re.compile(
     r"(?:you (?:have )?(?:gained a level|gain a level|just trained|trained to level)"
     r"|you are now level \d+"
@@ -294,6 +337,19 @@ def _exit_dirs(blob: str) -> list[str]:
     return found
 
 
+def _closed_exit_dirs(blob: str) -> list[str]:
+    found: list[str] = []
+    for part in re.split(r",|\band\b", blob):
+        piece = part.strip().lower()
+        if "closed" not in piece:
+            continue
+        for d in DIR_RE.findall(piece):
+            short = DIR_SHORT.get(d.lower(), d.lower()[:2])
+            if short not in found:
+                found.append(short)
+    return found
+
+
 def _pc_status_name(name: str) -> str:
     raw = name.strip().rstrip(".,!;:")
     if not raw:
@@ -359,7 +415,7 @@ def _said_aim(msg: str) -> str:
 
 
 def _is_heal_ask(msg: str) -> bool:
-    """Spoken `heal me` (and old `heal` / `say heal`). Never `health` / `hea`."""
+    """Spoken `heal me` only (and old `heal` / `say heal`). Never `please` / `health`."""
     word = msg.lower().strip().strip("\"'.,!;:")
     if not word:
         return False
@@ -368,9 +424,9 @@ def _is_heal_ask(msg: str) -> bool:
     first = word.split()[0] if word else ""
     if first in _HEAL_ASK_SKIP or word.startswith("health"):
         return False
-    if word == "heal me" or word.startswith("heal me"):
+    if word == "heal me":
         return True
-    return first in _HEAL_ASK
+    return word in _HEAL_ASK
 
 
 def _prompt_event(m: re.Match[str]) -> dict[str, object]:
@@ -390,18 +446,39 @@ def parse_line(line: str) -> dict[str, object] | None:
     raw = line.strip()
     if not raw:
         return None
+    low0 = raw.lower()
+    m = EXITS_RE.search(raw)
+    if m:
+        blob = m.group(1)
+        dirs = _exit_dirs(blob)
+        shut = _closed_exit_dirs(blob)
+        if dirs or shut:
+            ev: dict[str, object] = {"kind": "exits", "exits": dirs}
+            if shut:
+                ev["closed"] = shut
+            return ev
+
+    if (
+        low0.startswith("mud internal error")
+        or low0.startswith("monbadroom")
+        or low0.startswith("please tell your sysop")
+    ):
+        return None
 
     m = PROMPT_RE.search(raw)
     if m:
         return _prompt_event(m)
 
-    m = EXITS_RE.search(raw)
-    if m:
-        return {"kind": "exits", "exits": _exit_dirs(m.group(1))}
-
     m = ALSO_RE.search(raw)
     if m:
-        return {"kind": "also_here", "mobs": _split_list(m.group(1))}
+        blob = m.group(1)
+        cut = re.split(
+            r"MUD Internal Error|monbadroom|Please tell your sysop",
+            blob,
+            maxsplit=1,
+            flags=re.I,
+        )[0]
+        return {"kind": "also_here", "mobs": _split_list(cut)}
 
     m = SEE_RE.search(raw)
     if m:
@@ -411,7 +488,7 @@ def parse_line(line: str) -> dict[str, object] | None:
         return {"kind": "you_see", "things": _split_list(m.group(1))}
 
     if "you have been killed" in raw.lower():
-        return {"kind": "cannot", "text": raw}
+        return {"kind": "death"}
     mortal = _mortal_event(raw)
     if mortal:
         return mortal
@@ -470,6 +547,8 @@ def parse_line(line: str) -> dict[str, object] | None:
     if "you make a sound when entering" in low or "you make a sound as you enter" in low:
         return {"kind": "sneak_fail"}
     if "not hidden" in low or "aren't sneaking" in low or "are not sneaking" in low:
+        return {"kind": "sneak_fail"}
+    if "no longer hidden" in low or "no longer sneaking" in low:
         return {"kind": "sneak_fail"}
     if re.match(r"^sneaking\.+", low):
         return {"kind": "sneak_ok"}
@@ -539,6 +618,29 @@ def parse_line(line: str) -> dict[str, object] | None:
     m = THIRD_SIT_RE.search(raw)
     if m:
         return {"kind": "rest", "actor": m.group(1).strip()}
+    m = THIRD_STAND_RE.search(raw)
+    if m:
+        return {"kind": "stand", "actor": m.group(1).strip()}
+    if re.match(r"^you stand(?:s)? up\b", low):
+        return {"kind": "stand"}
+    m = ALLY_FLEE_RE.search(raw)
+    if m:
+        who = m.group(1).strip()
+        step = DIR_SHORT.get(m.group(2).strip().lower(), "")
+        ev: dict[str, object] = {"kind": "flee", "name": who}
+        if step:
+            ev["dir"] = step
+        return ev
+    m = YOU_FLEE_RE.search(raw)
+    if m:
+        step = DIR_SHORT.get(m.group(1).strip().lower(), "")
+        ev = {"kind": "flee"}
+        if step:
+            ev["dir"] = step
+        return ev
+    m = WOUNDED_LOOK_RE.search(raw)
+    if m:
+        return {"kind": "wounded", "name": m.group(1).strip()}
     m = SELF_SWING_RE.search(raw)
     if m:
         # Party echo of a swing. Actor is enough (invite / last_actor).
@@ -646,9 +748,48 @@ def parse_line(line: str) -> dict[str, object] | None:
         return {"kind": "bought"}
     if "too dark" in low or "it is dark" in low or "pitch black" in low:
         return {"kind": "dark"}
+    if re.search(r"\byou light (?:a |an |the )?torch\b", low):
+        return {"kind": "torch_lit"}
+    if "already have something lit" in low or "already have a light" in low:
+        return {"kind": "torch_lit"}
+    if re.search(
+        r"\b(?:your |the )?torch (?:goes|burns) out\b"
+        r"|\byour light (?:goes|burns) out\b"
+        r"|\bthe torch burns out\b",
+        low,
+    ):
+        return {"kind": "torch_out"}
+    if (
+        (
+            "arena" in low
+            and any(
+                mark in low
+                for mark in (
+                    "too high",
+                    "too experienced",
+                    "may not",
+                    "cannot",
+                    "can't",
+                    "not permitted",
+                    "no longer",
+                )
+            )
+        )
+        or ("too experienced" in low and "enter" in low)
+        or (
+            "too high" in low
+            and "level" in low
+            and "cast" not in low
+            and "spell" not in low
+            and "learn" not in low
+        )
+    ):
+        return {"kind": "cannot", "text": raw, "arena": True}
     if (
         "you can't" in low
         or "you cannot" in low
+        or "you may not go" in low
+        or "you may not enter" in low
         or "there is no" in low
         or "no exit" in low
         or "there is a closed door" in low
@@ -681,6 +822,16 @@ def parse_line(line: str) -> dict[str, object] | None:
     lvl_m = LEVEL_STAT_RE.search(raw)
     if lvl_m:
         return {"kind": "level", "level": int(lvl_m.group(1))}
+
+    fields = STAT_FIELD_RE.findall(raw)
+    if fields:
+        stats: dict[str, object] = {"kind": "stats"}
+        for name, value in fields:
+            key = _STAT_KEYS.get(name.lower())
+            if key:
+                stats[key] = int(value)
+        if len(stats) > 1:
+            return stats
 
     if _looks_like_room_title(raw):
         return {"kind": "room", "title": raw}
@@ -716,6 +867,9 @@ GLUE_RE = re.compile(
     r"claws at |swipes at |whips |walks out))"
     r"|(?=[A-Z][a-z]{1,14} just arrived)|(?=[A-Z][a-z]{1,14} just left)"
     r"|(?=[A-Z][a-z]{1,14} just entered the Realm)"
+    r"|(?=[A-Z][a-z]{1,14} sits down)|(?=[A-Z][a-z]{1,14} stands up)"
+    r"|(?=[A-Z][a-z]{1,14} (?:panics and )?flees)|(?=You flee )"
+    r"|(?=[A-Z][a-z]{1,14} gasps for breath)"
 )
 _CSI = re.compile(rb"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-_]")
 _FLUSH_KINDS = frozenset(
@@ -723,6 +877,7 @@ _FLUSH_KINDS = frozenset(
         "arrive",
         "leave",
         "killed",
+        "death",
         "combat",
         "combat_off",
         "drop",
@@ -743,11 +898,18 @@ _FLUSH_KINDS = frozenset(
         "sneak_try",
         "sneak_ok",
         "sneak_fail",
+        "dark",
+        "torch_lit",
+        "torch_out",
         "mortal",
         "aided",
         "drag_fail",
         "dragging",
         "afraid",
+        "flee",
+        "stand",
+        "wounded",
+        "rest",
         "left",
         "trained",
         "level",
@@ -757,6 +919,7 @@ _FLUSH_KINDS = frozenset(
         "sold",
         "learned",
         "spell_skip",
+        "stats",
     }
 )
 _SCREEN_KINDS = frozenset(
@@ -767,6 +930,7 @@ _SCREEN_KINDS = frozenset(
         "exits",
         "drop",
         "killed",
+        "death",
         "combat_off",
         "invited",
         "following",
@@ -783,6 +947,10 @@ _SCREEN_KINDS = frozenset(
         "drag_fail",
         "dragging",
         "afraid",
+        "flee",
+        "stand",
+        "wounded",
+        "rest",
         "left",
         "trained",
         "level",
@@ -793,6 +961,7 @@ _SCREEN_KINDS = frozenset(
         "sold",
         "learned",
         "spell_skip",
+        "stats",
     }
 )
 
@@ -837,6 +1006,47 @@ def stitch_inventory_lines(lines: list[str]) -> list[str]:
     out, leftover = hold_inventory([], lines)
     if leftover:
         out.append(" ".join(leftover))
+    return stitch_exit_lines(out)
+
+
+def _is_exit_continuation(raw: str) -> bool:
+    """True when a wrapped line is only compass doors (sysop dump split)."""
+    if EXITS_RE.search(raw) or ALSO_RE.search(raw):
+        return False
+    if not _exit_dirs(raw):
+        return False
+    leftover = DIR_RE.sub(" ", raw)
+    leftover = re.sub(r"\b(and|closed|door|gate)\b", " ", leftover, flags=re.I)
+    leftover = re.sub(r"[,.]", " ", leftover)
+    return not leftover.strip()
+
+
+def _exits_need_more(raw: str) -> bool:
+    if "obvious exits:" not in raw.lower():
+        return False
+    m = EXITS_RE.search(raw)
+    if not m:
+        return True
+    blob = m.group(1)
+    return not _exit_dirs(blob) and not _closed_exit_dirs(blob)
+
+
+def stitch_exit_lines(lines: list[str]) -> list[str]:
+    """Join `Obvious exits:` + the next row when a sysop dump splits them."""
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if (
+            _exits_need_more(line)
+            and i + 1 < len(lines)
+            and _is_exit_continuation(lines[i + 1])
+        ):
+            out.append(line.rstrip() + " " + lines[i + 1].strip())
+            i += 2
+            continue
+        out.append(line)
+        i += 1
     return out
 
 
@@ -937,6 +1147,10 @@ def events_from_payload(data: bytes) -> list[dict[str, object]]:
             "drag_fail",
             "dragging",
             "afraid",
+            "flee",
+            "stand",
+            "wounded",
+            "rest",
             "left",
             "trained",
             "level",
@@ -945,6 +1159,8 @@ def events_from_payload(data: bytes) -> list[dict[str, object]]:
             "inventory",
             "already_worn",
             "sold",
+            "stats",
+            "death",
         }
     )
     return [e for e in parse_events(strip_csi(data)) if e.get("kind") in keep]
@@ -958,6 +1174,8 @@ _TITLE_SKIP = (
     "sorry",
     "make your",
     "also here",
+    "mud internal",
+    "monbadroom",
     "you see",
     "obvious",
     "encumbrance",
@@ -982,6 +1200,8 @@ _TITLE_NOISE = (
     "lunge",
     "whap",
     "experience",
+    "internal error",
+    "sysop",
     "squeak",
     "falls",
     "lunges",
@@ -1001,8 +1221,12 @@ def _looks_like_room_title(raw: str) -> bool:
     if not street:
         if raw.endswith(":") or raw.endswith(".") or raw.endswith("]") or raw.endswith("!"):
             return False
-    if raw.startswith("[") or raw.startswith("You ") or raw.startswith("A "):
+    if raw.startswith("[") or raw.startswith("You "):
         return False
+    if raw.startswith(("A ", "An ")):
+        rest = raw.split(" ", 1)[-1]
+        if not rest or not rest[0].isupper():
+            return False
     if "%" in raw or "/" in raw:
         return False
     low = raw.lower()

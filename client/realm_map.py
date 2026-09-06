@@ -78,19 +78,53 @@ NEWHAVEN = {
 SILVERMERE = {
     "Town Square": {
         "n": "Guild Street, Southern End",
+        "s": "Sovereign Street, Northern End",
+        "e": "Silver Street, Western End",
+        "w": "Temple Street, Eastern End",
         "go manhole": "Sewer Tunnel, Junction (below TS)",
     },
+    "Sovereign Street, Northern End": {
+        "n": "Town Square",
+    },
+    "Silver Street, Western End": {
+        # One step east of Town Square — west end of the street.
+        "w": "Town Square",
+        "e": "Silver Street",
+        "n": "Sentara's Clothing, Front Room",
+        "s": "Homely Hearth",
+    },
+    # Mid Silver reuses one title for two tiles (near-square, then shops).
+    # Shop door is south; east reaches Brass. Torch runs count tiles in brain.
+    "Silver Street": {
+        "w": "Silver Street, Western End",
+        "e": "Intersection of Silver St. & Brass St.",
+        "n": "Curious Goods",
+        "s": "General Store",
+    },
+    "Intersection of Silver St. & Brass St.": {
+        "w": "Silver Street",
+    },
+    # Dead-end east of Brass. Town Square is west, never east (live atlas
+    # once learned `e` → Town Square and the GY walk bounced e/w here).
+    "Silver Street, Eastern End": {
+        "w": "Intersection of Silver St. & Brass St.",
+    },
+    "Homely Hearth": {"n": "Silver Street, Western End"},
+    "Curious Goods": {"s": "Silver Street"},
     "Guild Street, Southern End": {
         "s": "Town Square",
         "n": "Guild Street, Northern End",
+        "w": "Helfgrim's Blades",
     },
     "Guild Street, Northern End": {
         "s": "Guild Street, Southern End",
         "n": "Intersection of Guild St. & River St.",
+        "e": "Adventurer's Guild, Foyer",
     },
     "Intersection of Guild St. & River St.": {
         "s": "Guild Street, Northern End",
         "w": "Docks",
+        "e": "River Street",
     },
     "Docks": {
         "e": "Intersection of Guild St. & River St.",
@@ -102,6 +136,8 @@ SILVERMERE = {
         "s": "Docks",
         "borrow skiff": "Newhaven, Docks",
     },
+    # Live / Winterhawk titles for the Town Square manhole drop.
+    "Sewer Tunnel, Junction": {"u": "Town Square"},
     "Sewer Tunnel, Junction (below TS)": {"u": "Town Square"},
     "Fountain": {"go manhole": "Sewer Tunnel, Junction (below TS)"},
     "Temple Hall": {"s": "Temple Spell Store", "n": "Temple Healer", "e": "Temple Street"},
@@ -110,15 +146,82 @@ SILVERMERE = {
     "Temple Chapel": {"e": "Temple Hall"},
     "Clerical Training Room": {"s": "Temple Hall"},
     "Priestly Training Room": {"n": "Temple Hall"},
-    "Temple Street": {"e": "Town Square", "w": "Temple Hall"},
+    "Adventurer's Guild, Foyer": {
+        "w": "Guild Street, Northern End",
+        "e": "Adventurer's Guild, Main Room",
+    },
+    "Adventurer's Guild, Main Room": {
+        "w": "Adventurer's Guild, Foyer",
+        "e": "Adventurer's Guild, Universal Trainer",
+    },
+    "Adventurer's Guild, Universal Trainer": {
+        "w": "Adventurer's Guild, Main Room",
+    },
+    "Intersection of Temple St. & Stone St.": {
+        "e": "Temple Street",
+        "w": "Temple Hall",
+    },
+    # Mid-block tiles share the title; east is always toward the square.
+    "Temple Street": {
+        "e": "Temple Street, Eastern End",
+        "w": "Intersection of Temple St. & Stone St.",
+        "s": "Lucky Strike Casino",
+    },
+    "Temple Street, Eastern End": {
+        "e": "Town Square",
+        "w": "Temple Street",
+        "n": "Skali's Fine Armour, Front Room",
+        "s": "Bank of Godfrey",
+    },
+    "Lucky Strike Casino": {"n": "Temple Street"},
     "Helfgrim's Blades": {"e": "Guild Street, Southern End"},
-    "Skali's Fine Armour, Front Room": {"s": "Town Square"},
-    "Sentara's Clothing, Front Room": {"s": "Town Square", "w": "Town Square"},
-    "General Store": {"n": "Town Square"},
+    "Skali's Fine Armour, Front Room": {
+        "s": "Temple Street, Eastern End",
+        "e": "Skali's Fine Armour, Showroom",
+    },
+    "Skali's Fine Armour, Showroom": {
+        "s": "Skali's Fine Armour, Front Room",
+        "n": "Skali's Fine Armour, Back Room",
+    },
+    "Skali's Fine Armour, Back Room": {"s": "Skali's Fine Armour, Showroom"},
+    "Sentara's Clothing, Front Room": {
+        "s": "Silver Street, Western End",
+    },
+    "General Store": {"n": "Silver Street"},
     "Magic Shoppe": {"n": "Intersection of Guild St. & River St."},
     "Paladin Training Room": {},
     "Ninja Training Room": {},
     "Arena Entrance": {"s": "Town Square"},
+    "River Street": {
+        "w": "Intersection of Guild St. & River St.",
+        "e": "Intersection of River St. & Bridge St.",
+    },
+    "Intersection of River St. & Bridge St.": {
+        "w": "River Street",
+        "s": "Bridge Street",
+        "n": "Bridge",
+    },
+    "Bridge Street": {
+        "n": "Intersection of River St. & Bridge St.",
+    },
+    "Bridge": {
+        "ne": "Graveyard Entrance",
+        "s": "Bridge Street",
+        "sw": "Bridge Street",
+    },
+    "River Street, Eastern End": {
+        "w": "River Street",
+    },
+    "Graveyard Entrance": {
+        "sw": "Bridge",
+        "w": "Bridge",
+        "e": "Graveyard",
+    },
+    # Mid-grass tiles share this title; hunt ping-pongs e/w only.
+    "Graveyard": {
+        "w": "Graveyard Entrance",
+        "e": "Graveyard",
+    },
 }
 
 _NEWHAVEN_HOME = (
@@ -129,7 +232,7 @@ _NEWHAVEN_HOME = (
     "newhaven",
 )
 _SILVERMERE_HOME = (
-    "sewer",
+    "graveyard",
     "town square",
 )
 _HOME_HINTS = _SILVERMERE_HOME + _NEWHAVEN_HOME
@@ -149,18 +252,66 @@ def _mappable(title: str) -> bool:
     raw = title.strip()
     if not raw or len(raw) > 80:
         return False
+    # Sign scrap like council" — never a room title.
+    if '"' in raw:
+        return False
     if raw.endswith("St."):
         words = raw.split()
         return 2 <= len(words) <= 10
-    if raw.endswith(("!", ":", "]", ".")):
+    if raw.endswith(("!", ":", "]", ".", '"')):
         return False
     if raw[0].islower() or raw[0].isdigit():
         return False
-    if raw.startswith(("You ", "A ", "The ", "An ", "[")):
-        # "The Town Square" is a real room; combat lines end with ! already.
-        if raw.startswith("The ") and not raw.endswith("!"):
-            words = raw.split()
-            return 2 <= len(words) <= 6
+    if raw.startswith("["):
+        return False
+    if raw.startswith("You "):
+        return False
+    if raw.startswith(("A ", "An ", "The ")):
+        # Title-case "A Dark Hall" is a room. "A large rat" is not.
+        rest = raw.split(" ", 1)[-1]
+        words = raw.split()
+        return bool(rest) and rest[0].isupper() and 2 <= len(words) <= 8
+    return True
+
+
+def _valid_edge_dest(dest: str) -> bool:
+    """Reject sign-scrap / parse junk that used to poison BFS (e.g. council\")."""
+    key = room_key(dest)
+    if not key or '"' in key or key.startswith("?"):
+        return False
+    return True
+
+
+def _plausible_edge(src: str, _step: str, dest: str) -> bool:
+    """Reject collapsed-street lies that send GY the wrong way."""
+    if src == "silver street eastern end" and dest == "town square":
+        return False
+    if src == "town square" and dest == "silver street eastern end":
+        return False
+    if src == "river street" and dest == "graveyard entrance":
+        return False
+    # Live: Bridge Street `n` is the River/Bridge gate, not the creek.
+    if src == "bridge street" and dest in {"bridge", "graveyard entrance"}:
+        return False
+    if (
+        src == "bridge street"
+        and dest == "intersection of river st. & bridge st."
+        and _step == "s"
+    ):
+        return False
+    if (
+        src == "intersection of river st. & bridge st."
+        and dest == "bridge street"
+        and _step == "n"
+    ):
+        return False
+    if (
+        src == "intersection of river st. & bridge st."
+        and dest == "guild street southern end"
+    ):
+        return False
+    # Live dump once sent Northern End `e` to River Street. The guild is that east door.
+    if src == "guild street northern end" and dest == "river street" and _step == "e":
         return False
     return True
 
@@ -190,6 +341,20 @@ class Atlas:
         key = room_key(title)
         return bool(key) and key in self.rooms
 
+    def unmapped(self, title: str, exits: list[str] | None = None) -> list[str]:
+        """Listed doors we have not recorded a destination for."""
+        key = room_key(title)
+        listed = [d for d in (exits or []) if d in DIRS]
+        if not listed:
+            node = self.rooms.get(key) or {}
+            listed = [d for d in (node.get("exits") or []) if d in DIRS]
+        open_doors: list[str] = []
+        for step in listed:
+            dest = self.edges.get((key, step), "")
+            if not dest or str(dest).startswith("?"):
+                open_doors.append(step)
+        return open_doors
+
     def _seed_graph(self, graph: dict[str, dict[str, str]]) -> None:
         for title, exits in graph.items():
             key = room_key(title)
@@ -200,7 +365,9 @@ class Atlas:
                 old = list(node.get("exits") or [])
                 node["exits"] = sorted(set(old) | set(exits))
             for step, dest in exits.items():
-                self.edges[(key, step)] = room_key(dest)
+                dest_key = room_key(dest)
+                if _plausible_edge(key, step, dest_key):
+                    self.edges[(key, step)] = dest_key
 
     def _seed_newhaven(self) -> None:
         self._seed_graph(NEWHAVEN)
@@ -236,9 +403,15 @@ class Atlas:
             old = [d for d in node.get("exits") or [] if d in DIRS]
             node["exits"] = sorted(set(old) | set(seen))
         if prev_key and step and prev_key != key:
-            self.edges[(prev_key, step)] = key
+            if _valid_edge_dest(key) and _plausible_edge(prev_key, step, key):
+                self.edges[(prev_key, step)] = key
             back = REVERSE.get(step, "")
-            if back in CARDINALS and (key, back) not in self.edges:
+            if (
+                back in CARDINALS
+                and (key, back) not in self.edges
+                and _valid_edge_dest(prev_key)
+                and _plausible_edge(key, back, prev_key)
+            ):
                 self.edges[(key, back)] = prev_key
             if prev_key in self.rooms:
                 old = [d for d in self.rooms[prev_key].get("exits") or [] if d in DIRS]
@@ -291,14 +464,34 @@ class Atlas:
             return Hint(action="look", chrome=f"map: {count} rooms")
         route = self.way_home(title, exits)
         if route:
+            step = route[0]
+            # Temple Street: east is Town Square. Never follow a poisoned west path.
+            low = (title or "").lower()
+            if "temple street" in low and step == "w" and exits and "e" in exits:
+                step = "e"
+                route = ["e", *route[1:]]
             return Hint(
                 action="path",
-                step=route[0],
+                step=step,
                 route=route,
                 chrome=f"path: {','.join(route)}",
             )
+        learn = self._explore(title, exits, last_step)
+        if learn:
+            return Hint(
+                action="guess",
+                step=learn,
+                chrome=f"map: learn {learn}",
+            )
         if self.known(title):
             return Hint()
+        dirs = [d for d in (exits or []) if d in DIRS]
+        if len(dirs) == 1:
+            return Hint(
+                action="guess",
+                step=dirs[0],
+                chrome=f"map: {count} rooms",
+            )
         back = reverse_dir(last_step)
         for guess in (back, "u"):
             if not guess:
@@ -310,7 +503,26 @@ class Atlas:
                 step=guess,
                 chrome=f"map: {count} rooms",
             )
+        if scanned:
+            return Hint()
         return Hint(action="look", chrome=f"map: {count} rooms")
+
+    def _explore(
+        self,
+        title: str,
+        exits: list[str] | None,
+        last_step: str,
+    ) -> str:
+        """Walk a door we have never recorded. Something beats nothing."""
+        open_doors = self.unmapped(title, exits)
+        if not open_doors:
+            return ""
+        horiz = [d for d in open_doors if d in {"n", "s", "e", "w"}]
+        back = reverse_dir(last_step)
+        for step in (*horiz, *open_doors):
+            if step != back:
+                return step
+        return open_doors[0]
 
     def _bfs(
         self,
@@ -357,6 +569,8 @@ class Atlas:
                 if not isinstance(key, str) or not isinstance(node, dict):
                     continue
                 title = str(node.get("title") or key)
+                if '"' in key or '"' in title:
+                    continue
                 exits = [d for d in node.get("exits") or [] if d in DIRS]
                 self.rooms[room_key(key) if " " in key or key[:1] != "?" else key] = {
                     "title": title,
@@ -368,8 +582,22 @@ class Atlas:
             src = room_key(str(edge.get("from") or ""))
             dest = room_key(str(edge.get("to") or ""))
             step = str(edge.get("dir") or "").lower()
-            if src and dest and step in DIRS:
+            if (
+                src
+                and dest
+                and step in DIRS
+                and _valid_edge_dest(dest)
+                and _plausible_edge(src, step, dest)
+            ):
                 self.edges[(src, step)] = dest
+        # Canonical Silvermere layout wins over any leftover bad edges.
+        self._seed_graph(SILVERMERE)
+        self._drop_impossible_edges()
+
+    def _drop_impossible_edges(self) -> None:
+        for (src, step), dest in list(self.edges.items()):
+            if not _plausible_edge(src, step, dest):
+                del self.edges[(src, step)]
 
     def save(self) -> None:
         if not self.store:

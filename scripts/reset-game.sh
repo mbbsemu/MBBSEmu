@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 # Full MajorMUD reset: virgin databases, DEMO activation, empty addons.
-# Put real codes in LAST after the board is playing.
+# Default: boots DEMO so SYSOP C/CP can run.
+#   ./scripts/reset-game.sh --no-boot
+#     stop, wipe, restore DEMO MSG, do not start the emulator.
+# Put BTURNO + ACTIVATE in before the first boot when using --no-boot.
 set -euo pipefail
+
+BOOT=1
+if [[ "${1:-}" == "--no-boot" ]]; then
+  BOOT=0
+  shift
+fi
 
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 MODULE="$ROOT/modules/WCCMMUD"
@@ -17,7 +26,11 @@ port_up() {
   python3 -c "import socket; s=socket.socket(); s.settimeout(0.4); s.connect(('127.0.0.1', $PORT)); s.close()" 2>/dev/null
 }
 
-echo "Finn's Realm — start from scratch (DEMO, codes later)"
+if [[ "$BOOT" == 1 ]]; then
+  echo "Finn's Realm — start from scratch (DEMO, then boot)"
+else
+  echo "Finn's Realm — start from scratch (no boot)"
+fi
 
 echo "Stopping the board..."
 if [[ -f "$PID_FILE" ]]; then
@@ -70,6 +83,28 @@ done
 wipe_player_records "$MODULE" "$DATA"
 echo "Play accounts: sysop plus matt (empty toons — you create them)."
 ensure_play_accounts "$DATA/mbbsemu.db"
+
+if [[ "$BOOT" != 1 ]]; then
+  python3 - "$SETTINGS" <<'PY'
+import json, sys
+from pathlib import Path
+p = Path(sys.argv[1])
+data = json.loads(p.read_text())
+data["GSBL.BTURNO"] = ""
+p.write_text(json.dumps(data, indent=2) + "\n")
+print("GSBL.BTURNO cleared — set the new 8-digit board number before boot")
+PY
+  rm -f "$DATA/last-boot.json"
+  echo
+  echo "Board is down. Databases are virgin. MSG is DEMO."
+  echo "Set GSBL.BTURNO and MajorMUD ACTIVATE before the first boot."
+  echo "Do not start the emulator until that pair is in."
+  if [[ -f "$ROOT/scripts/preflight.py" ]]; then
+    echo
+    python3 "$ROOT/scripts/preflight.py" "$ROOT" || true
+  fi
+  exit 0
+fi
 
 echo "Starting the board..."
 cd "$DATA"

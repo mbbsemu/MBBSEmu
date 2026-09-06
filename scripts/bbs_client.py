@@ -36,8 +36,11 @@ ECHO, SGA, TTYPE, NAWS = 1, 3, 24, 31
 
 COLS, ROWS = 80, 25
 CHROME = 5
-# MajorMUD drops lines faster than ~3–4/sec ("You are typing too quickly").
+# MajorMUD scolds under ~2s ("slow down for a few seconds"). Combat can
+# stay snappier; walks and looks use WALK_GAP. A flood pauses longer.
 KEY_GAP = 0.55
+WALK_GAP = 2.0
+FLOOD_PAUSE = 5.0
 # After first [HP=], sit still — creation can last minutes after Autopilot's E.
 REALM_SETTLE = 8.0
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,7 +50,7 @@ if str(ROOT) not in sys.path:
 from client.brain import Brain
 from client.localnet import LOOPBACK_HOSTS, is_loopback_host
 from client.parse import events_from_payload, harvest_screen, parse_events
-from client.paths import attack_line
+from client.paths import attack_line, is_unlatch_step
 from client.pvp import clear_lock, is_locked
 from client.realm_map import DEFAULT_PATH, Atlas
 from client.signoff import paint as paint_signoff
@@ -81,7 +84,7 @@ PEEK_COMMANDS = {
     KEY_F3: "health",
     KEY_F4: "i",
     KEY_F5: "exp",
-    KEY_F6: "who",
+    KEY_F6: "party",
 }
 
 # F1–F11 chrome. One table: footer tip and help overlay read this.
@@ -94,7 +97,7 @@ FKEYS: dict[int, dict[str, str]] = {
     3: {"on": "health", "short": "hp"},
     4: {"on": "i"},
     5: {"on": "exp"},
-    6: {"on": "who"},
+    6: {"on": "party"},
     7: {"on": "hunt", "off": "hunt off"},
     8: {"on": "ambush", "off": "walk", "note": "(ninja) · aa"},
     9: {"on": "join", "off": "join off"},
@@ -472,11 +475,12 @@ class AnsiScreen:
         """FSD sheet or race/class pick.
 
         Leftover [HP=] on Character Creation / TRAIN STATS is still the
-        form. Obvious exits / Also here / You notice plus [HP=] is EXIT.
+        form. Obvious exits / Also here / You notice is the realm — even
+        if TRAIN STATS leftover is still on the grid.
         """
         blob = self.text()
         leftover_hp = "[HP=" in blob
-        if leftover_hp and (
+        if (
             "Obvious exits" in blob
             or "Also here" in blob
             or "You notice" in blob
@@ -555,11 +559,15 @@ def realm_line(text: str, *, paladin: bool = False) -> str:
         return rest
 
     if paladin:
+        if low in {"aa on", "aa off"}:
+            return raw
         if low in {"attack", "att", "bash", "aa", "kill", "k"}:
             return "aa"
         for prefix in ("attack ", "att ", "bash ", "aa ", "kill "):
             if low.startswith(prefix):
                 aim = _aim_after(prefix)
+                if prefix == "bash " and is_unlatch_step(raw):
+                    return raw
                 return f"aa {aim}" if aim else "aa"
         if low.startswith("k ") and not low.startswith("kly"):
             aim = _aim_after("k ")
@@ -578,9 +586,40 @@ def realm_line(text: str, *, paladin: bool = False) -> str:
     if low in {"bash"}:
         return "aa"
     if low.startswith("bash "):
+        if is_unlatch_step(raw):
+            return raw
         rest = raw[5:].strip()
         return f"aa {rest}" if rest else "aa"
     return raw
+
+
+_WALK_VERBS = frozenset(
+    {
+        "n",
+        "s",
+        "e",
+        "w",
+        "u",
+        "d",
+        "ne",
+        "nw",
+        "se",
+        "sw",
+        "look",
+        "l",
+        "sn",
+        "sneak",
+        "follow",
+        "fo",
+        "join",
+        "backr",
+        "backrank",
+        "go",
+        "borrow",
+        "search",
+        "invite",
+    }
+)
 
 
 class KeyPacer:
@@ -601,18 +640,74 @@ class KeyPacer:
         if line:
             self._q.append(line.encode("ascii", "replace") + b"\r")
 
-    def pending(self) -> bool:
+    def queued(self) -> bool:
+        """A line is waiting. Cooldown alone is not queued — login can stage M/E."""
         return bool(self._q)
+
+    def pending(self) -> bool:
+        """Busy while a line is queued or the last send is still cooling down."""
+        return bool(self._q) or time.monotonic() < self._ready_at
 
     def clear(self) -> None:
         self._q.clear()
+
+    def pause(self, now: float, hold: float) -> None:
+        self._ready_at = max(self._ready_at, now + hold)
 
     def take(self, now: float) -> bytes | None:
         if not self._q or now < self._ready_at:
             return None
         key = self._q.popleft()
-        self._ready_at = now + KEY_GAP
+        self._ready_at = now + self._gap(key)
         return key
+
+    def _gap(self, key: bytes) -> float:
+        line = key.decode("ascii", "replace").strip().lower()
+        verb = line.split()[0] if line else ""
+        if verb in _WALK_VERBS:
+            return WALK_GAP
+        return KEY_GAP
+
+
+class LineHistory:
+    """Up/Down on the > bar recalls sent lines."""
+
+    def __init__(self, cap: int = 64) -> None:
+        self._lines: list[str] = []
+        self._i = 0
+        self._draft = ""
+        self._cap = cap
+
+    def remember(self, line: str) -> None:
+        text = line.strip()
+        if not text:
+            self.reset_cursor()
+            return
+        if not self._lines or self._lines[-1] != text:
+            self._lines.append(text)
+            if len(self._lines) > self._cap:
+                self._lines.pop(0)
+        self.reset_cursor()
+
+    def reset_cursor(self) -> None:
+        self._i = len(self._lines)
+        self._draft = ""
+
+    def up(self, typed: str) -> str:
+        if self._i == len(self._lines):
+            self._draft = typed
+        if not self._lines:
+            return typed
+        self._i = max(0, self._i - 1)
+        return self._lines[self._i]
+
+    def down(self, typed: str) -> str:
+        if self._i >= len(self._lines):
+            return typed
+        self._i += 1
+        if self._i >= len(self._lines):
+            return self._draft
+        return self._lines[self._i]
 
 
 class RealmGate:
@@ -655,9 +750,13 @@ _PRY_SKIP = frozenset(
         "wear",
         "look",
         "l",
+        "list",
+        "prices",
+        "appraise",
         "health",
         "exp",
         "who",
+        "party",
         "n",
         "s",
         "e",
@@ -684,6 +783,7 @@ _PRY_SKIP = frozenset(
         "fo",
         "join",
         "backrank",
+        "backr",
         "invite",
         "quit",
         "x",
@@ -696,8 +796,9 @@ _PRY_DIRS = frozenset({"n", "s", "e", "w", "u", "d", "ne", "nw", "se", "sw"})
 class ActionPry:
     """After an action returns to [HP=], send `i` once at KEY_GAP.
 
-    Skips peeks, combat, and walks so hunt does not double-fire. Shop
-    "be more specific" stops further auto-buys until they type the name.
+    Skips peeks, combat, walks, and shop `list` so hunt does not
+    double-fire or wipe a catalog. Shop "be more specific" stops
+    further auto-buys until they type the name.
     """
 
     def __init__(self) -> None:
@@ -718,10 +819,10 @@ class ActionPry:
                 return
             else:
                 self.stuck = False
-        if verb in _PRY_DIRS:
-            if not gearing:
-                return
-        elif verb in _PRY_SKIP:
+        # Walks get a `look`, not an inventory pry — even while gearing.
+        if verb in _PRY_DIRS or verb in {"go", "borrow", "search"}:
+            return
+        if verb in _PRY_SKIP:
             return
         self._last = low
         self._wait_seq = prompt_seq
@@ -854,6 +955,7 @@ class Autopilot:
         self.phase = "user"
         self.blocked_why = ""
         self._until = 0.0
+        self._board_m = False
 
     def hint(self) -> str:
         if self.phase == "blocked":
@@ -896,7 +998,7 @@ class Autopilot:
             self.blocked_why = ""
             pacer.clear()
             return
-        if pacer.pending() or time.monotonic() < self._until:
+        if pacer.queued() or time.monotonic() < self._until:
             return
         if self.phase == "play" or self.phase == "blocked":
             return
@@ -939,16 +1041,23 @@ class Autopilot:
             return
         if self.phase == "signup_gender":
             return
-        if self.phase == "bbs" and "Make your selection" in text:
+        at_mud = "[majormud]" in low or "enter the realm" in low
+        at_bbs = "make your selection" in low
+        # [MAJORMUD]: wants E. M is the BBS module key — Invalid Option here.
+        if at_mud and self.play and self.phase in {"bbs", "mud"}:
+            pacer.push_text("E", wipe=False)
+            self.phase = "play"
+            self._pause(KEY_GAP)
+            return
+        if self.phase == "bbs" and at_bbs:
             pacer.push_text("M", wipe=False)
+            self._board_m = True
             self.phase = "mud" if self.play else "play"
             return
         if not self.play:
             return
-        if self.phase == "mud" and ("[MAJORMUD]:" in text or "Enter the Realm" in text):
-            pacer.push_text("E", wipe=False)
-            self.phase = "play"
-            self._pause(KEY_GAP)
+        if self.phase == "mud":
+            return
 
 
 def load_player(path: Path) -> dict[str, object]:
@@ -1094,6 +1203,9 @@ def form_frozen(screen: AnsiScreen, sheet_lock: bool = False) -> bool:
 
 _FORM_STATUS_PREFIXES = (
     b"[HP=",
+    b"[hp=",
+    b"[Hp=",
+    b"/MA=",
     b"Health:",
     b"Hits:",
     b"Mana:",
@@ -1106,48 +1218,125 @@ _FORM_STATUS_PREFIXES = (
     b"*Combat",
     b"* Combat",
 )
+_FORM_PROMPT_HEADS = (b"[HP=", b"[hp=", b"[Hp=", b"/MA=")
+
+
+class FormHoldFilter:
+    """Drop delayed [HP=/MA=] prompts while TRAIN STATS / creation is up.
+
+    The game reprints the prompt on a timer (and after a CP change). That
+    often arrives as CSI-to-cursor then `[HP=…/MA=…]:`, sometimes split
+    across packets so only `/MA=15]:` lands on Intellect.
+    """
+
+    def __init__(self) -> None:
+        self._skip_prompt = False
+        self._pending = b""
+
+    def reset(self) -> None:
+        self._skip_prompt = False
+        self._pending = b""
+
+    def filter(self, payload: bytes) -> bytes:
+        data = self._pending + payload
+        self._pending = b""
+        out = bytearray()
+        i = 0
+        n = len(data)
+        line_start = True
+        while i < n:
+            if self._skip_prompt:
+                if data[i] == 0x1B:
+                    self._skip_prompt = False
+                    continue
+                if data[i] in (10, 13):
+                    self._skip_prompt = False
+                    i += 1
+                    continue
+                i += 1
+                continue
+            if data[i] == 0x1B:
+                j = i + 1
+                if j >= n:
+                    self._pending = data[i:]
+                    break
+                if data[j] == 0x5B:
+                    j += 1
+                    while j < n and not (0x40 <= data[j] <= 0x7E):
+                        j += 1
+                    if j >= n:
+                        self._pending = data[i:]
+                        break
+                    j += 1
+                    if data.startswith(_FORM_PROMPT_HEADS, j):
+                        i = j
+                        self._skip_prompt = True
+                        line_start = False
+                        continue
+                    out += data[i:j]
+                    i = j
+                    line_start = False
+                    continue
+                out.append(data[i])
+                i += 1
+                line_start = False
+                continue
+            if data.startswith(_FORM_PROMPT_HEADS, i):
+                self._skip_prompt = True
+                continue
+            if data[i] in (10, 13):
+                line_start = True
+                out.append(data[i])
+                i += 1
+                continue
+            if line_start:
+                rest = data[i:]
+                if any(rest.startswith(pref) for pref in _FORM_STATUS_PREFIXES):
+                    self._skip_prompt = True
+                    continue
+            out.append(data[i])
+            line_start = False
+            i += 1
+        return bytes(out)
+
+
+_FORM_LEAVE_MARKERS = (
+    b"Obvious exits:",
+    b"Also here:",
+    b"You notice ",
+    b"*Combat",
+    b"* Combat",
+)
+
+
+def form_returns_to_realm(payload: bytes) -> bool:
+    """SAVE/EXIT reprinted the room. Do not keep filtering that packet as the sheet."""
+    return any(mark in payload for mark in _FORM_LEAVE_MARKERS)
+
+
+def paint_mud(
+    screen: AnsiScreen,
+    payload: bytes,
+    *,
+    hold: bool,
+    filt: FormHoldFilter,
+) -> bytes:
+    """Feed the grid. After TRAIN STATS, a room reprint must not stay star-masked."""
+    if hold and form_returns_to_realm(payload):
+        filt.reset()
+        screen.leave_form()
+        screen.feed(payload)
+        return payload
+    shown = filt.filter(payload) if hold else payload
+    if not hold:
+        filt.reset()
+    screen.feed(shown)
+    return shown
 
 
 def form_hold_payload(payload: bytes) -> bytes:
     """Keep FSD CSI and field text. Drop [HP=] / look / i that would write on the sheet."""
-    out = bytearray()
-    i = 0
-    n = len(payload)
-    line_start = True
-    while i < n:
-        if payload[i] == 0x1B:
-            line_start = False
-            j = i + 1
-            if j < n and payload[j] == 0x5B:
-                j += 1
-                while j < n and not (0x40 <= payload[j] <= 0x7E):
-                    j += 1
-                if j < n:
-                    j += 1
-            else:
-                j = min(n, i + 2)
-            out += payload[i:j]
-            i = j
-            continue
-        if payload[i] in (10, 13):
-            line_start = True
-            out.append(payload[i])
-            i += 1
-            continue
-        if payload.startswith((b"[HP=", b"[hp=", b"[Hp="), i):
-            while i < n and payload[i] not in (10, 13, 0x1B):
-                i += 1
-            continue
-        if line_start:
-            rest = payload[i:]
-            if any(rest.startswith(pref) for pref in _FORM_STATUS_PREFIXES):
-                while i < n and payload[i] not in (10, 13, 0x1B):
-                    i += 1
-                continue
-        out.append(payload[i])
-        line_start = False
-        i += 1
-    return bytes(out)
+    return FormHoldFilter().filter(payload)
 
 
 def form_blocks_line(outgoing: bytes, *, frozen: bool) -> bool:
@@ -1204,7 +1393,9 @@ def handle_special_key(
         return "hunt"
     if key == KEY_F8:
         if not brain._ninja():
-            brain.toggle_aa()
+            line = brain.toggle_aa(state)
+            if line:
+                pacer.push_text(line)
             return "aa"
         was_on = brain.stealth_label() == "ambush"
         brain.toggle_stealth()
@@ -1313,7 +1504,7 @@ def realm_fkey_tip(
         bits[2] = fkey_label(3, short=True)
     # Never drop F10 — it lives only on this row now.
     if len(render(bits)) > 80:
-        bits = [bit for bit in bits if not bit.startswith("F6 ")]
+        bits = [bit for bit in bits if not bit.startswith("F5 ")]
     if len(render(bits)) > 80:
         bits = [bit for bit in bits if not bit.startswith("F9 ")]
     mid = render(bits)
@@ -1364,15 +1555,96 @@ def maybe_ask_exp(
     return True
 
 
+def maybe_ask_stat(
+    state: WorldState, send, *, pending: bool = False, frozen: bool = False
+) -> bool:
+    """Send `stat` once so the ice row can split base Attack / Defense from kit."""
+    if frozen or pending or not state.in_realm or state.in_combat:
+        return False
+    if not state.needs_stat():
+        return False
+    state.stat_asked = True
+    send("stat")
+    return True
+
+
 def handle_client_line(cmd: str, brain: Brain, state: WorldState) -> tuple[str, str | None]:
     """> bar client commands. Returns (kind, mud_line_or_none)."""
     raw = cmd.strip()
     low = raw.lower()
-    if low == "hunt":
+    if low == "hunt" or low.startswith("hunt "):
+        arg = low[4:].strip()
+        if arg in {"list", "?"}:
+            brain.next_action = brain.list_hunt_runs()
+            return "hunt", None
+        if arg in {"off", "stop"}:
+            if brain.hunting():
+                brain.toggle_hunt()
+            return "hunt", None
+        if arg in {"on", "go"}:
+            if brain.mode == "goto":
+                brain._start_hunt()
+            elif not brain.hunting():
+                brain.toggle_hunt()
+            if brain.mode == "gear":
+                return "hunt", brain.open_gear_inv(state)
+            return "hunt", None
+        if arg:
+            got = brain.set_hunt_run(arg)
+            if got is None:
+                brain.next_action = f"unknown run {arg}; {brain.list_hunt_runs()}"
+                return "hunt", None
+            if brain.mode == "goto":
+                brain._start_hunt()
+            elif not brain.hunting():
+                brain.toggle_hunt()
+            if brain.mode == "gear":
+                return "hunt", brain.open_gear_inv(state)
+            return "hunt", None
         brain.toggle_hunt()
         if brain.mode == "gear":
             return "hunt", brain.open_gear_inv(state)
         return "hunt", None
+    if low == "goto" or low.startswith("goto "):
+        arg = low[4:].strip()
+        if not arg or arg in {"list", "?"}:
+            brain.next_action = brain.list_gotos()
+            return "goto", None
+        if arg in {"off", "stop"}:
+            if brain.mode == "goto":
+                brain.takeover()
+            return "goto", None
+        got = brain.start_goto(arg)
+        if got is None:
+            if brain.next_action in {"no deathpile", "hunter stays on localhost"}:
+                return "goto", None
+            brain.next_action = f"unknown goto {arg}; {brain.list_gotos()}"
+            return "goto", None
+        return "goto", None
+    if low == "boost":
+        if not state.in_realm:
+            brain.next_action = "boost after E — sysop tweak, not a license"
+            return "boost", None
+        return (
+            "boost",
+            "SYS TWEAK EXPERIENCE 120000\nSYS TWEAK LEVEL 10",
+        )
+    if low == "run" or low.startswith("run "):
+        arg = low[3:].strip()
+        if not arg or arg in {"list", "?"}:
+            brain.next_action = brain.list_gotos()
+            return "goto", None
+        if arg in {"off", "stop"}:
+            if brain.mode == "goto":
+                brain.takeover()
+            return "goto", None
+        got = brain.start_run(arg)
+        if got is None:
+            if brain.next_action in {"no deathpile", "hunter stays on localhost"}:
+                return "goto", None
+            brain.next_action = f"unknown run {arg}; {brain.list_gotos()}"
+            return "goto", None
+        return "goto", None
     if low == "stop":
         brain.takeover()
         return "stop", None
@@ -1382,12 +1654,10 @@ def handle_client_line(cmd: str, brain: Brain, state: WorldState) -> tuple[str, 
         if low == "aa on":
             brain.aa = True
             brain.next_action = "aa"
-        elif low == "aa off":
-            brain.aa = False
-            brain.next_action = "aa off"
-        else:
-            brain.toggle_aa()
-        return "aa", None
+            return "aa", None
+        if low == "aa off":
+            return "aa", brain.stop_aa(state)
+        return "aa", brain.toggle_aa(state)
     if brain.pending_offer() and low in {"y", "yes", "n", "no"}:
         kind = "gear" if brain.gear_offer() else "spell"
         brain.answer_offer(low in {"y", "yes"}, state)
@@ -1431,8 +1701,8 @@ def window_title(player: dict[str, object]) -> str:
     return f"Finn's Realm — {character_label(player)}"
 
 
-def footer_who(brain: Brain) -> str:
-    """Given name + class on the FINN'S REALM title row."""
+def footer_who(brain: Brain, level: int | None = None) -> str:
+    """Given name + level + class on the FINN'S REALM title row."""
     tokens = [part for part in brain.me.replace(",", " ").split() if part]
     name = ""
     if tokens:
@@ -1442,9 +1712,16 @@ def footer_who(brain: Brain) -> str:
         klass = "paladin"
     if klass:
         klass = klass[:1].upper() + klass[1:]
-    if name and klass:
-        return f"{name} ({klass})"
-    return name or klass
+    inside = klass
+    if level is not None and klass:
+        inside = f"Lv.{level} {klass}"
+    elif level is not None:
+        inside = f"Lv.{level}"
+    if name and inside:
+        return f"{name} ({inside})"
+    if inside:
+        return f"({inside})" if level is not None and not name else inside
+    return name
 
 
 def osc_set_title(title: str) -> bytes:
@@ -1468,8 +1745,8 @@ _SGR_RE = re.compile(r"\x1b\[[0-9;]*m")
 _HP_SEGMENT_RE = re.compile(r"HP -?\d+(?:/\d+)?")
 _MA_SEGMENT_RE = re.compile(r"MA -?\d+(?:/\d+)?")
 _TRAIN_SEGMENT_RE = re.compile(r"TRAIN \d+%")
-_EXP_SEGMENT_RE = re.compile(r"EXP \d+(?:/\d+)?(?: \d+%)?")
-_DPS_SEGMENT_RE = re.compile(r"DPS (?:\d+|—)")
+_EXP_SEGMENT_RE = re.compile(r"EXP \d+%(?: \d+/\d+)?")
+_DPS_SEGMENT_RE = re.compile(r"DPS (?:\d+(?:[↑↓·]\d+)?|—)")
 
 
 def visible_len(text: str) -> int:
@@ -1496,14 +1773,187 @@ def hp_chrome_sgr(state: WorldState) -> str:
 
 
 def color_footer_hp(plain: str, state: WorldState) -> str:
-    """Color only the leading HP segment. MA and the rest stay chrome fg."""
+    """Color only the HP segment. MA and the rest stay chrome fg."""
     sgr = hp_chrome_sgr(state)
     if not sgr:
         return plain
-    matched = _HP_SEGMENT_RE.match(plain)
+    matched = _HP_SEGMENT_RE.search(plain)
     if not matched:
         return plain
-    return f"{sgr}{matched.group(0)}{CHROME_BODY_SGR}{plain[matched.end():]}"
+    return (
+        f"{plain[: matched.start()]}{sgr}{matched.group(0)}"
+        f"{CHROME_BODY_SGR}{plain[matched.end() :]}"
+    )
+
+
+def ice_meter(ratio: float | None, width: int) -> str:
+    """ACiD dither bar: ▓ filled, ▒ leading edge, ░ empty."""
+    if width <= 0:
+        return ""
+    if ratio is None:
+        return "░" * width
+    clamped = max(0.0, min(1.0, float(ratio)))
+    filled = int(round(clamped * width))
+    if filled <= 0:
+        return "░" * width
+    if filled >= width:
+        return "▓" * width
+    return "▓" * (filled - 1) + "▒" + "░" * (width - filled)
+
+
+def ice_wedge(*, closing: bool = False) -> str:
+    if closing:
+        return f"{ICE_CYAN_SGR}▓{ICE_DIM_SGR}▒{ICE_BLUE_SGR}░{CHROME_BODY_SGR}"
+    return f"{ICE_BLUE_SGR}░{ICE_DIM_SGR}▒{ICE_CYAN_SGR}▓{CHROME_BODY_SGR}"
+
+
+def ice_wash(width: int) -> str:
+    """Repeating ice fade used to fill the DPS / vitals gap."""
+    if width <= 0:
+        return ""
+    motif = (
+        (ICE_BLUE_SGR, "░"),
+        (ICE_DIM_SGR, "▒"),
+        (ICE_CYAN_SGR, "▓"),
+        (ICE_DIM_SGR, "▒"),
+        (ICE_BLUE_SGR, "░"),
+    )
+    parts: list[str] = []
+    last = ""
+    for i in range(width):
+        sgr, ch = motif[i % 5]
+        if sgr != last:
+            parts.append(sgr)
+            last = sgr
+        parts.append(ch)
+    parts.append(CHROME_BODY_SGR)
+    return "".join(parts)
+
+
+def dps_chrome_sgr(state: WorldState, now: float | None = None) -> str:
+    trend = state.dps_trend(now)
+    if state.dps(now) is None and state.dps_long(now) is None:
+        return ICE_DIM_SGR
+    if trend == "ahead":
+        return ICE_CYAN_SGR
+    if trend == "behind":
+        return HP_YELLOW_SGR
+    return ICE_BLUE_SGR
+
+
+def _join_ice(parts: list[str]) -> str:
+    if not parts:
+        return ""
+    out = parts[0]
+    for i, part in enumerate(parts[1:], start=1):
+        out = f"{out} {ice_wedge(closing=bool(i % 2))} {part}"
+    return out
+
+
+def _exp_cluster(state: WorldState, *, compact: bool, width: int) -> str:
+    label = state.exp_label()
+    if not label:
+        return ""
+    if compact and not state.can_train() and state.exp_pct is not None:
+        mark = "?" if state.exp_stale else ""
+        label = f"EXP {state.exp_pct}%{mark}"
+    sgr = HP_YELLOW_SGR if state.can_train() else ICE_BLUE_SGR
+    if state.can_train():
+        ratio = 1.0
+    elif state.exp_pct is not None:
+        ratio = state.exp_pct / 100.0
+    else:
+        ratio = None
+    return f"{sgr}{label} {ice_meter(ratio, width)}{CHROME_BODY_SGR}"
+
+
+def _combat_cluster(
+    state: WorldState, *, compact: bool, klass: str = ""
+) -> str:
+    label = state.combat_label(klass, compact=compact)
+    if not label:
+        return ""
+    return f"{ICE_CYAN_SGR}{label}{CHROME_BODY_SGR}"
+
+
+def _compose_stats(
+    state: WorldState,
+    now: float | None,
+    *,
+    compact: bool,
+    exp_w: int,
+    hp_w: int,
+    ma_w: int,
+) -> tuple[str, str]:
+    dps = f"{dps_chrome_sgr(state, now)}{state.dps_label(now)}{CHROME_BODY_SGR}"
+    clusters: list[str] = []
+    exp = _exp_cluster(state, compact=compact, width=exp_w)
+    if exp:
+        clusters.append(exp)
+    if state.hp is not None:
+        tone = hp_chrome_sgr(state) or ICE_CYAN_SGR
+        clusters.append(f"{tone}HP {ice_meter(state.hp_ratio(), hp_w)}{CHROME_BODY_SGR}")
+    if state.ma is not None:
+        clusters.append(
+            f"{ICE_CYAN_SGR}MA {ice_meter(state.ma_ratio(), ma_w)}{CHROME_BODY_SGR}"
+        )
+    return dps, _join_ice(clusters)
+
+
+def paint_stats_row(
+    state: WorldState,
+    now: float | None = None,
+    width: int = 80,
+    klass: str = "",
+) -> str:
+    """DPS left; ice wash; EXP percent + gauges for EXP/HP/MA.
+
+    Attack / Defense sit on the status line (under who / level / class).
+    """
+    del klass  # kept for call-site compatibility
+    layouts = (
+        (False, 8, 8, 6),
+        (True, 8, 8, 6),
+        (True, 6, 6, 4),
+        (True, 4, 4, 3),
+    )
+    painted = ""
+    for compact, exp_w, hp_w, ma_w in layouts:
+        left, right = _compose_stats(
+            state,
+            now,
+            compact=compact,
+            exp_w=exp_w,
+            hp_w=hp_w,
+            ma_w=ma_w,
+        )
+        gap = width - visible_len(left) - visible_len(right)
+        if gap < 0:
+            continue
+        if gap >= 3:
+            mid = f" {ice_wash(gap - 2)} "
+        elif gap:
+            mid = " " * gap
+        else:
+            mid = ""
+        painted = f"{left}{mid}{right}"
+        break
+    if not painted:
+        left, right = _compose_stats(
+            state, now, compact=True, exp_w=4, hp_w=4, ma_w=3
+        )
+        painted = f"{left} {right}"
+    return pad_visible(painted, width)
+
+
+def format_stats_row(
+    state: WorldState,
+    now: float | None = None,
+    width: int = 80,
+    klass: str = "",
+) -> str:
+    """Plain-text stats row for tests; chrome uses paint_stats_row."""
+    return _SGR_RE.sub("", paint_stats_row(state, now, width, klass=klass))
 
 
 def color_footer_train(plain: str, state: WorldState) -> str:
@@ -1535,9 +1985,7 @@ def color_stats_line(plain: str, state: WorldState) -> str:
     painted = _paint_segment(painted, _MA_SEGMENT_RE.search(painted), ICE_CYAN_SGR)
     if not state.can_train():
         painted = _paint_segment(painted, _EXP_SEGMENT_RE.search(painted), ICE_BLUE_SGR)
-    dps = _DPS_SEGMENT_RE.search(painted)
-    dps_sgr = ICE_CYAN_SGR if state.dps() is not None else ICE_DIM_SGR
-    return _paint_segment(painted, dps, dps_sgr)
+    return _paint_segment(painted, _DPS_SEGMENT_RE.search(painted), dps_chrome_sgr(state))
 
 
 def room_chrome(room: str) -> str:
@@ -1545,17 +1993,38 @@ def room_chrome(room: str) -> str:
     return text[:28] if text else "the realm"
 
 
-def color_status_line(state: WorldState, brain: Brain) -> str:
+def color_status_line(
+    state: WorldState, brain: Brain, *, klass: str = ""
+) -> str:
+    """Room / mode / next on the left; AT/DF under who on the far right."""
     room = room_chrome(state.room)
     tag = brain.f8_label()
     shown = brain.next_action
     if tag and tag not in shown:
         shown = f"{shown}  {tag}"
-    return (
-        f"{ICE_CYAN_SGR}{room}{CHROME_BODY_SGR}   "
-        f"{ICE_CYAN_SGR}{brain.mode}{CHROME_BODY_SGR}   "
+    left = (
+        f"{ICE_CYAN_SGR}{room}{ICE_DIM_SGR} ░ "
+        f"{ICE_CYAN_SGR}{brain.mode}{ICE_DIM_SGR} ▒ "
         f"{ICE_DIM_SGR}next: {shown}"
     )
+    combat = _combat_cluster(
+        state, compact=False, klass=klass or brain.klass or state.klass or ""
+    )
+    if not combat:
+        combat = _combat_cluster(
+            state, compact=True, klass=klass or brain.klass or state.klass or ""
+        )
+    if not combat:
+        return left
+    gap = 80 - visible_len(left) - visible_len(combat)
+    if gap < 1:
+        combat = _combat_cluster(
+            state, compact=True, klass=klass or brain.klass or state.klass or ""
+        )
+        gap = 80 - visible_len(left) - visible_len(combat)
+    if gap < 1:
+        return left
+    return f"{left}{' ' * gap}{combat}"
 
 
 def ice_title_line(who: str, extra: str = "") -> str:
@@ -1601,13 +2070,19 @@ def chrome(
         right = ""
     if tag:
         right = f"{right}  {tag}" if right else tag
-    who = "new character" if screen.looks_like_creation() else footer_who(brain)
+    who = (
+        "new character"
+        if screen.looks_like_creation()
+        else footer_who(brain, state.level)
+    )
     if who:
         right = f"{who}  {right}" if right else who
     head = pad_visible(ice_title_line(right), 80)
-    if state.in_realm and state.hp is not None:
+    # TRAIN STATS / creation: no HP/MA/EXP strip. F10 still refreshes this
+    # chrome over a frozen mud grid, so the bar stays off the sheet.
+    if state.in_realm and state.hp is not None and not frozen:
         status = pad_visible(color_status_line(state, brain), 80)
-        stats = pad_visible(color_stats_line(state.stats_label(), state), 80)
+        stats = pad_visible(paint_stats_row(state), 80)
     else:
         status = pad_visible(hint[:80], 80)
         stats = pad_visible(f"{ICE_DIM_SGR}{'░' * 80}", 80)
@@ -1665,12 +2140,16 @@ def help_overlay() -> bytes:
     rows = (
         "letters     type on the > bar, always visible",
         "Enter       send the line (sheet: next field)",
-        "Up Down     move fields (Tab is Down)",
+        "Up Down     last commands on the bar (sheet: fields)",
         "Space       cycle hair, eyes, SAVE / EXIT",
         *(fkey_label(n, style="help") for n in range(1, 13)),
         "F2-F6       peek - hunter stays on",
         "hunt stop   same as F7, not sent to the game",
+        "hunt list   gy, sewer, arena — pick a run, then F7 starts it",
+        "goto ts     walk to Town Square and stop — also gy, store, sewer",
+        "run ts      same walk, skip fights — run pile is the deathpile",
         "train       same as F11 — train hold, brain paused, you type stats",
+        "boost       DEMO wall: SYS TWEAK to level 10 (class weapons; needs WCCSYSOP)",
         "Ctrl-C      hang up now",
         "Names go on the bar under the form, then Enter",
         "At [HP=] type reroll to throw the character.",
@@ -1819,8 +2298,10 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
         aa=player.get("aa"),
         learned_path=str(ROOT / "data" / "learned-spells.json"),
         gear_path=str(ROOT / "data" / "got-gear.json"),
+        hunt=str(player.get("hunt") or ""),
     )
     typed = ""
+    history = LineHistory()
     logoff_at = 0.0
     walk = LogoffWalk()
     stdin = sys.stdin.fileno()
@@ -1830,8 +2311,10 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
     hold_on = False
     hold_copied = False
     paint_hold_once = False
+    hold_grid = b""
     sheet_lock = False
     sheet_prompt: int | None = None
+    form_filter = FormHoldFilter()
     last_stamp: tuple[object, ...] = ()
     if auto:
         hint = "signing in..."
@@ -1854,6 +2337,7 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                 pacer.clear()
             if kind == "flood":
                 pry.note_flood()
+                pacer.pause(time.monotonic(), FLOOD_PAUSE)
             elif kind == "shop_vague":
                 pry.note_shop_vague()
             if kind == "invited" and not ev.get("by_me"):
@@ -1926,6 +2410,7 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
             pry.note_send(
                 text, state.prompt_seq, gearing=brain.mode == "gear"
             )
+            brain.note_send(text, state.room)
         _pace_line(text, wipe=wipe)
 
     pacer.push_text = push_game  # type: ignore[method-assign]
@@ -1981,7 +2466,7 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                     payload = telnet.feed(chunk)
                     was_sheet = screen.looks_like_creation()
                     hold = sheet_lock or was_sheet
-                    screen.feed(form_hold_payload(payload) if hold else payload)
+                    paint_mud(screen, payload, hold=hold, filt=form_filter)
                     try:
                         apply_payload(payload)
                     except Exception:
@@ -1998,6 +2483,7 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                         freeze_sheet()
                     elif was_sheet:
                         thaw_sheet()
+                        form_filter.reset()
                         screen.leave_form()
                     elif (
                         sheet_lock
@@ -2005,10 +2491,8 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                         and state.prompt_seq > sheet_prompt
                     ):
                         thaw_sheet()
+                        form_filter.reset()
                         screen.leave_form()
-                    if pilot is not None and not walk.active:
-                        pilot.tick(screen.text(), pacer)
-                        hint = pilot.hint()
 
                 if stdin in readable:
                     while True:
@@ -2087,9 +2571,11 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                             if hold_on:
                                 write_hold_snapshot(screen)
                                 hold_copied = copy_hold_clipboard(screen.text())
+                                hold_grid = screen.render()
                                 paint_hold_once = True
                             else:
                                 hold_copied = False
+                                hold_grid = b""
                                 last_stamp = ()
                             continue
                         if key == b"\x7f":
@@ -2104,14 +2590,28 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                             pacer.clear()
                             hint = "your keyboard"
                         if in_play and on_bar():
+                            if key == KEY_UP:
+                                typed = history.up(typed)
+                                continue
+                            if key == KEY_DN:
+                                typed = history.down(typed)
+                                continue
                             if key == b"\r":
                                 cmd = typed.strip()
+                                history.remember(cmd)
                                 typed = ""
                                 kind, mud = handle_client_line(cmd, brain, state)
-                                if kind in ("hunt", "stop", "aa"):
+                                if kind in ("hunt", "stop", "aa", "goto", "boost"):
                                     hint = f"{brain.mode}  ·  {brain.next_action}"
+                                    if kind == "boost":
+                                        hint = (
+                                            brain.next_action
+                                            if not mud
+                                            else "boost  ·  SYS TWEAK exp/level"
+                                        )
                                     if mud:
-                                        pacer.push_text(mud)
+                                        for line in mud.splitlines():
+                                            pacer.push_text(line)
                                     continue
                                 if kind in {"spell", "gear"}:
                                     offered = brain.offer_tip(state.level)
@@ -2148,6 +2648,14 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
 
                 if not on_bar():
                     typed = ""
+                    history.reset_cursor()
+
+                if pilot is not None and not walk.active:
+                    # Every loop — not only on socket data. After password the
+                    # BBS menu sits still; cooldown used to skip M forever.
+                    pilot.tick(screen.text(), pacer)
+                    if pilot.phase != "play":
+                        hint = pilot.hint()
 
                 in_play = pilot is None or pilot.phase == "play"
                 frozen = form_frozen(screen, sheet_lock)
@@ -2201,6 +2709,14 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                             )
                         ):
                             pass
+                        elif (
+                            not pacer.pending()
+                            and not brain.bail
+                            and maybe_ask_stat(
+                                state, brain_send, pending=False, frozen=paused
+                            )
+                        ):
+                            pass
                     if (
                         not pacer.pending()
                         and not brain.bail
@@ -2245,8 +2761,9 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                     state.exp,
                     state.exp_pct,
                     state.exp_stale,
-                    state.dps(),
-                    int(time.monotonic()) if state.in_combat or state.dps() else 0,
+                    state.dps_label(),
+                    state.dps_long(),
+                    int(time.monotonic()) if state.in_combat or state.dps() or state.dps_long() else 0,
                     state.room,
                     brain._want_train,
                     brain.train_holding(),
@@ -2259,33 +2776,35 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
                     sheet_lock,
                     settling,
                 )
-                # HOLD: live AnsiScreen still feeds; stdout stays put.
-                # Hunt keeps ticking. Unhold paints latest.
+                # HOLD: mud grid stays; chrome still paints (HP off on TRAIN STATS).
+                # Hunt keeps ticking. Unhold shows the live grid.
                 pump_clipboard()
-                if hold_on and not paint_hold_once:
-                    continue
-                if paint_hold_once or stamp != last_stamp:
-                    last_stamp = stamp
+                if hold_on and (paint_hold_once or not hold_grid):
+                    hold_grid = screen.render()
                     paint_hold_once = False
-                    _, term_rows = shutil.get_terminal_size(fallback=(80, rows))
-                    bar = chrome(
-                        term_rows,
-                        screen,
-                        hint,
-                        host,
-                        state,
-                        brain,
-                        typed,
-                        wm_title=wm_title,
-                        held=hold_on,
-                        hold_copied=hold_copied,
-                        sheet_lock=sheet_lock,
-                    )
-                    frame = screen.render() + bar
-                    if help_on:
-                        frame += help_overlay()
-                    sys.stdout.buffer.write(frame)
-                    sys.stdout.buffer.flush()
+                if stamp == last_stamp:
+                    continue
+                last_stamp = stamp
+                _, term_rows = shutil.get_terminal_size(fallback=(80, rows))
+                bar = chrome(
+                    term_rows,
+                    screen,
+                    hint,
+                    host,
+                    state,
+                    brain,
+                    typed,
+                    wm_title=wm_title,
+                    held=hold_on,
+                    hold_copied=hold_copied,
+                    sheet_lock=sheet_lock,
+                )
+                grid = hold_grid if hold_on else screen.render()
+                frame = grid + bar
+                if help_on:
+                    frame += help_overlay()
+                sys.stdout.buffer.write(frame)
+                sys.stdout.buffer.flush()
         finally:
             sock.close()
     finally:
@@ -2331,10 +2850,11 @@ def main() -> int:
         return 1
     try:
         return run(args.host, args.port, player, auto)
-    except ConnectionRefusedError:
+    except (ConnectionRefusedError, TimeoutError, socket.timeout):
         print(
             f"Finn's Realm is not running on {args.host}:{args.port}. "
-            "Use Reboot Finn's Realm, or reopen the play shortcut.",
+            "The board process died or never bound telnet — not a client bug. "
+            "Use Reboot Finn's Realm (not reset-game).",
             file=sys.stderr,
         )
         _hold_error()
