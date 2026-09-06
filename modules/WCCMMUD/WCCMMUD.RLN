@@ -1,0 +1,2654 @@
+
+                         MajorMUD
+
+         Copyright (c) 1993-2001 Metropolis, Inc.
+                   All Rights Reserved
+
+
+                     LIMITED warranty
+
+This documentation and any related software are sold "as-is",
+without any warranty either expressed or implied, including,
+but not limited to, the implied warranties of merchantability,
+fitness for a particular purpose, and loss of profits or other
+economic damages.  Metropolis, Inc. does not warrant
+that the operation of this software will be uninterrupted or
+error-free.  In no event and under no circumstances will 
+Metropolis, Inc. be liable for any damages in excess of the
+sum paid by customer for the product to which any claim for
+damages relates.
+
+
+                         License
+
+By installing, taking delivery of, or downloading this software,
+which refers to any or all executable, library, documentation,
+and support files included with this product, and any 
+reproductions, whether in machine readable or printed form, 
+you agree to the following terms:
+
+You may:
+1. Install and operate this software on a single machine.
+2. Make one copy this software into machine-readable or
+   printed form, for backup or archival purposes in support of
+   your use of this software.
+
+This software is licensed to a single corporation or person,
+for operation on a single machine only.  Once licensed, the
+license to use this software is NOT TRANSFERABLE to any other
+person or corporation without the express, written permission
+of Metropolis, Inc. Note also that the physical location of the
+BBS upon which MajorMUD is installed may not be moved without
+the express, written permission of Metropolis, Inc.
+
+
+NOTE: The term "operation on a single machine" includes the following
+within its definition when MajorMUD is being run on a DMA server (either
+the DMA server which is currently sold by Vircom, or any future program
+which provides similar functionality):  Only a SINGLE host-BBS (of the
+same MBBS Registration number as the DMA server) may be allowed to have
+access to the MajorMUD running on the DMA server. Any subsequent systems
+which you wish to allow to connect to your DMA server must be both
+authorized by Metropolis, Inc. and must purchase a non-transferrable
+copy of MajorMUD from Metropolis, Inc.
+
+If this software was received as a demo version, you may only
+install and operate it for a period of 14 days.  After this time
+you must either remove it from your system or purchase an
+activation code from Metropolis, Inc.  All of the restrictions
+mentioned in this document, including area restrictions apply to
+demonstration versions as well.  
+
+YOU MAY NOT USE, COPY, MODIFY, MERGE, DISASSEMBLE, OR TRANSFER
+THIS SOFTWARE, IN WHOLE OR IN PART, EXCEPT AS EXPRESSLY
+PROVIDED FOR IN THIS LICENSE.
+
+Violation of any parameter of this license will result in
+the immediate forfeiture of said license.
+
+
+==========================================================================
+
+
+               ***** Technical Support *****
+
+Metropolis, Inc. is based in Overland Park, KS USA.  You can 
+contact us via
+
+        Fax:    913-663-3200
+
+        Web:    www.majormud.com    (sysops)
+                www.mudcentral.com  (users)
+                www.gameport.com    (purchases)
+
+        Mail:   Metropolis, Inc.
+                8650 College Blvd
+                Overland Park, KS  66210
+                USA
+
+        E-mail:         sales@majormud.com
+                        support@majormud.com
+                        bugs@majormud.com
+
+We would love to hear any suggestions, criticisms, questions, or 
+other comments which you might have.
+
+There are also two web forums which we provide for game support.
+One is for user discussions and feedback and the other is for sysop
+level support.  Whenever a new patch/release is posted which must be
+downloaded, a message will be posted in the sysop support forum.
+Please monitor the sysop forum for any notices regarding updates
+and/or addons.  Do not leave us email asking 'when is the next update
+coming out' - please just keep an eye on this forum.
+
+These forums are:
+
+http://www.metropolis.com/cgi-bin/dcforum/dcboard.cgi
+--  User Discussion Forum
+
+http://groups.yahoo.com/group/mmudsysop   
+--  Sysop Support Forum
+
+==========================================================================
+
+DOCUMENTATION:
+This documentation contains sections on:
+
+1) INTRODUCTION 
+2) INSTALLATION 
+3) CONFIGURATION
+ 3.1) OPTIONAL CONFIGURATION OPTIONS
+4) ONLINE SYSOP FUNCTIONS
+5) MAJORMUD OFFLINE UTILITIES
+6) MISC. OTHER STUFF
+ 6.1) SCRIPTING
+ 6.2) COMPATABILITY WITH EARLIER VERSIONS OF MBBS (6.21 in particular)
+ 6.3) PHOENIX NAME CHANGE SUPPORT (by MicroMagic)
+ 6.4) RESETTING YOUR ACTIVE MONSTER DATABASE
+ 6.5) GENERIC FIX-ALL FOR MOST PROBLEMS WHICH OCCUR IN MAJORMUD
+ 6.6) MAJORMUD AND DMA SERVERS
+ 6.7) MAJORMUD ADDON ACTIVATION CODES
+ 6.8) PVP DAYS
+7) RUNNING THE GAME
+ 7.1) THE EVIL/LEGAL SYSTEM
+
+Appendix A - Resetting your game 
+Appendix B - Note on recovery  (Automatic and Manual)
+Appendix C - Adjusting Buffer settings
+Appendix D - Performance Suggestions
+Appendix E - Potential Module Conflicts
+Appendix F - Problem reporting checklist
+Appendix G - Memory Requirements Matrix
+Appendix H - Game Messages
+Appendix I - Demo Mode Restrictions
+Appendix J - Other System Settings
+Appendix K - FAQs
+Appendix Y - Currently Available Add-Ons
+Appendix Z - Sysop Only Release Notes
+
+
+==========================================================================
+
+1) INTRODUCTION:
+
+   MajorMUD is an interactive, text-based adventure game which
+evolves around puzzle solving and character building.  The game
+begins in the city of NewHaven, set on the far West side
+of the MajorMUD world. From NewHaven, users progress to the town
+of Silvermere, a city under siege from within it's walls.
+
+   Users start by choosing one of several races, and
+one of many classes.  Their character then becomes an adventurer
+in the Realm, each with special skills and abilities.  Beginning
+in the city of NewHaven, with little money, no weapon,
+and no equipment, the user is free to try to advance his character
+and make his fortune.
+  
+   Users advancement happens many ways.  A user can fight his way
+through hordes of monsters, or traverse the realm looking for puzzles
+to solve and wealth to find.
+
+Please take the time to read through all of this file as well as the
+separate file for online operations (wccmmsys.not).  A majority of
+the common questions asked can be answered within these files.
+
+This file covers at least the following topics.  If you're having
+trouble finding something, try looking for it in this list.
+
+* How to get in touch with us. (pre-introduction)
+* How to install the software (chapter 1)
+* What is in the zip files that you're installing (chapter 2)
+* How to configure - what do all the CNF options do (chapter 3)
+* What is this wccmmud.ini file and what can I do with it (chapter 3.1)
+* What online sysop functions and gameop functions are there (chapter 4
+- wccmmsys.not)
+* What offline utilities are there and what do the options do? (chapter
+5)
+* Answers to miscelaneous topics: scripting policy, pre-6.25
+compatability, phoenix name-change support, resetting active monster
+database, generic fix-all for any other problem, dma servers, addon
+activation codes, and pvp days (chapter 6)
+* Some comments on how to run your instance of MajorMUD (chapter 7)
+* How to reset your game [both fully and partially] (Appendix A)
+* How to run the recovery/when does recovery run (Appendix B)
+* How to adjust buffer settings (Appendix C)
+* How to tune your system for better performance (Appendix D)
+* How to avoid potential module conflicts (Appendix E)
+* How to report a problem (Appendix F)
+* How much memory do I need (Appendix G)
+* How to interpret audit-trail and email messages from MajorMUD
+(Appendix H)
+* What restrictions does demo-mode have? (Appendix I)
+* What other system settings not related to MajorMUD should I concern
+myself with (Appendix J)
+* What addons are currently available (Appendix Y - Although I notice
+that I forgot to include addon#3 in the latest version)
+* What changes have been made in each release (Appendix Z)
+
+
+==========================================================================
+
+2) INSTALLATION:
+
+   1) Insert the MajorMUD disk into your BBS computer.  Note that because
+      we are attempting to constantly release updates we will not be 
+      shipping any disks.  All updates and releases will be available
+      for downloading on our support BBS (WCC).  The standard installation
+      will require you to download the provided .ZIP file, extract it into
+      an empty directory and continue the installation at step 2, using
+      the name of the directory you unzipped into instead of A:
+
+   2) Type "A:INSTALL" at your DOS prompt to begin
+      installation.
+
+   3) The installation program will begin running:
+      A) The install program will try to determine where it
+         should install MajorMUD.
+
+      B) It will then bring up a dialog box and ask you to
+         verify where MajorMUD is to be installed.  Make
+         sure that the directory specified is the directory of
+         your actual MajorBBS executable program.
+
+      C) The install program will then verify that you have
+         enough disk space for installation and copy the files
+         required.
+
+   4) When the installation program is done running, return to
+      your main BBS directory, if you are not there already.
+
+   5) Type "BBS" (or "WG" for WorldGroup) at the DOS prompt
+      and add MajorMUD to your menu structure.
+
+   6) Use the configuration utilities to customize MajorMUD
+      for your own system.  For a list of these options, see
+      the section title CONFIGURATION.
+
+   7) Run your BBS.  MajorMUD should be all ready to go.
+
+   8) If you were instructed to apply a database update (or more than one)
+      at the same time as you received your copy of MajorMUD, then you 
+      MUST APPLY the database update.  Note that this means that you can't 
+      just unzip it - there is an additional step.  Read chapter 4 in this
+      manual for instructions on applying a database update.  
+      THIS IS A VERY IMPORTANT STEP.
+    
+
+ NOTE:  The first few times your bbs starts with MajorMUD, you may 
+        experience extra-ordinarily long loading times.  These occur
+        while MajorMUD is ensuring that all of the monsters in the
+        game are generated appropriately.  After a few days, the 
+        delays during loading should reduce (although it will still
+        take longer to load than pre-MajorMUD of course)
+
+2.1) Contents of the installation files
+
+MajorMUD will be shipped in a single .ZIP file with a name
+similar to WCCR7P5.ZIP or WCCWG7P5.ZIP.
+The naming convention will be:
+
+WCC<MajorBBS Version><Release Number>P<Sub Release Number>.ZIP
+
+where <MajorBBS Version> is:
+6 - for MajorBBS 6.25
+W - for WorldGroup 1.0, 1.01, and 2.0
+D - for WorldGroup 3.0 for DOS (*Not yet available*)
+N - for WorldGroup 3.0 for Windows NT (*Not yet available*)
+
+and <Release Number> will be an incrementing number over time
+and <Sub Release Number> will be an incrementing number while
+ <Release Number> stays constant.
+
+The general rule of thumb is that if you see a file with a larger
+release number or sub-release number than the last one you
+installed then you should download it and install it.  In all
+cases you should read the file library information on the file
+prior to downloading it and installing it.
+
+This .ZIP file will contain the following files:
+
+INSTALL.EXE   - The installation executable
+DISK1.DID     - A file describing the size of the product
+FILE_ID.DIZ   - A file describing the product
+README.TXT    - Some pre-installation notes
+WCCMMUD.ZIP   - The MajorMUD files
+
+
+The WCCMMUD.ZIP file will contain the following files:
+
+WCCMMUD.DLL  The Main MajorMUD DLL
+wccmmutl.exe The MajorMUD Offline Utilities program
+WCCREG.TXT   MajorMUD registratrion document (please fill in and submit)
+WCCMMUD.MDF  Module Definition File
+WCCMMUD.UIC  UIC file for Phoenix Compatibility
+WCCDMA.SYS   DMA access codes
+WCCMMUD.DOC  User Documentation
+WCCMMUD.RLN  Sysop Documentation (general)
+WCCMMUD.NOT  User Release notes
+WCCMMSYS.NOT Sysop Documentation for online commands
+WCCMMUD.MSG  Main Configuration file
+WCCTEXT.MSG  Text Blocks configuration file
+WCCMMHLP.MSG Help File
+WCCBANKS.VIR Empty bank account database
+WCCUSERS.VIR Empty users database
+WCCGANGS.VIR Empty gangs database
+WCCITOWN.VIR Item Owner database for limited items
+wccacmsr.vir Active Monster database
+WCCCLASS.vir Empty class database
+WCCITEMS.vir Empty items database
+WCCKNMSR.vir Empty known monster database
+WCCMSG.vir   Empty message database
+WCCRACE.vir  Empty race database
+WCCSHOPS.vir Empty shops database
+WCCSPELS.vir Empty spells database
+WCCTEXT.vir  Empty text database
+WCCMP001.vir Empty map database
+WCCACTS.vir  Empty actions database
+wccupdat.dat Database Update File
+WCCMAP01.ANS ANSI map of first town
+wccbox.bin   Screen for offline utility
+wccmmutl.bin Screen for offline utility
+wccdrgth.ad  Advertisement for Dragon's Teeth (Addon Module #1)
+wccmmpls.ad  Advertisement for MajorMUD Plus - Entertainment Edition
+wcccrsrn.ad  Advertisement for The Cursed Ruins (Addon Module #2)
+wccstrng.ad  Advertisement for Strangers in the Night (Addon Module #3)
+wccterbe.ad  Advertisement for Terror from Below (Addon Module #4)
+wccrisdn.ad  Advertisement for The Rising Dawn (Addon Module #5)
+wccsands.ad  Advertisement for The Sands of Time (Addon Module #6)
+
+< Other files may be included in the .zip file which relate
+  to optional add-on modules which can be purchased in addition
+  to MajorMUD >
+
+The following files may be created during the running of MajorMUD:
+
+wccaddon.sys Database Addon Activation codes
+             <If you selectively backup files, it is a good idea to
+              back this file up once you have purchased a database addon>
+wccrecov.flg Recovery flag file.  This should exist while the BBS is
+             running and is deleted by MajorMUD during a normal shutdown.
+
+2.2) Module dependencies
+
+MajorMUD depends upon a number of baseline modules.  If you disable
+any of these modules, do *not* ignore the 'red box' error you get
+which warns you that the module is required to run your system:
+
+For MajorBBS 6.25:
+GALEML
+BBSFSD 
+
+For WorldGroup 1.0, 1.01, and 2.0:
+GALEML
+BBSFSD
+BBSFSE
+BBSFTF
+
+==========================================================================
+
+3) CONFIGURATION:
+
+The following CNF options are available for your customization.  Note
+that each of these options has help available using the CNF editor.
+For any options with a *C* under the name, they will be updated if
+you use the HWSMCV online CNF editor (This is currently untested).
+
+-- Level 3 -- Security and Accounting -- 
+
+ACTIVATEDDD - The activation code you received from WCC when you
+           purchased MajorMUD.  Please note that this must be EXACT.
+
+GAMCRD   - All non-exempt users will be charged this amount of 
+ *C*       credits/minute. The minimum value for this follows general 
+           bbs minimum rules (ie. if it is less than 4, I believe that 
+           0 credits will be charged)
+
+         Default: 60
+
+REALCRD  - All exempt and non-exempt users will be charged this amount
+ *C*       of credits/minute.  Note the connection to FREEMIN. If not 0, 
+           this must be at least 2 - a value of 1 will charge 0 credits.
+         Default: 0
+
+FREEMIN  - The number of minutes between cleanups which users may
+ *C*       spend in the game prior to being charged REALCRD.
+         Default: 0
+
+SYSOPKEY - The key required to use the SYSOP and related commands.
+         Default: WCCSYSOP
+
+GAMOPKEY - The key required to do a subset of the sysop commands.
+         Those commands which game-ops may execute will be identified
+         in the relevant sections in this document.
+         Default: WCCGAMEOP
+
+LOANKEY  - The key required for a user to borrow money from banks.
+           Note that this feature has been semi-permanently disabled.
+         Default: MASTER
+
+PLAYKEY  - The key required to "Enter the Realm".  Without this key, users
+           may enter the module and read the help files, etc. but may not
+           actually play the game.
+         Default: PAYING
+
+NOPLAYKY - If the user has this key, then they may not play the game
+           with one exeption: If they also have the SYSOPKEY, then
+           they may still play.
+         Default: IDIOT
+
+SAVEKEY  - Only players with this key will have their MMUD characters 
+           saved.  This should be the same as the PLAYKEY on most 
+           systems, but can be used to provide demo access to play
+           the game if desired. (i.e. Give paying users both the
+           PLAYKEY and the SAVEKEY, but give guests only the PLAYKEY.
+           NOTE that once a user creates a character with a class 
+           which has this key, they will no longer be able to ENTER
+           MajorMUD once they do not have this key.
+         Default: PAYING
+
+NODMOKEY - To progress beyond the level as you have specified in 
+           FULLLVL, the user must have this key.  If they do not 
+           have this key, they may continue playing, but they
+           will not be able to train.
+         Default: PAYING
+
+NOKICKEY - If you have paying classes for which you don't mind if they
+           run out of credits while playing MajorMUD, you can give
+           them this key.  If a user with this key runs out of credits
+           while playing MajorMUD, they will not be kicked out of the
+           game.  If they do not have this key and run out of credits
+           they will be automatically kicked out of the game.
+         Default: NOKICKME
+
+GOSSKEY -  If a user has this key then they will not be able to use
+           the gossip channel.  (SYSOPKEY and GAMEOPKEY holders are
+           exempted from this)
+         Default: GIDIOT
+
+
+AUCTKEY -  If a user has this key then they will not be able to use
+           the auction channel.  (SYSOPKEY and GAMEOPKEY holders are
+           exempted from this)
+         Default: AIDIOT
+
+NOPAYKEY - If a user has the NOPAYKEY they will not be charged credits
+           while in MajorMUD.
+         Default: NOPAYKEY
+
+
+-- LEVEL 4 -- Configuration Options --
+
+SECOTH   - This is the number of seconds between the automatic saving of
+ *C*       player data.  This will be rounded off to the nearest minute.
+         Default: 160
+
+SECBUFF  - The game uses a number of buffers in memory to improve 
+ *C*       performance.  These buffers are automatically saved at regular
+           intervals as defined by this parameter.
+         Default: 1200
+
+BUFTOSAV - This controls the number of buffers which are actually saved
+ *C*       on each cycle.  If you do not have hardware disk caching, then
+           this should not be set higher than 1.  If you do have disk 
+           caching, then you may set this number up to a max of 10.  I 
+           strongly recommend leaving this at 1.
+         Default: 1
+
+ROOMBUF  - Each of these parameters defines the number of buffers/type
+ITEMBUF    to keep in memory.  If you set these too high, then your BBS
+MONSBUF    will not start due to insufficient memory.  The default settings
+KMONSBUF   should work on most BBS configurations.
+SPELBUF  - If you still have a fair bit of free memory after loading your
+RACEBUF    BBS, then feel free to increase these values.
+CLASSBUF - Note that increasing MONSBUF too high may cause performance 
+BANKBUF    problems on slower machines (i.e. 386)
+MESSBUF  - Refer to Appendix C - Adjusting buffer settings - for more
+SHOPBUF    information on how to fine-tune these values
+GANGBUF
+
+ROOMBUF  Default: 300
+ITEMBUF  Default: 450
+MONSBUF  Default: 300
+KMONSBUF Default: 200
+SPELBUF  Default: 200
+RACEBUF  Default: 12
+CLASSBUF Default: 16
+BANKBUF  Default: 20
+MESSBUF  Default: 350
+SHOPBUF  Default: 20
+GANGBUF  Default: 10
+
+TALKCHAR - This gives you the ability to change the default character for
+ *C*       talking to just about any valid character if a '.' conflicts
+           with any other global package.
+         Default: .
+
+YELLCHAR - This gives you the ability to change the default character for
+ *C*       yelling to just about any valid character if a '"' conflicts
+           with any other global package.
+         Default: "
+
+USRCURNM - The most valuable currency in the land may be renamed.
+ *C*
+         Default: runic coins
+
+DEATHHP  - When a user hits 0 HP, he is considered 'unconscious' and is 
+ *C*       stukk in the game.  This parameter determines the bottom limit 
+           to be reached before actually dying.
+         Default: -15
+
+XTRALVL  - To stop users from earning all their experience without training,
+ *C*       you may limit the number of extra levels of experience which
+           they may earn without training.
+         Default: 1
+
+PUNHUP   - This option defines the level of punishment to apply to 
+ *C*       characters who drop carrier.  A high level of punishment will
+           reduce their HP by approx. 50% and will drop approx. 50% of
+           their items.  Medium punishment will only do this if the
+           user is in combat when they hangup.  Low will only do this
+           if the user is in PvP combat when they hangup.  None will
+           not do anything to the user.
+         Default: MEDIUM
+
+INVGLO1  - If there are any global commands which actually change the state
+INVGLO2    of the user so that they are not in the original module anymore,
+INVGLO3    then you can use these options to disable those global commands
+INVGLO4    while the user is playing MajorMUD.  (Otherwise they can use
+INVGLO5    the globals to cheat and break out of a tough combat situation)
+INVGLO6
+INVGLO7
+INVGLO8
+INVGLO9
+INVGLO10
+ *C* (all invalid globals)
+         Default: Empty
+
+MAXTOP   - The default topten lists will only display 10 users or gangs
+ *C*       If you wish to increase this number, this is the option to change
+         Default: 10
+
+EVILKEEP - By default, when a user dies, their current level of evil
+ *C*       points is maintained with their USERID and not their MajorMUD
+           character ID.  You can use this option to alter the percentage
+           of evil points which are maintained from one character to the
+           next.
+         Default: 100
+
+MAILUSER - MajorMUD will send email such as internal logic errors,
+ *C*       feedback from users, and unavailable help requests via
+           Mailink (If present on the system) to Lance@WCC.  If you
+           wish to receive a copy of this mail, specify the user
+           account to receive the mail here.
+         Default: SYSOP
+
+PROFCHEK - This limits the amount of profanity allowed in the
+ *C*       Game when talking to each other.  It does not affect
+           gang broadcasts or telepaths.  
+         Default: NO
+
+INITRATE - This specifies the rate at which you want MajorMUD to
+           perform initialization.  With a lower rate, your board
+           will run faster during the initialization period, but
+           will take longer to initialize.  If this is less than
+           200 then it will be divided by 4 during recovery mode.
+           This was put in for a board which was dialing out to
+           a voice mail system and needed to be running immediately.
+           If you don't need this, and don't mind the long startup time,
+           then you can set the option to 20000, if you need fast 
+           startup, 80 isn't a bad value but trial and error will tell.
+
+           Setting your INITRATE to 199 or less is the recommended range.
+           If it is set in that range there is additional logic which
+           smoothes out the initialization to improve the board response.
+           As soon as you set it to 200 or more this additional smoothing
+           is removed because it assumes that you want it to initialize
+           as fast as possible regardless of extended board lags during
+           initialization.
+
+           In other words, setting it to 200 will complete the initialization
+           a lot faster than 199 *but* may also result in longer system lags
+           during the initialization period.  During this time, the size of
+           your buffers makes a lot of difference.  If you've got larger
+           buffer sizes then you can probably set it to 200 or more and not
+           notice the potential larger lags.  If you have smaller buffers
+           then you will most likely notice the lags if you set it to
+           200 or more.
+
+           If you set this option to 20000 then it will do all of the 
+           MajorMUD initialization before the system comes up.
+
+         Default: 140
+
+POLLRATE - The polling rate is used as a counter between saving
+           game buffers during the polling routine.  The value
+           for this number is dependant upon both your number of
+           users who are normally in MajorMUD, your normal system 
+           loading, and your CPU speed.  If you have a fast cpu, a
+           low normal load rate, and a lot of users in MMUD, then 
+           raise this number.  If you seem to get a high system 
+           loading with a lot of disk access whenever the buffers 
+           start saving, then RAISE this parameter.  In general, 
+           if you have any system pauses while saving, always raise
+           this parameter.
+         Default: 275
+
+FULLLVL  - If you want to allow users to play the game to a certain
+ *C*       level and then force them to switch to another class, etc.
+           to progress, you can specify the maximum level using this
+           option.  The key required to pass this level is set in
+           the option NODMOKEY.
+         Default: 100
+
+EXPINTEN - If you feel that displaying the experience of the players
+ *C*       in the topten command is too technical or gives too much 
+           away, you can disable it with this option.
+         Default: YES
+
+LVLDIFF  - If you want to restrict your higher level players
+ *C*       from attacking lower level players, you can configure
+           the maximum difference between the levels using this
+           option.  If a player with more than this many levels
+           between themselves and their target attempts an attack
+           it will be treated as though they were in a protected
+           room.  Set this option to -1 to disable PVP completely.
+           Note that FIENDS will not get this restriction
+           when they are on the losing side (ie lower level).           
+           * To enable all-out PvP where anyone can attack anyone,
+           set LVLDIFF to 100.
+           * To completely disable PvP, set LVLDIFF to -1.
+           * To enable various levels of PvP such as having to be
+             the same level, close to the same level, etc. set LVLDIFF
+             to 0 or more depending on the number of levels difference
+             you want to allow between users when they attack each other.
+         Default: 9
+
+MINHUPHP - If you have hangup penalties enabled, this is the
+ *C*       minimum percentage of their maximum HP which they will
+           lose.
+         Default: 10
+
+MAXHUPHP - If you have hangup penalties enabled, this is the
+ *C*       maximum percentage of their maximum HP which they will
+           lose.
+         Default: 40
+
+MAXHUPIT - If you have hangup penalties enabled, this is the
+ *C*       maximum number of items which they can lose.
+         Default: 100
+
+INACTIVE - This specifies the number of seconds of inactivity which
+ *C*       a user may have before they get hung up on.
+         Default: 32000
+
+DATADIR  - If you wish to move the location of your databases from
+           the default BBS directory, you may specify the location 
+           here with either a relative path from the bbs directory
+           (ie. "muddats\") or an absolute path (ie. "d:\muddats\").
+
+           Note that this does NOT apply to the update databases.
+           If you place those in a directory other than the bbs
+           directory, you must enter the full path to them when
+           asked for the filename.
+
+           Also, NEVER use a Ram drive for this location.  Any 
+           problems which result from using a Ram drive for this
+           directory are explicitly NOT COVERED under support.
+
+           The following databases are affected by this (and must
+           be moved MANUALLY prior to running the BBS):
+
+             WCCRACE.DAT
+             WCCCLASS.DAT
+             WCCUSERS.DAT
+             WCCMP001.DAT
+             WCCSHOPS.DAT
+             WCCITEMS.DAT
+             WCCITOWN.DAT
+             WCCSPELS.DAT
+             WCCKNMSR.DAT
+             WCCACMSR.DAT
+             WCCBANKS.DAT
+             WCCMSG.DAT
+             WCCGANGS.DAT
+             WCCTEXT.DAT
+             WCCACTS.DAT
+         Default: Blank
+
+KEEPEXP  - If the KEEPEXP option is set to YES, then users will
+ *C*       keep some of their experience to start a new character
+           with after they either die or reroll.  If set to NO
+           then they will always start at 0.
+           Note that the value of this setting AT THE TIME THE USER
+           DIES OR REROLLS is the one that matters.  If a user rerolls
+           while this is set to YES and then you subsequently change it
+           to NO, they will still start with some of the experience which
+           they had when they rerolled.
+         Default: YES
+
+LIGHTEVY - If you give out sysop powers in MajorMUD to people
+ *C*       who are only co-sysops, you may wish to restrict 
+           the SYSOP LIGHTNING command so that it only works
+           against users who would normally receive lightning.
+         Default: YES
+
+GENDERGO - If you want to let your users change their gender in
+ *C*       the game, you may charge them this much gold to 
+           do so.  If you set it to -1 then they will not be
+           allowed to change gender.  0 will let them do it 
+           for free.
+         Default: 32000
+
+DELUSER -  If you wish to be able to delete a BBS user without
+ *C*       actually deleting the MajorMUD user then set this
+           option to NO. Note that when set to NO, if a BBS user
+           is deleted and a new user creates the same account
+           name then they will inherit the old MajorMUD character.
+         Default: YES
+
+MAXEPDAY - Maximum number of evil points to forgive per day. This
+ *C*       option is used to control the rate at which your evil
+           players return to neutral.  If you set this too high
+           then you will increase the chance of corrupt users
+           taking advantage and killing everyone in sight.  Too
+           low and users may stop playing if they get too evil.
+           Refer to section 7.1 for more details.
+         Default: 12
+
+EPCYCLE -  A portion of the evil points forgiven each day depend
+ *C*       on the amount of time spent playing MajorMUD without
+           performing any evil actions.  This option controls
+           the granularity of the required online time.  Refer
+           to section 7.1 for more details.
+         Default: 60
+
+EPAMOUNT - For each full evil point cycle that the user spends
+ *C*       in MajorMUD, this option controls the number of
+           evil points that they will receive at the end of the
+           day (cleanup).  Refer to section 7.1 for more details.
+         Default: 1
+
+ENABLAWF - If you do not wish to take advantage of the features
+ *C*       of the 'lawful' character style then set this
+           option to No.
+         Default: Yes
+
+-- Level 6 -- Edit Text Blocks --
+
+USRLOGIN - Users with the PLAYKEY will receive this text message when they
+           login to your BBS.
+
+USRLOGOF - Users with the PLAYKEY will receive this text message when they
+           logoff your BBS.
+
+USRFOLED - This is the first thing each user sees when they Enter the Realm
+
+USREXIT  - This is the last thing each user sees when they Exit the Realm
+
+LEAVEMNU - This text block will be displayed when the user types X 
+           from the MajorMUD menu.  This is specifically for those
+           boards who are running MajorMUD on a sub-board and 
+           require the ability to send specific characters to
+           disconnect from the sub-board.
+
+INACHUP  - This text block will be displayed if the user is kicked offline
+           due to the inactivity timeout.  (See INACTIVE, Level 4)
+
+==========================================================================
+3.1) OPTIONAL CONFIGURATION OPTIONS
+
+For various reasons, I want to get away from using CNF options and switch
+to an alternative form of adding sysop configurable options to MajorMUD.
+The new method will be via the use of a text file called WCCMMUD.INI.  I
+do not plan on creating any interface to access this file so the only way
+you will be able to change options in this file is with a standard text
+editor.  The file is a series of lines of the form OPTION=VALUE.  As new
+options are added this section of this document will be updated.  Note
+that any option not specified in your WCCMMUD.INI file will have a default
+value assigned to it.
+
+Note that this file is *NOT* shipped with MajorMUD.  The assumption is that
+all the options are at their defaults.  If you want to use any of these
+options then you have to create this file yourself.
+
+Do not include quotes ("") in your values.  If you want to leave comments
+to yourself you can start a line with # and it will be ignored.
+
+Note that if you enable any of the logging features you will (a) slow your
+system down due to the increased disk activity and (b) be responsible for
+manually deleting the log file to avoid letting it grow too large.
+
+Options
+-------
+SYS_LOG_DEATHS
+  Valid Values:  0  (no logging)
+                 1  (logging)
+  Default Value: 0
+  Description:
+     When enabled, all player deaths, rerolls, and suicides are recorded
+     in the MajorMud log file.
+
+SYS_DISABLE_GANGS
+   Valid Values: 3-15 character key name
+   Default Value: ""
+   Description:
+      When a person is given this key, they can use the sys disable <gangname>
+      command and sys enable <gangname> command.
+
+   SYS_RESET_ROOMS
+   Valid Values: 3-15 character key name
+   Default Value: ""
+   Description:
+      When a person is given this key, they can use the sys reset command.
+
+TRACK_LIMITED   
+  Valid Values: 0 (means no tracking)                   
+                1 (means tracking)
+  Default Value: 0
+  Description:
+     When enabled, each time a limited item changes location in the game
+     it will be logged to the MajorMUD log file.
+
+LOGFILE         
+  Valid Values: Any unique filename without path        
+  Default Value: WCCMMUD.LOG
+  Description:
+     This can be used to change the name of the log file to which
+     various game messages are logged (such as the tracking of limited
+     items)
+
+EXP_IN_TOPGANG  
+  Valid Values: 0 (means do not show exp)               
+                1 (means show exp in topten)
+  Default Value: 0
+  Description:
+     When enabled, the experience associated with each gang will be
+     shown in the topten gangs listing.
+
+SYS_MAP_KEY        
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop map command.
+     
+SYS_GOTO_KEY       
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop goto command.
+     
+SYS_LIGHTNING_KEY  
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop lightning command.
+     
+SYS_STATUS_KEY     
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop status command.
+     
+SYS_ADDLIFE_KEY    
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> add life command.
+
+SYS_RETRAIN_KEY    
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> retrain command.
+     
+SYS_ALIGNMENT_KEY  
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> good/saint/neutral/lawful/unlawful commands
+
+SYS_EDITEVIL_KEY  
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> add evil <xxx> command.
+
+SYS_SPEAK_KEY  
+  Valid Values: 3-15 character key name                  
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> speak command.
+
+SYS_LISTUSER_KEY  
+  Valid Values: 3-15 character key name               
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop list users/evil/gang commands.
+
+SYS_LISTLIMIT_KEY  
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop list limited_items command.
+
+SYS_USERINFO_KEY  
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> inventory/profile/spells/powers/
+     abilities/info/status commands.
+
+SYS_JAIL_KEY  
+  Valid Values: 3-15 character key name                
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> jail command.
+
+SYS_CHANGE_KEY  
+  Valid Values: 3-15 character key name                
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> change name or sex commands.
+
+SYS_BUFFERS_KEY  
+  Valid Values: 3-15 character key name                
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop buffers commands.
+
+SYS_CLEARSUICIDE_KEY  
+  Valid Values: 3-15 character key name           
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> clear suicide command.
+
+SYS_REPORT_KEY       
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop report command.
+
+SYS_TOPTEN_KEY
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop god <user> enable/disable topten commands.
+     
+SYS_DISBAND_KEY
+  Valid Values: 3-15 character key name              
+  Default Value: ""
+  Description:
+     If specified then a user needs either the sysop-key or the
+     game-op key AND the key specified here to execute the
+     sysop disband <gangname> command. Note that unlike the other
+     gameop commands, this is typically only a sysop command
+     and is therefore not given to a gameop by default.
+     
+UPDATE_SPEED       
+  Valid Values: 0, 1, 2, 3, 4, 5                      
+  Default Value: 0
+  Description:
+     Used to control the speed at which automatic database updates
+     are applied.
+     0 == Fastest (most load on system)
+     1 == Medium
+     2 == Slow
+     3 == Slower
+     4 == Slowest (least load on system)
+     5 == All at startup (longest bbs start time, no load once started)
+     Note that an approximate timing is option 0 takes around 9
+     minutes on a P133 with IDE drives and a 4MB caching controller
+     under WorldGroup 2.0.
+     Option 5 takes 8 minutes on a P166 with a SCSI (8ms, 1MB cache) 
+     drive with a regular SCSI controller running in a DOS box under
+     Win '95 under WorldGroup 1.01.  
+     Another timing we've done here for option 5 also took 8 minutes 
+     but this time it was on a 486-100 with a slow IDE drive and an
+     8MB caching controller running WorldGroup 3.0 for NT/95 on a
+     Win '95 system.  Interesting comparison:  Exact same PC, running
+     Win '95 in non-gui mode and WG 2.0 took 13 minutes to complete.
+
+LOG_SYSOP_COMMANDS 
+  Valid Values: 0 (means do not log sysop commands)  
+                1 (means log sysop commands)
+  Default Value: 1
+  Description:
+     When enabled, all sysop commands done in MajorMUD will be
+     logged to the LOGFILE.  (This does not include commands
+     from the sysop menu, just commands in the game.)
+     
+MAXIMUM_BANK_BALANCE 
+  Valid Values: 0 (means no maximum)               
+                number (maximum allowed balance)
+  Default Value: 0
+  Description:
+     When set, all bank balances will be limited to this
+     amount - any excess will be removed from the bank
+     account for the user with no warning.
+     The value is in copper pieces (do a 'look' in the
+     bank for conversion rates).
+     
+ENABLE_CLASS_CHANGE 
+  Valid Values: 0 (means do not allow changing class)  
+                1 (means allow changing class)
+  Default Value: 0
+  Description:
+     When enabled, users who had characters prior to version
+     1.1u will be allowed to change their class in addition
+     to their race.  This only affects characters in this 
+     situation - it does not affect any new characters 
+     created in 1.1u or newer.
+
+RACE_CHANGE_DURATION 
+  Valid Values: 1-720                               
+  Default Value: 300
+  Description:
+     Characters that existed prior to 1.1u will be given a
+     chance to change their race (and optionally their 
+     class - see ENABLE_CLASS_CHANGE above).  Once they
+     make the first race change they can continue to change
+     their race until they have spent this many minutes
+     playing the game.  The default of 300 is 5 hours.
+
+BLANK_LASTNAME_ALLOWED
+  Valid Values: 0 (Means do not allow blank lastnames)
+                1 (Means allow blank lastnames)
+  Default Value: 0
+  Description:
+     If you allow blank lastnames then a user can create
+     a character with just a given/first name and no
+     last name.  If you do not allow blank last names
+     then the user will be forced to create a lastname.
+     If you change this setting to force lastnames when
+     you previously allowed blank lastnames it does not 
+     force users without last names to enter one until
+     they train stats (and even then there are ways to
+     get around it that we're not going to remove).
+
+----------------------------------------------------------
+Options for MajorMUD Plus (put in wccmmud.ini)
+
+PLUS_PURCHASE_EMAIL_USERID 
+  Valid Values:  userid                       
+  Default Value: N/A
+  Description:
+     If SEND_EMAIL_FOR_PURCHASES is set then this is the
+     userid who will receive the emails regarding plus
+     purchases.  Note that there is NO default.
+
+SEND_EMAIL_FOR_PURCHASES 
+  Valid Values: 0 (means don't send email)     
+                1 (means only send email)
+  Default Value: 0
+  Description:
+     When set to a non-zero value, MajorMUD Plus will 
+     send email to the sysop (based on the MajorMUD CNF
+     option '') to record a purchase.  The user will NOT
+     be charged credits, game currency, or days if this
+     option is set.  Typically this is to be used for 
+     sysops running on a DMA server where credits or
+     account days don't make any sense to use. Note that
+     you must specify PLUS_PURCHASE_EMAIL_USERID for this
+     to work.
+
+----------------------------------------------------------
+
+Sample file (not including the lines containing -----):
+----------------------------------------------------------
+TRACK_LIMITED=1
+LOGFILE=wccmmud.log
+SYS_SPEAK_KEY=SPEAKER
+#this line is ignored
+----------------------------------------------------------
+
+If you change this file while the BBS is running you can reload the options
+dynamically (without shutting down the bbs) using the SYSOP RELOAD command
+(refer to wccmmsys.not for more information).
+
+==========================================================================
+
+4) ONLINE SYSOP FUNCTIONS
+
+This section has been moved to the file WCCMMSYS.NOT.
+
+==========================================================================
+
+5) MAJORMUD OFFLINE UTILITIES
+
+Under option 8 on the MajorBBS main menu, there will be a new option for
+the offline MajorMUD utilities.  Currently there are the following
+menu options:
+
+* Database Recovery
+* Remove Items from all rooms
+* Action Editor (MajorMUD Plus - Entertainment Edition only)
+
+5.1) Database Recovery
+
+If a situation occurs where it is recommended that you recover your 
+database, the 'Database Recovery' menu option is the way to do it.
+(see Appendix B for other options).
+
+This option will also reset all of your active monsters and reindex
+your limited items.
+
+5.2) Remove Items from all rooms
+
+The 'remove items from all rooms' command will remove the following
+from the game:
+
+* all visible currency
+* all hidden currency
+* all visible non-limited items
+* all hidden non-limited items
+
+There is *NO* way to undo this command once you have executed it.  We
+STRONGLY recommend that you give your users several days warning prior
+to executing this command to avoid user complaints about lost items
+which they had stored on the ground.  After you have run this option, you
+must start your BBS and run the REINDEX LIMITED ITEMS command from the
+sysop menu.
+
+5.3) Action Editor (MajorMUD Plus - Entertainment Edition only)
+
+If you purchase the MajorMUD Plus - Entertainment Edition add-on for
+MajorMUD then the action editor in this program will be activated.
+Please see the release notes for that product for information on
+using this feature.
+
+5.4) Running WCCMMUTL directly
+
+This program may also be run from a batch file or from the DOS command 
+line.  The name of the program is WCCMMUTL.EXE and it takes the 
+following arguments:
+
+-?       Will display a short help screen listing the options
+-recover Will automatically run the recovery and then return to DOS
+-needed  Same as -recover but will only do it if required (ie flag exists)
+-fast    Will perform the 'fast' recovery instead of the regular recovery
+         (must be used in conjunction with either -needed or -recover)
+         (obsoleted option - all recoveries are now done in 'fast' mode.
+          The option is left for historical reasons.)
+
+Note that if you attempt to run this utility from DOS, you must ensure that
+you have loaded Btrieve (or Brequest for those systems using Brequest 
+instead of Btrieve).  The command to load Btrieve is BTRIEVE /P:2048.  If 
+you fail to do this, you will receive a 'red box' error which informs you 
+of the fact that you must load Btrieve first.
+
+You might want to make one of the following modifications to your system
+so that the offline recovery program is run automatically every time the
+BBS is started and recovery is done if needed:
+
+Either:
+1)  Add the following lines to your AUTOEXEC.BAT
+
+  CD \BBSV6
+  BTRIEVE /p:2048
+  WCCMMUTL -needed -fast
+
+where BBSV6 is the directory your bbs is installed in and you are not
+using brequest (the command is different if you are using brequest). 
+For WorldGroup, the directory is probably \WGSERV.
+
+2) Modify your BBS.BAT file to add the following line:
+
+  WCCMMUTL -needed -fast
+
+right after the :skipfix line and before the if "%1" == "GO" goto op50 line
+as follows:
+  :skipfix
+  wccmmutl -needed -fast
+  if "%1" == "GO" goto op50
+
+==========================================================================
+
+6) MISC. OTHER STUFF
+
+If you have a globals package which requires module substates to operate,
+the substate which a user is in most of the time while playing the game
+is 130.
+
+6.1) SCRIPTING
+
+Although it is possible to make it _difficult_ for users to script, it is
+never possible to completely eliminate scripting altogether.  Not only 
+that, but some sysops appreciate scripters because they are burning up
+credits and that is the way a sysop makes money.  Controlling scripting is
+therefore a system-specific action which must be implemented in the form
+of policy and punishment.  Determine what your policy on scripting is 
+(ie. No scripting, Scripting anytime, Scripting 1am-2pm, etc.) and post it
+somewhere.  You will then have to rely on user complaints and heuristics
+to determine if a user is breaking _your_ rules.  Heuristics range from
+the simple act of paging them and waiting for them to respond appropriately
+to emulating them and forcing their character to do weird things (and 
+watching to see if they react as a user would - 'yell and scream').  The
+penalties which you dole out could be to disallow them from entering the 
+game, suspend them from the board, or just disable them from entering the
+topten.  You could also threaten them with lightning, adding evil points,
+or stripping them of any limited items which they may have.
+
+The bottom line is that it is up to you to set your own scripting rules 
+and to enforce them as you see fit.
+
+6.2) COMPATABILITY WITH EARLIER VERSIONS OF MBBS (6.21 in particular)
+
+Create a file called WCCFAKE.FLG in your bbsv6 directory prior to running
+your system for the first time after installing MajorMUD.  This will 
+cause it to run in compatability-mode for version 6.21 - it is not as
+efficient as running under 6.25 or newer, but it will run.
+
+6.3) PHOENIX NAME CHANGE SUPPORT (by MicroMagic)
+
+There is a file called WCCMMUD.UIC included in the MajorMUD release which
+is hopefully a phoenix name change support file.  As of this writing, I
+HAVE NOT HAD THE OPPORTUNITY TO TEST THIS FEATURE but have heard of at
+least one sysop using it successfully.  If you own Phoenix, please TEST
+this on a non-production server first, checking that the renamed user can
+still a) enter and play MajorMUD and b) access their bank account in
+MajorMUD.  Metropolis, Inc. provides NO WARRANTY AT ALL related to
+the use of this file.  Use it at your own risk.  If you own phoenix and
+do not wish to risk it on MajorMUD then DELETE THE FILE WCCMMUD.UIC.
+
+For more information on Phoenix, go to http://www.magicbbs.com, choose
+'products' then 'Pheonix'.
+
+6.4) RESETTING YOUR ACTIVE MONSTER DATABASE
+
+If you wish to reset your active monster database, run the MajorMUD
+offline utility and choose the 'Database Recovery' option.
+This option will take care of the resetting, recovery, and reindex.
+
+An optional step before running the database recovery is to
+manually reset the monster database.  Do this by copying wccacmsr.vir
+over wccacmsr.dat and then running the 'database recovery' option.
+
+You should do this if instructed by WCC or if you are sure that
+you have too many monsters in areas of your game and your users
+cannot kill them off.  This situation may occur if you use the SYSOP
+RESET command incorrectly.
+
+If you feel that you are having problems with the monsters in
+your game not generating properly, etc. then do this database
+recovery.
+
+6.5) GENERIC FIX-ALL FOR MOST PROBLEMS WHICH OCCUR IN MAJORMUD
+
+The following steps will reset your active monster database, check
+your hard disk for physical errors, check your databases for
+structural errors, check your databases for logical errors, 
+check your module loading order for correctness, and reapply the
+latest database updates to confirm database accuracy.  If you have
+any problems such as repeated internal errors, too many monsters, too
+few monsters, monsters not dropping items, and just about any
+other problem where something starts performing differently than
+it did before or does on another bbs then perform these steps.
+
+1)  Make sure that you've got the latest database update on your system.
+    Best way to get this is to unzip the latest release file and then
+    unzip the wccmmud.zip file (in an empty directory) and then copy
+    wccupdat.dat from this directory into your bbs directory.
+2)  shutdown bbs
+3)  run scandisk [ to make sure there are no faults on your hard disk ]
+4)  run defrag [ not necessary but may increase system performance ]
+5)  run wgsridx or bbsridx [ to fix any physical problems with the databases ]
+6)  optionally copy wccacmsr.vir wccacmsr.dat [ fastest way to clear all
+    the active monsters but done automatically within the database
+    recovery step ]
+7)  run offline database recovery [ to fix any logical problems with the
+    databases, reset the active monster database, and reindex the
+    limited items ]
+8)  double-check your module loading order against that specified in the
+    majormud sysop release notes (Wccmmud.rln, Appendix E) [ to make sure 
+    that it is not a module conflict causing your problem ]
+9)  start bbs
+
+6.6) MAJORMUD AND DMA SERVERS
+
+If you are running MajorMUD on a DMA server or are planning on running
+it on a DMA server then you must register your host IP address with
+Metropolis, Inc. to obtain a DMA-server activation code.  By registering
+to run or access a DMA server you will not be able to transfer your copy
+of MajorMUD without a notarized letter stating that you will never
+access MajorMUD via a DMA server.
+
+To get your DMA-server activation code, please send the following
+information to Metropolis Sales (sales@majormud.com or fax to
+913-663-3200):
+
+MajorBBS/WorldGroup Reg# of Host BBS: ________
+Host BBS IP Address:                  ___.___.___.___
+
+If your MBBS/WG Reg# of your Host BBS is not the same as the one under
+which you have registered MajorMUD then we will need a written explanation
+as to why they are different.
+
+You will receive your DMA-server activation code in a file called
+WCCDMA.SYS which must be put in your BBS directory.  This file will
+contain a number of lines, each containing a BBS Reg#, IP address,
+and activation code.  For performance reasons, you should probably modify
+this file (using DOS EDIT or similar program) so that the line
+containing your IP address is the first line in the file.  If you allow
+other systems to access your DMA server then find their HOST IP addresses
+and move their lines to the beginning of the file just after the line
+containing your IP address.   Note that if you modify the order of this
+file then you will have to do this after each upgrade.
+
+The command line for the rlogin page which you will want to use to
+access MajorMUD on a DMA server will be something like this (based on
+tcpdma.txt from Vircom's TCP/IP package):
+
+d dmapswd suffix ipaddr luser ruser autolof autospc echo mode gopage #desc
+
+where the value for 'echo' should be 'O' and the value
+for 'mode' should be 'A'.
+
+6.6.1) Moving MajorMUD from your Main system to a DMA server
+
+When you move your MajorMUD from your dma server, in addition to getting
+a DMA access code and setting up your menu page as above, please keep
+the following in mind:
+
+* No suffix should be used so that accounts on the DMA server have
+  exactly the same name as those on the bbs.
+
+If you already have an active sub-bbs and are not just copying the
+entire contents of your BBS directory from the main server to the
+sub-bbs at this time then the following also applies:
+* Custom statlines will not be moved from the main BBS to the sub-bbs
+* Permanent information will not be moved from the main bbs to the
+  sub-bbs.  This means that anyone who is dead during the move will
+  *NOT* get any experience when they create a new account regardless
+  of what they had when they died.
+* MajorMUD Plus settings (description and registries) will not be
+  moved.
+
+Note that the above is not necessarily a comprehensive list of the
+affects of moving a game of Mud from a main system to a dma server.
+WCC does not guarantee that there will be no other side effects of
+such a move.
+
+6.7) MAJORMUD ADDON ACTIVATION CODES
+
+If you purchase any of the database addons for MajorMUD you will
+receive two pieces of information for each addon:
+- Addon Identification Code
+- Addon Activation Code
+
+The identification code is a number identifying the addon.  For example,
+the first addon has an identification code of 1. The activation code is
+specific to your system and is required to be able to enter the areas
+of the game which are a part of the addon.
+
+You can use the online sysop menu option 'a' to add an addon
+activation code while your system is running.  If you make a mistake
+entering your activation code you will have to manually edit the
+activation code file to correct your error.  Do this by using any
+standard DOS editor (eg. EDIT) and load the file WCCADDON.SYS which
+will exist in your BBS subdirectory.  Each line in this file
+represents an individual addon and is formatted as follows:
+
+<Addon Identification Code>:<Addon Activation Code>
+
+Locate and change the line which corresponds to the addon module
+for which you entered the wrong information and save the file.
+
+NOTE that if you have entered an incorrect activation code and then
+change the wccaddon.sys file to have the correct code in it while
+the bbs is running you will have to wait until the bbs restarts 
+before this takes effect.
+
+6.8) PVP DAYS
+
+A number of sysops have started doing what they call 'PvP Days' on
+their systems.  This is basically a day in which they let all of
+their users 'go wild' and then restore the game the next day.  The
+way to do this is to follow these instructions:
+
+1. Backup your entire BBS (Always a good idea)
+2. Make a separate backup of WCC*.*
+3. Start your BBS and let your users do all the PvP they want
+4. Shutdown your BBS at the end of the PvP day
+5. Restore your backup of the wcc files (WCC*.*)
+
+Warning:
+Although most of the time this is a safe procedure, there is a chance
+that a user may end up with a worse character after you do this.  The
+scenario which would cause this is as follows:
+a) A user establishes a character and then dies their final death or
+   rerolls before the PvP day.
+b) The user does *NOT* create a new character before the PvP day begins
+c) The user creates a new character during the PvP day (and receives
+   their adjusted experience to start their new character based on their
+   original character)
+d) After the PvP day is over, when the user creates a new character they
+   will most likely get a percentage of experience based upon the
+   experience of the character they had during the PvP day.
+
+The chance of the above scenario happening is small, but it is something
+you should be aware of if you are running PvP days.  If you choose to
+hold 'PvP days' on your BBS, you are doing so at your own risk.
+   
+
+==========================================================================
+
+7) RUNNING THE GAME
+
+I'm going to try and put stuff into this section that may help you
+control the way your game is being played on your system and may help
+you resolve user problems more efficiently.  I am just going to put
+stuff into this section at random and hopefully it will eventually
+cover most situations.
+
+Under normal operation, you should be able to install MajorMUD,
+configure the CNF options so that it runs smoothly on your system
+by adjusting buffers, etc. (discussed elsewhere) and then leave the
+game alone.  There are situations where problems with the way the
+game operates will occur.  Most of these problems are also documented
+in this file.  The general solution to most of those problems involves
+the following fundamental steps (not all of which are always required,
+but which will solve most functional problems):
+
+1) Run the offline database recovery program
+2) Re-apply the latest database update
+
+7.1) THE EVIL/LEGAL SYSTEM
+
+MajorMUD controls the users by giving evil points for actions which
+are considered 'bad'.  As these evil points accumulate on a user they
+will start to be punished by the game.  This starts by allowing other
+users to attack them without penalty.  It then progresses to having
+guards attack them on site.  After that, bounty-hunters and other
+monsters will be generated with the specific purpose of attacking
+the user.  After that the gods will begin to punish them by striking
+them with lightning.  You may use the online sysop commands to alter
+a user's evil level and thereby alter the way the game will treat
+that user.
+
+When a user first creates a character they get the chance to choose
+to be a 'lawful' character.  If they make this choice then they are
+forever banned from instigating any action which would give them
+evil points.  Anyone attacking them is also given a larger number
+of evil points than for a normal attack.  Although a user may not
+change the state of their original decision regarding lawfulness
+without rerolling, you may use the online sysop god commands to alter
+this state.
+
+You can configure the rate at which users lose evil points using the
+CNF options MAXEPDAY, EPCYCLE, and EPAMOUNT.  At cleanup, any user
+who has played the game and who has done any evil actions will
+have their evil points reduced by 2 evil points.  Any user who has
+played the game without any evil action will have their evil points
+reduced by 3 plus the following formula:
+
+(EPAMOUNT * (minutes played in game that day/EPCYCLE))
+
+The total number of evil points that will be forgiven are based on
+the value of MAXEPDAY.  Note also that when moving from neutral towards
+GOOD or SAINT (i.e. current evil points < 0) that the base of 2 evil
+points does not apply (in other words, subtract 2 from the number of
+evil points about to be forgiven and that is how much closer to
+GOOD/SAINT the user will get).
+
+For reference points, the following define the evil point ranges
+which correspond to the reputation shown in the game.  The (EPs) shown
+in brackets indicate the results of attacking someone of that
+reputation.
+
+-220 <= Saint    < -200 (EP * 2)
+-200 <= Good     <  -50 (EP * 2)
+ -50 <= Neutral  <   30
+  30 <= Seedy    <   40 (No EP )
+  40 <= Outlaw   <   80 (No EP; Guards attack and jail you)
+  80 <= Criminal <  120 (No EP; Guards attack and jail you)
+ 120 <= Villain  <  210 (No EP; Guards attack and jail you)
+ 210 <= Fiend    <  300 (No EP; Guards attack and jail you)
+
+Over 300 EPs, a fiend that cannot attack again until they go back
+down to less than 300.
+
+** NOTE ** DO NOT adjust any evil point values (either CNF or online)
+unless you know what you are doing.  Use the SYSOP LIST USERS command
+to see what the current evil levels of your users are and use that to
+guide you in these settings.  Neither Metropolis, Inc. nor the
+staff or close-to-staff members of Metropolis BBS will provide any
+guidance on setting these aside from pointing you back to the default
+values.  Settings which are incorrect -for-your-system- may result in
+your users quitting the game due to other users taking advantage of
+them.
+
+==========================================================================
+
+Appendix A - Resetting your game 
+
+Note:  If you do not understand the difference between these two options
+and you just know that you want to 'reset MajorMUD' then take a full
+backup of your system and do OPTION TWO (FULL RESET).
+
+OPTION ONE (PARTIAL RESET)
+
+If you wish to reset all of the users on your board while maintaining
+the current map environment, you must follow these steps.  NOTE: Only
+choose this option if you KNOW WHAT YOU ARE DOING and know that you
+want it reset in this manner.
+
+1) Copy WCCUSERS.VIR to WCCUSERS.DAT
+2) Copy WCCGANGS.VIR to WCCGANGS.DAT
+3) Copy WCCBANKS.VIR to WCCBANKS.DAT
+4) Refer to appendix A.1 in this document and follow those instructions
+   now if applicable to you (i.e. if you own MajorMUD Plus).
+5) Run the BBS and IMMEDIATELY choose C for Clear all saved evil points 
+   on the sysop menu.  NOTE: This must be done prior to anyone creating
+   new characters.
+6) Immediately following 'C', choose 'CP' to clear all the saved profile
+   information.  NOTE: This must also be done prior to anyone creating
+   new characters.
+7) Choose R for reindex the limited items on the sysop menu.
+
+OPTION TWO (FULL RESET)
+
+If you wish to completely reset and start from scratch, follow these steps:
+
+1)  Before you shutdown your BBS for the last time prior to the reset,
+    choose C for Clear all saved evil points on the MajorMUD sysop menu.
+2)  Immediately following 'C', choose 'CP' to clear all the saved profile
+    information.
+3)  Shutdown the BBS
+4)  Refer to appendix A.1 in this document and follow those instructions
+    now if applicable to you (i.e. if you own MajorMUD Plus).
+5)  Keep a backup copy of your WCCADDON.SYS file if you own any MajorMUD
+    addons
+6)  If you created a wccmmud.ini file, take a backup of this file now
+7)  Write down any custom settings you may have done in your CNF options
+8)  Delete all the WCC files from your bbs directory (DEL WCC*.*)
+    NOTE: If you are running any other WCC Products (currently only WCC 
+    Line Control is available) please contact Metropolis for information
+    on which files to NOT delete.
+    NOTE: If you received a new WCCDMA.SYS file (for running on a DMA
+    server) after the latest version was released, make sure you save
+    this file to restore it after reinstalling.
+9)  Re-install the latest version of MajorMUD using the appropriate 
+    methods and apply any newer patches
+10) Modify your CNF options as appropriate (refer to what you wrote down
+    in step 7)
+11) If you took a backup of your wccaddon.sys file, copy it into your BBS
+    directory now.
+12) If you took a backup of your wccmmud.ini file, copy it into your BBS
+    directory now.
+13) Run the BBS and IMMEDIATELY choose C for Clear all saved evil points 
+    on the sysop menu.  NOTE: This must be done prior to anyone creating
+    new characters.
+14) Immediately following 'C', choose 'CP' to clear all the saved profile
+    information.  NOTE: This must also be done prior to anyone creating
+    new characters.
+15) Apply all appropriate database patches
+
+Appendix A.1 - Resetting MajorMUD Plus - Entertainment Edition
+
+If you own MajorMUD Plus - Entertainment Edition and you are resetting
+your MajorMUD game then you most likely want to reset the MajorMUD plus
+registries and descriptions.  Do this with the 'clear plus data' option
+in the MajorMUD offline utilities (refer to the MajorMUD Plus release
+notes - wccmmpls.rel - for more information)
+
+==========================================================================
+
+Appendix B - Note on recovery (Automatic and Manual)
+
+If your board crashes for any reason, MajorMUD will enter a recovery
+mode upon startup.  This recovery mode will take a few minutes while
+it re-calculates the counts of monsters in each room/area.  
+
+To determine if recovery is necessary, MajorMUD uses the existance of
+the file WCCRECOV.FLG in the bbs directory.  When MajorMUD starts, if 
+this file exists then it will start in recovery mode.  In both normal
+and recovery mode, MajorMUD will create this file upon initialization.
+During the normal shutdown procedure, MajorMUD will delete this file.  
+Using this method, if the board terminates for any abnormal reason then
+recovery mode will be initiated.  (See section 5 for instructions on
+getting the recovery mode to run prior to starting the BBS)
+
+Using the default setting for INITRATE, recovery mode should take 
+approximately 1 to 2 hours.  Previous versions of this document suggested
+deleting the wccrecov.flg file - It has now become much more important
+that you leave this file where it is so DO NOT DELETE it.
+
+In addition to the above recovery procedure, it is recommended that after
+any abnormal system termination you run an offline recovery.  This will
+again ensure that all of the limited items in the game are properly
+cross-referenced.
+
+NOTE that during online recovery mode there will be no monsters generated
+aside from those directly related to the recovery mode operations.  Using
+the default CNF settings, recovery mode usually takes around 1 hour.
+
+To perform a manual recovery, you have 3 options:
+
+1) Bring your BBS down.  Create a file called WCCRECOV.FLG in your BBS 
+   directory.  Start your BBS again.  MajorMUD will automatically run
+   through recovery mode.
+2) During a slow hour on your BBS, execute the command
+   SYSOP INITIALIZE 20 RECOVER
+   to force an online recovery mode.
+3) Use the offline MajorMUD utilities program.  This can be accessed
+   via option 8 on the MBBS menu.  Choose the menu option to do a
+   database recovery from this program.  NOTE: This is the preferred
+   method.
+
+
+
+==========================================================================
+
+Appendix C - Adjusting Buffer Settings
+
+Although the default values for the buffer settings should work for most
+basic BBS setups, there are many occasions when you may wish to adjust
+the size of these buffers.  Usually you will want to increase them as much
+as possible depending on the amount of free memory available while your
+BBS is running.  
+
+A good method to determine which buffers need to be increased in size is
+as follows:
+1) While playing MajorMUD as a sysop, enter the command
+     SYSOP BUFFER CLEAR
+2) For the next few minutes, type the command
+     SYSOP BUFFER
+   repetitively every few seconds.
+3) Observe the change in the numbers under the MISS column.  You will notice
+   that a few of the buffers may have a large increase in the number of
+   Misses while other buffers have 0 or 1 misses over a few minute long 
+   period.
+4) The next time your bring your BBS down, raise the size of the buffers 
+   which had the highest miss count.
+5) Repeat the procedure starting at step 1 until you either run out of 
+   memory, get bored, or find that the number of misses does not skyrocket
+   in a short time period.
+
+NOTE: If you set any of your buffers too high and your computer runs out
+of memory during the loading of MajorBBS, you will get a catastro error
+which says something similar to:
+
+PLTILE:Out of Contiguous Selectors!(Phar Lap Code 0000)
+...
+
+There are two possible options to fix this problem.  The easiest is to just
+reduce the size of your buffers again until the error goes away.  The other
+is to change the module loading order so that WCCMMUD is loaded earlier. 
+This may give MMUD a chance to allocate large chunks of memory before the
+other modules.  This method is not recommended unless you know what you are
+doing and really want to squeeze that extra memory into MajorMUD.
+
+
+==========================================================================
+
+Appendix D - Performance Suggestions
+
+If you find that you are getting excessive board slowdowns (some slowdown
+is expected as MajorMUD is a very disk intensive application), this section
+will outline the options which should be investigated.
+
+- If you get repetitive performance hits every SECBUFF seconds, then you
+  will want to adjust the rate at which buffers are being saved to disk.
+  First, you will want to increase your POLLRATE.  This will lengthen the
+  time between each buffer saved.  Next, you may want to increase SECBUFF.
+  This will increase the time between commencing of the saving of the 
+  buffers.  
+
+  **                                                                   **
+  ** I would recommend that SECBUFF be set to at least 1200 for almost **
+  ** all systems running MajorMUD.                                     **
+  **                                                                   **
+
+  By changing POLLRATE, you will reduce the load during the process of
+  saving the buffers.  
+  By changing SECBUFF, you are reducing the frequency at which the buffers
+  are saved.  This has the good side-effect of increasing the number of
+  changes which are done entirely in memory, but has the bad side-effect
+  of increasing the damage if you have a system crash.
+
+- If you get repetitive performance hits every SECOTH seconds, then you
+  may have set BUFTOSAV too high.  Try lowering it to 1.  If you already
+  have BUFTOSAV set to 1, then this is likely not the cause of this pause.
+
+- If you find that your system loading is too high during the first few 
+  minutes of operation or during the first 1/2 hour to 1 hour during 
+  recovery mode, then there are two options.  One is to live with it - This
+  is the best option because normally a BBS does not have a large number of
+  callers immediately after cleanup (the typical time that the bbs starts).
+  The other is to reduce the value for INITRATE.  The problem with reducing
+  this value is that it will take that much longer to complete 
+  initialization and even longer to complete recovery (which takes approx. 
+  1 hour with the default INITRATE setting of 80)
+
+- If you have generally poor system performance, you may have your system
+  polling rate set too high.  This is the POLRATE option which can be found
+  in the bbsmajor.msg file (Level 1 options).  I would recommend lowering 
+  this a notch if it is not set at the lowest already.
+
+- Read appendix C regarding the buffer settings.  Poorly configured buffer
+  settings can greatly increase system loading and conversely good buffer
+  settings will greatly reduce system loading.
+
+- If you are running on a DMA server then please read section 6.6 and
+  adjust your wccdma.sys file appropriately for your system.  Note that
+  you will have to do this after each upgrade.
+
+==========================================================================
+
+Appendix E - Potential Module Conflicts
+
+There may be a few conflicts with other modules which can be resolved
+by re-ordering the loading of the WCCMMUD.DLL.  This list was provided
+by one of our Beta sites as a result of their testing and has not
+been verified, but is a good starting location if you are having any
+unexplained problems.
+
+WCCMMUD.DLL must be loaded before:
+---------------------------------
+HVSTW.DLL
+DPIGLO.DLL
+MCSNPAD.DLL
+SPEFSTP.DLL
+
+(Very likely on the following: (HVS*.dll) )
+HVSMM.DLL
+
+(It's a 'probably' with the following, not a definite:  (ALL TCP*.dll) )
+TCPWWW.DLL
+TCPTELNT.DLL
+TCPSMTP.DLL
+TCPSLIP.DLL
+TCPRLGN.DLL
+TCPMISC.DLL
+TCPLIB.DLL
+TCPFTP.DLL
+
+One other possibility is that WCCMMUD.DLL should be loaded AFTER:
+
+FW_TRIV.DLL
+
+To change the order of your DLLs, you need to modify the MJRBBS.CFG
+file (wgserv.cfg for WG3-NT) - 
+I have not really done it, but I believe all you do is rearrange
+the order of the DLL= lines.  BUT, I believe that if you re-index, or
+add/delete modules from your board, this file will be recreated in a default
+ordering.  Also, it appears as though WG 3.2 will rebuild this file almost
+every day at cleanup - one sysop recommended modifying your wgsclean.bat file
+to copy an ordered backup of wgserv.cfg over wgserv.cfg every cleanup.
+
+There is also a free utility available from High Velocity software called
+HVSTOP.   You can get HVSTOP at:
+
+   ftp://ftp.hvs.com/library/hvsdemos/hvstop.zip
+
+or try somewhere at dsafe.com now.
+
+"It's totally free.  No registration is solicited or encouraged." (M.D. HVS)
+
+In general, aside from the module(s) listed above, moving MajorMUD to 
+one of the first modules loaded usually gets rid of most conflicts - 
+I don't know why.
+
+
+E.1 FU Globals
+
+In addition to the following configuration issues, you must be running
+version 0.85b or newer of FU globals to avoid some module conflicts.
+
+If you are using the FU Globals package then you must disable the FSD/FSE
+Entry for MajorMUD.  As/of the current FU Globals version on 6/6/97, the
+following instructions should work:
+
+1) Go to the FU Globals ON-LINE CONFIG (/go fu) in the MODULE PORTION of
+   FU Globals
+
+2) Select M)odules
+
+3) Select E)No FSD/FSE modules
+
+4) Add 'MajorMUD' to the list of modules.
+
+   Note: If you run Major Mud on a DMA server, add 'Rlogin' instead
+         'MajorMUD'
+   Note: If you have changed your wccmmud.mdf file to change the name of
+         the module then you must use your new module name.
+
+Upon performing the above steps, the =set, =macros1, =macros2, etc.
+commands will not work in Major Mud.  If you do not do these steps and
+allow users the use of these commands then they can get themselves into
+situations which can corrupt the MajorMUD game.
+
+You will also want to disable the alternate go command provided by FU
+globals.  The same way you can define up to 20 modules for which FU
+should not put users in the FSE/FSD, you can do the same with the
+ALTERNATE /GO command.
+
+Just add 'MajorMUD' (or 'Rlogin' if running Mud on a DMA server) to
+the NO ALTERNATE /GO list and you can still keep the "GO" command
+on your BBS but not have it affect MUD.
+
+Yet another feature that may need disabling in the FU globals is the
+sending of ansi pictures.  Apparently this causes some form of
+corruption to the gossip and user list commands.
+
+You will also have to disable the =r global (repeat-last-command).
+
+E.2 DPI Globals
+
+Here's a quote from a sysop running MajorMUD and DPI Globals:
+"
+With DPI Gobal package a similar problem occurs on our bbs, but
+only to the extent of exiting from mmud with a meditation period and
+locking up the channel.  The particular globals are the -g1, -g2 which
+send ansi graphic pages to other users, and the -pw to change your
+p*ssword.  Since it only occurs with the SET SPLIT command enabled
+and hasn't replicated the reroll bug on our bbs so we have not restriced 
+those globals yet, but anyone useing this global package may want 
+to make sure it doesn't on theirs.
+"
+
+E.3 Annex Hoteleconference
+
+Make sure that you disable the ^action global command
+
+E.4 Major Jail
+
+If you arrest someone while they are in split-screen mode, major jail
+will not put you into the correct state in MajorMUD and will leave you in
+a position to change your race or class improperly.  Please either disable
+Major Jail or make sure it is never used while someone is in MajorMUD.
+
+==========================================================================
+
+Appendix F - Problem reporting checklist
+
+If you have any problems installing or running MajorMUD, please complete
+the following information prior to calling for support.  You may be asked
+to provide some of this information depending on the problem.  Please 
+also ensure that you have checked for conflicting modules based on the
+load order in Appendix E.
+
+Memory Manager installed ?                     _____
+  - all driver options checked and necessary   _____
+List any special controller cards and any memory regions which they may
+require reserved.  Include any SCSI or special IDE cards.
+  ______________________________________
+  ______________________________________
+  ______________________________________
+Total RAM         ____
+Free Upper Memory ____
+Free Lower Memory ____
+
+Ensure that you have all of your CNF settings available.  
+
+Full description of the problem:
+  ______________________________________
+  ______________________________________
+  ______________________________________
+
+Please include any gp.out or catastro.txt files generated if applicable.
+
+==========================================================================
+
+Appendix G - Memory Requirements Matrix
+
+This section is an attempt to outline the rough memory requirements for
+MajorMUD.  This is meant to be a guideline only, and is not necessarily
+100% accurate.
+
+As memory requirements vary depending on your settings, I will list a few
+different ones which are defined as follows:
+  MINIMAL:      BASIC:             MEDIUM:            HIGH:
+  ROOMBUF  200  ROOMBUF  300       ROOMBUF  900       ROOMBUF  3000
+  ITEMBUF  300  ITEMBUF  450       ITEMBUF  450       ITEMBUF  450
+  MONSBUF  200  MONSBUF  300       MONSBUF  300       MONSBUF  300
+  KMONSBUF 150  KMONSBUF 200       KMONSBUF 200       KMONSBUF 200
+  SPELBUF  150  SPELBUF  200       SPELBUF  200       SPELBUF  200
+  RACEBUF  12   RACEBUF  12        RACEBUF  12        RACEBUF  12
+  CLASSBUF 16   CLASSBUF 16        CLASSBUF 16        CLASSBUF 16
+  BANKBUF  10   BANKBUF  20        BANKBUF  20        BANKBUF  20
+  MESSBUF  200  MESSBUF  350       MESSBUF  350       MESSBUF  350
+  SHOPBUF  10   SHOPBUF  20        SHOPBUF  20        SHOPBUF  20
+  GANGBUF  4    GANGBUF  10        GANGBUF  10        GANGBUF  10
+
+Your BBS user license count (or 'number of channels defined') also makes 
+a difference, so I will try to report memory usage based on several line 
+counts.  Instead of actually boiling down these numbers to exact figures
+and only reporting those, I'll report all the gathered data here as well.  
+The three numbers displayed are:
+
+Avail. Mem / <1Meg / Remaining memory based on sizmem()
+
+The three rows per line count represent the above three numbers before
+enabling MajorMUD, after enabling MajorMUD, and the difference between 
+the two values (ie. the amount used by MajorMUD).
+
+The sizing was done on my test system running MBBS 6.25 and using 
+non-hardware serial channels to get to the numbers listed.
+
+-------------------------------------------------------
+Approximate Summary (in MB)
+Line Count:    5         16       128     256
+              ===       ===       ===     ===
+MINIMAL       1.0       1.0       1.2     1.5
+BASIC         1.4       1.5       1.6     2.0
+MEDIUM        2.3       2.4       2.5     2.9
+HIGH          5.5       5.6       5.8     6.0
+
+-------------------------------------------------------
+Line Count:    5         16       128     256
+Style:
+
+MINIMAL
+before:   13000/246/14473640
+after:    12000/242/13472056
+used:      1000/  4/ 1001584
+
+before:           13000/245/14230680
+after:            12000/241/13206728
+used:              1000/  4/ 1023952
+
+before:                 10240/232/11623600
+after:                  10064/229/10437376
+used:                     176/  3/ 1186224
+
+before:                              8261/219/8721752
+after:                               6776/215/7201336
+used:                                1485/  4/1520416
+
+-------------------------------------------------------
+BASIC   
+before:   13000/246/14473640
+after:    12000/242/13024356
+used:      1000/  4/ 1449284
+
+before:           13000/245/14230680
+after:            12000/241/12757796
+used:              1000/  4/ 1472884
+
+before:                 10000/232/11623600
+after:                   9627/229/ 9989676
+used:                     373/  3/ 1633924
+
+before:                              8261/219/8721752
+after:                               6339/215/6753636
+used:                                1922/  4/1968116
+
+-------------------------------------------------------
+MEDIUM
+before:   13000/246/14473640
+after:    11000/242/12115824
+used:      2000/  4/ 2357816
+
+before:           13000/245/14230680
+after:            11000/241/11846408
+used:              2000/  4/ 2384272
+
+before:                 10000/232/11623600
+after:                   8736/229/ 9077056
+used:                    1264/  3/ 2546544
+
+before:                              8261/219/8721752
+after:                               5448/215/5841016
+used:                                2813/  4/2880736
+
+-------------------------------------------------------
+HIGH
+before:  12000/238/13349176
+after:    7602/237/ 7784736
+used:     4398/  1/ 5564440
+
+before:           12000/237/13014972
+after:             7256/236/ 7423436
+used:              4744/  1/ 5591536
+
+before:                  9434/225/9726072
+after:                   3815/224/3972664
+used:                    5619/  1/5753408
+
+before:                              8261/219/8721752
+after:                               2323/151/2641136
+used:                                5938/ 68/6080616
+
+==========================================================================
+
+Appendix H - Game Messages
+
+There are a number of potential error, warning, or notification messages 
+which you may receive either in your audit trail, or in email (account as
+specified by the MAILUSER CNF option).  This section will attempt to 
+document most of the ones which may occur.  If you receive an error message
+not listed here, please email it to support@majormud.com.  If you receive
+excessive errrors repeatedly then please perform the steps in section 6.5
+prior to reporting the errors.
+
+Audit-Trail Messages
+--------------------
+
+MajorMUD Notice "Reinitialization Requested"
+  Logged when a SYS INIT xx RECOVER command is entered in the game
+  Action Required: None
+
+MajorMUD - Recovery Mode "Detected Abnormal system shutdown"
+  Logged when the bbs starts and finds the file WCCRECOV.FLG
+  Action Required: None
+
+MajorMUD - Warning "Please reset your WCCACMSR.DAT"
+  Logged when MajorMUD thinks that your active monster database is too large
+  You will only get this warning when there are more than 30,000 active
+  monsters in the game.
+  If you're getting this warning after only a few days of playing then either
+  (a) your users are *very* active at running around the game but never kill
+      any monsters,
+  (b) you have a very large number of users that are very active running
+      around the game, or
+  (c) there's something corrupting your active monster database causing btrieve
+      to do weird and wonderful things with it.  
+  If you think it is because of (a) then get your users to start killing
+  monsters.  If you think it is because of (b) then please let me know and
+  I'll raise the limit yet again. If you think it is because of (c) then please
+  do all the steps in section 6.5 of wccmmud.rln.
+  If you're getting this warning infrequently then just do the following:
+  Action Required:
+    1) shutdown bbs
+    2) run offline-database-recovery
+    3) start bbs
+
+MajorMUD - Recovery Mode "Known Monsters checked"
+  Logged during recovery mode after the known monster phase is complete
+  Action Required: None
+
+MajorMUD - Recovery Mode "Rooms processed"
+  Logged during recovery mode after the rooms phase is complete
+  Action Required: None
+
+MajorMUD Initialized "Maps updated"
+  Logged when all initialization and/or recovery is complete
+  Action Required: None
+
+Couldn't find delete monster "Monster Number: xxx"
+  Logged when MajorMUD attempts to delete a monster which doesn't exist
+  Action Required:
+    1) shutdown bbs
+    2) scandisk (dos)
+    3) defrag (dos)
+    4) bbsridx (bbs) [wgsridx for WorldGroup]
+    5) copy wccacmsr.vir wccacmsr.dat
+    6) run MajorMUD offline recovery
+    7) start bbs
+    8) run online reindex limited items
+
+Lightning Struck "user1 by user2"
+  Logged when a sysop uses the SYS LIGHTNING command.  user1 is the user
+  who was lightning'd and user2 is the sysop who entered the command.
+  Action Required: None
+
+MajorMUD - Notice "user1 added life to user2"
+  Logged when a sysop adds a life to a user.  user1 is the sysop, user2 
+  is the user who received a life.
+  Action Required: None
+
+MajorMUD Found Database Update "date time size"
+  Logged when a database update is found upon BBS startup.  The date, time,
+  and size relate to the WCCUPDAT.DAT file which was found.
+  Action Required: None.  When players enter the game the update will be
+  applied so the first time you install a new release you should make sure
+  that you log someone in and put them into MajorMUD until the update has
+  been applied.
+
+MajorMUD Notice "Automatic Database Update Complete"
+  Logged when the automatic update of a database has completed.
+  Action Required: None
+
+MajorMUD vXXX "MajorMUD Allocating buffers and reading CNF"
+  Logged at the very beginning of the MajorMUD initialization routines
+  Action Required: None
+
+MajorMUD - xx users "MajorMUD Buffers allocated and CNF options verified"
+  Logged after MajorMUD initialization is complete.  xx is your current
+  license count for the maximum number of users allowed in the game.
+  Action required: None
+
+FULL MODE ACTIVATEDDDD "Game play and sysop control limited"
+  Logged after initialization if the game is being run in demo mode.
+  Action required: Call Metropolis and purchase an activation code :)
+
+MajorMUD - Notice "Recovery not completed - leaving flag file"
+  Logged at the end of the MajorMUD shutdown routines if the system is 
+  shutdown during recovery mode.
+  Action required: (Optional) Run the offline recovery utility
+
+MajorMUD - Notice "Starting Cleanup"
+  Logged at the start of the MajorMUD cleanup routines
+  Action required: None
+
+MajorMUD Items swept up "Hid xx items"
+  Logged after the first phase of cleanup.  xx indicates the number of 
+  visible items which were switched to hidden items.
+  Action required: None
+
+MajorMUD User cleanup "xx users, yy minutes, zz evil points forgiven"
+  Logged after the user cleanup phase.  xx indicates the number of users
+  who played MajorMUD since the last cleanup.  yy indicates the number of
+  minutes spent playing MajorMUD since the last cleanup.  zz indicates 
+  the number of evil points which have been forgiven.
+  Action required: None
+
+MajorMUD Notice "Cleanup Complete"
+  Logged as the very last action during MajorMUD cleanup
+  Action required: None
+
+MajorMUD Notice "xx Demo days left"
+  Logged at startup to indicate the number of days remaining in the demo
+  Action required: Call Metropolis and purchase an activation code :)
+
+MajorMUD Notice "Demo Expired"
+  Logged at startup when the demo period has expired
+  Action required: Call Metropolis and purchase an activation code :)
+
+MajorMUD - Error "No database update found - Game not started"
+  Logged at startup when the wccupdat.dat file can not be found
+  Action required: Restore the wccupdat.dat file from the latest release
+  and then restart your BBS (MajorMUD will not work until you have
+  completed these steps)
+
+MajorMUD - Corruption "Corrupt database detected - attempting to fix"
+  Logged at startup when MajorMUD determines that there is a severe
+  problem with the databases.  Initialization will take much longer
+  while MajorMUD attempts to fix the problem.  If it fails to fix 
+  the problem then your game will not start properly and you will
+  have to re-install (re-upgrade to) the latest version.
+
+Email Messages
+--------------
+
+Any email message which has a topic of "Feedback - xxx" is a result of 
+the FEEDBACK command in MajorMUD.  The contents of this email are 
+directly from the user so act as appropriate based on whatever they enter.
+
+Any email message which has a topic of "Internal Error -xxx" is generated
+by the game automatically.  The following is a list of some of the common
+ones:
+
+remlogicaluseritem xxx
+  This is generated when a user drops, hides, gives-away, sells, or dies
+  with an item which is limited and which, for any reason, there are too
+  many of in the game.  This means that the named item was deleted from 
+  the game.
+  Action required: (Optional) Run a reindex limited items to help prevent
+  it from occurring with more items
+
+remlogicalroomitem xxx
+  Same as above, but the item originated in a room, same action required.
+
+remlogicalmonsteritem xxx
+  Same as above, but the item originated with a monster, same action req'd.
+
+Silly Spell Cast: xx [xx]   -or-  Silly Spell Cast [xx]
+  A targetting error occurred with the given spell.  Please forward message
+  to Craig or Mike (see email addresses earlier in this document)
+
+Too many users
+  This is generated a maximum of one time each day if a user attempts to
+  enter MajorMUD when there is already your system's quota of users in 
+  the game.
+  Action Required: Call Metropolis and upgrade your activation code :)
+
+mongone xx in xx:xx
+  This is generated when a room thinks that there is a monster in it but
+  the monster does not actually exist.  
+  Action Required: Run an offline recovery.
+  Action Required if they continue for a short time: 
+  If you have maillink then None.  
+  Otherwise, collect groups of different ones and send them to  
+  support@majormud.com via email if you have time.
+  Action Required if they continue for several days: Perform the steps 
+  in section 6.5
+
+monbadroom is xx:xx vs. xx:xx
+  This is generated when a room thinks that there is a monster in it but
+  the monster is actually in a different room.
+  Action Required: As for mongone.
+  Action Required if they continue: Perform the steps in section 6.5
+  
+Removing Monster?
+  Action Required: As for mondone.
+  Action Required if they continue: Perform the steps in section 6.5
+  
+==========================================================================
+
+Appendix I - Demo Mode Restrictions
+
+This section provides a brief overview of some of the restrictions
+which are enforced within the game when running under demo mode.  This
+is not guaranteed to be a comprehensive list.
+
+1) Users may not train beyond level 4
+2) The game will only run for 14 days
+3) The following sysop commands will not work:
+  - SYSOP GOTO
+  - SYSOP LIGHTNING
+  - SYSOP STATUS
+  - SYSOP DISBAND
+  - SYSOP GOD
+  - SYSOP CONFIG MAXUSERS
+  
+==========================================================================
+Appendix J - Other System Settings
+
+This section outlines several system settings which you should check if
+you are having any problems running MajorMUD.  Please also refer to the
+manuals and release notes for MajorBBS/WorldGroup as there are a number
+of system configuration recommendations listed which many people are
+not already following.
+
+* Do not load DOS high or use UMBs for DOS
+* Do not load buffers high (i.e. Do not put a ,0 after the buffers
+  setting)
+* Do not use a Cyrix Processor.  I do not know the details but if you
+  push Galaticomm on the topic they will apparently admit that they had
+  "been experiencing odd, undiagnosable  problems with Cyrix processors"
+  (This information is second-hand from another sysop but I thought it
+   was important enough to put here - they were getting two crashes a day
+   until they switched CPUs away from Cyrix)
+
+==========================================================================
+
+Appendix K - FAQs
+
+1) Q: My BBS crashed and I don't want the bbs to run the MajorMUD offline
+      recovery (for whatever reason).
+   A: Never do this.  Do *not* delete the wccrecov.flg file under any
+      circumstances.  If you do then your MajorMUD game will have problems.
+      You should also not change the wccmmud.mdf file - leave the bbs up:
+      line in this file so that it will do an offline recovery.
+
+2) Q: Does it make any difference if I run the fast-offline-recovery every
+      time I start my system.
+   A: This is not recommended.  If you do this then you are destroying all
+      of your monsters and you are not giving the game a chance to fully
+      populate all of the realm which will be done over a period of days.
+      If you run the offline-database-recovery every time your system starts
+      then your system will startup noticably slower than it has to because
+      it has to regenerate fixed monsters every day instead of only once.
+      Other problems are that users that may have been in battle with a 
+      monster when the bbs shuts down may require that monster to be there
+      (i.e. if they are engulfed they need to kill it to get rid of the
+      engulf) and if you run recovery on them then you destroy their chance
+      of killing the monster.
+
+3) Q: Help!  MajorMUD broke and I can't fix it.
+   A: Shutdown your bbs and run the offline database recovery.  If
+      this doesn't fix the problem then continue to the next point.
+
+4) Q: Offline recovery did not work.  Now what?
+   A: Try re-applying the latest database update.  Read section 6.5, step 1
+      of this document and then apply the update.  Read the instructions
+      in wccmmsys.not on how to apply an update.
+
+5) Q: That still didn't work.  What do I do now?
+   A: Read section 6.5 of this document.  Perform *all* of the steps there.
+
+6) Q: It still doesn't work.  What next?
+   A: Download the latest version of MajorMUD from Metropolis Clubmet BBS. If
+      you are not already running this version then install it and continue.
+      If you are already running this version then install it anyways and
+      continue.
+
+7) Q: I want to play around with copying my .vir files over my .dat files.
+      Which files can I copy and what will happen when I copy them.
+   A: The only .vir file which you can safely copy over the .dat file is
+      the wccacmsr file.  You may copy wccacmsr.vir to wccacmsr.dat but
+      you then have to run an offline-recovery.  Copying any other
+      file can have bad side-effects so please do not do it.
+
+8) Q: My system runs a MajorMUD offline recovery every night.  Why?
+   A: The first thing you'll have to do is figure out why it is doing
+      the recovery every night.  Once you figure that out, stop your
+      system from doing whatever it is doing and then it will not do
+      the recovery.
+
+      Things to check:
+      - Make sure that you or another sysop has not manually put in a
+        call to wccmmutl in your cleanup batch files
+      - Make sure that your bbs is shutting down properly (if it isn't,
+        look for a misbehaved module which kills the shutdown procedure
+        and either remove the module or make sure it is loaded after
+        MajorMUD so it doesn't kill the shutdown procedure until after
+        mud has shutdown).
+      - Make sure you're getting the audit trail message "MajorMUD -
+        Notice   Cleanup complete" during shutdown - if you're not then
+        redo the point above because something is stopping majormud
+        from shutting down. If you get the message "MajorMUD- Notice
+        Starting cleanup" then please do section 6.5 of wccmmud.rln and
+        then email support@majormud.ca with the audit trail messages
+        you are getting at cleanup if you continue to fail to finish
+        cleanup.
+      - Make sure you're not getting the message "MajorMUD - Notice
+        Recovery not completed - leaving flag file" or " MajorMUD - Notice
+        Offline recovery required - leaving flag file".  If you're getting
+        the first message then make sure you've upgraded to 1.1V.  If
+        you're getting the second message then you've probably got a gameop
+        or sysop abusing the reset room or reset area command.  In this
+        case, make sure logging of sysop commands is turned on (read
+        section 3.1 of wccmmud.rln), find the user that is abusing the
+        commands, and then remove their ability to do these commands (or
+        at least tell them not to do them every day).
+
+      
+==========================================================================
+
+Appendix Y - Currently Available Add-Ons
+
+This section will include the names for any currently 
+available add-ons for MajorMUD.
+
+Dragon's Teeth         - Addon #1  (Database)
+MajorMUD Plus          - Entertainment Edition (DLL)
+The Cursed Ruins       - Addon #2  (Database)
+Strangers in the Night - Addon #3  (Database)
+Terror from Below      - Addon #4  (Database)
+The Rising Dawn        - Addon #5  (Database)
+The Sands of Time      - Addon #6  (Database)
+Savage Lands           - Addon #7  (Database)
+A Call to Arms         - Addon #8  (Database)
+Prophecy of Plague     - Addon #9  (Database)
+
+==========================================================================
+
+Appendix Z - Sysop only Release Notes
+
+This section is used to outline any changes which have been made which
+only sysops need to know.  Quite often I will not be able to fully test
+all variations of some of the CNF options, so please use caution when
+trying out non-default values.  Note that I will post these release notes
+in the opposite order to that of the user release notes.  This means that
+the latest release notes are at the END of the file.  I am doing this so
+that when viewing online, you may just press N for nonstop viewing, and
+wait until you get to the end of the file where you will see the latest
+release notes.
+
+                     +      Version 1.0r - 12/31/94     +
+
+1.  Added CNF: EXPINTOP which will allow you to disable the display of 
+    the experience in the topten command.
+2.  Added CNF: LEAVEMNU which is used to display text after leaving the menu
+3.  Added CNF: LVLDIFF to restrict high level users from tormenting lower 
+    level users
+4.  Added CNF: FULLLVL and NODMOKEY to allow access to users while limiting
+    the maximum levels which they can obtain
+5.  Added CNF: MINHUPHP, MAXHUPHP, MAXHUPIT to help customize the hangup
+    penalty for your board.
+6.  Added CNF: NOKICKEY which will allow users to continue playing after
+    they run out of credits
+7.  Added SILVERMERE to the SYS GOTO locations, changed NEWHAVEN to go 
+    directly to the arena
+8.  Hopefully re-enabled the base-bbs inactivity timeout while in the
+    MMUD menu.  Note: While in MMUD, the inactivity timer will NEVER
+    kick in (at least I don't think it will).  If this is a problem, please
+    send me email and I'll look into writing a MMUD specific inactivity
+    timer.
+9.  Added SYS GOD user DISABLE TOPTEN and ... ENABLE TOPTEN commands which
+    will remove and add a from/to the topten display [assuming their exp
+    qualifies them - grin].
+10. WARNING: The FIRST time you load this version, you may experience a 
+    long delay as some buffers are updated to reflect some new data values.
+
+                     +      Version 1.0t - 1/2/95       +
+
+1) Added a SYSOP STATUS ROOM <room> <map> command which will display room
+   statistics for a given room.  This is specifically for providing debug
+   information so that we can support you when problems occur.
+2) Added a SYSOP CONFIGURE [SHOW/MAXUSERS] command which will let you 
+   limit the number of users in MMUD to less than your licensed amount.
+   This would be used if you wanted to ensure that a certain number of 
+   lines are left for non-Mud users.
+3) Started work on the SYSOP REPORT command.  Currently supports USERS
+   and NOTOPTEN (users who will not show in the topten)
+
+                     +      Version 1.0u - 1/2/95       +
+
+1) Added a mask to the sysop report users command
+2) Fixed the NOKICKEY option so that it should work :) [ I had forgotten
+   to set the correct message file before checking the key ]
+
+                     +      Version 1.0v - 1/9/95       +
+
+1) Spells cast on NPC's will no longer crash the board.
+
+                     +      Version 1.0x - 2/14/95       +
+
+1) Updated checks on sys god command and updated help in this file 
+2) Added the inactivity timeout (users with the sysop key will not be
+   kicked offline due to inactivity)
+3) Alpha release of the offline recovery utility
+
+                     +      Version 1.0y - 3/23/95       +
+
+1) Enabled the SYS LIST LIMITED command
+2) Added the -needed option to the recovery utility
+
+                     +      Version 1.0z - 6/30/95        +
+
+1) The BBS inactivity timer should work in the main menu now (while the 
+   MMUD inactivity timer works *in* the game.
+2) Added support for the reload__wccmmud() function to work with HWS's
+   (HumanWare Systems) utility which allows online CNF configuration
+   (Don't know the name offhand)  [Not tested with it yet, so please
+   tell me if it works for you]
+3) Modified option 'D' from the sysop menu
+4) If you use the SYSOP DISBAND <gang> command, it will force a deletion of
+   that gang at the next cleanup.  Note that if there are (eg) 2 people in
+   the gang, but one has not logged in after the disband and before the
+   cleanup, if someone creates a new gang the next day with the same name
+   as the disbanded gang BEFORE the original gang member has entered the 
+   game, then the original gang member will implicitly become part of the
+   new gang, but the count of gang members will be incorrect.  Bottom line,
+   don't use the disband command unless you really need to because it was
+   only put in for those 'really need to' situations.
+
+                +      Version 1.1 [beta] - 12/24/95        +
+
+1)  Sysop commands will only match with the beginning of the commands, and 
+    not merely any portion of the command.
+2)  Split the 'D' option on the sysop menu into 'D' and 'H' to check for
+    item hoarders (Refer to detailed notes above)
+3)  Every once in a while, some boards have experienced GPs which are
+    technically impossible unless there has been some memory corruption. In
+    an attempt to thwart any possibility of MMUD being the cause of this,
+    I have reviewed all memory allocations in MMUD to ensure that they are
+    all being used appropriately.  I didn't find any obvious bugs, but did 
+    make some changes which may or may not make any difference.
+4)  Added the sysop bulletin option to the sysop menu
+5)  Fixed a bug in the online database update routines which would not 
+    update all of the abilities on the items.  Please make sure that you 
+    re-apply the 1.1 database update AFTER you install the version 1.1 dll.
+6)  Added the DATADIR CNF option to facilitate moving the wcc databases to
+    a different directory.
+7)  When a re-init process is started, an audit trail entry will be 
+    recorded.  Also, the init rate will be set to 10 if a lower value 
+    is chosen.
+8)  Added the SYSOP RESET command
+9)  Added the SYSOP GOD <user> PROFILE command
+10) Added the SYSOP GOD <user> POWERS command
+11) Added the SYSOP GOD <user> SPELLS command
+12) Numerous performance enhancements (balanced out, of course, with new
+    features to slow it down again - grin)
+13) Added an automatic database upgrade procedure.  If MajorMUD finds the
+    file wccupdat.dat in the bbs directory when it starts, it will 
+    automatically begin updating your databases with the new changes.  Note
+    that you may still, at any time, re-apply these updates using the normal
+    techniques.  Once it has applied the database update, it will rename
+    the file to WCCUPDAT.OLD (first deleting any old wccupdat.old files).
+14) New sysop menu option which lets you change the filter settings for
+    finding defunct users.
+15) Added the gameop key to allow restricted access to some sysop commands
+
+                 +      Version 1.1 [beta] - 1/1/96         +
+
+1) Added the CP sysop menu option which will clear the saved profile
+   information (only good for resetting)
+2) I think I found the reason that MMUD allowed the BBS to answer the
+   modems for a second during initialization when the INITRATE was set
+   to a high value.  You should be able to set INITRATE back to a high
+   value if you like it that way and I hope that it won't answer now :)
+3) Fixed a bug where a certain combination of buffer settings and just
+   the right combination of items on the ground in right rooms would
+   cause cleanup to freeze.
+4) Fixed a bug for a single bbs out there where the set statline full 
+   custom command would cause a GP.
+5) Modified this file to reflect the GENDERGO option
+6) Added support for 6.21 again - read section 6.2 on wccfake.flg
+
+                 +      Version 1.1 [beta] - 1/14/96       +
+
+1) Redid some of the memory allocation routines to allocate more memory
+   at the start of the day instead of on an as-required basis.  It 
+   appears as though MMUD was pushing the limits of the number of
+   allowable memory allocations, so instead of allocating smaller 
+   chunks of memory when required I'm trying to allocate larger chunks
+   of memory and then break these down internally.
+
+                 +      Version 1.1 [beta] - 2/18/96       +
+
+1) Fixed the bug which caused the random crashes from the 1/29/96 
+   release
+2) Added appendix H to this document
+
+                 +          Version 1.1 - 4/1/96           +
+
+1) Minor changes not worth noting - grin
+
+                 +          Version 1.1a - 4/5/96          +
+
+1) Fixed full reindex so that both a lower case and upper case F
+   would cause the full reindex to happen (previously only an
+   upper-case F would work - ouch)
+2) Changed memory allocations to use Gcomm's internal allocations
+   everywhere instead of trying to bypass them to use farmalloc.
+   Note that a side effect of this is that if you are low on
+   memory then your bbs may catastro during runtime.  Please make
+   sure that you have approx. 100K of free memory after MajorMUD
+   has finished initialization to avoid this problem.
+3) Moved online sysop command information to the file wccmmsys.not
+4) Added AUCTKEY and GOSSKEY CNF options
+5) Added 5 more invalid global CNF options
+6) Added DELUSER CNF option
+7) Added NOPAYKEY CNF option
+8) Included an UNTESTED WCCMMUD.UIC file for Phoenix name change support.
+   PLEASE read section 6.3 in this document for additional notes re:
+   Untested, Not Guaranteed, use at your own risk.
+
+                 +          Version 1.1c - 4/21/96          +
+
+1) Fixed the online recovery procedure to be consistent with the offline
+   recovery procedure
+2) Disabled certain internal errors during online recovery mode
+
+                 +          Version 1.1d - 5/19/96          +
+
+1) Added new sysop god commands: GOOD, SAINT, NEUTRAL, LAWFUL, UNLAWFUL
+2) Added section 7 to this document
+3) Added CNF options MAXEPDAY, EPCYCLE, EPAMOUNT, ENABLAWF
+   (Read section 7.1)
+
+                 +          Version 1.1e - 8/25/96          +
+
+1) Users without enough credits to play MajorMUD for even one credit cycle
+   will not even be allowed to enter the game
+2) When running on a DMA server, each host BBS must now be pre-registered
+   with Metropolis, Inc. to acquire a sub-bbs activation code.
+3) Added section 6.5 to this document (Generic fix-all steps)
+4) Added section 6.6 to this document (DMA Server topics)
+5) In cases where the map gets corrupted and there are billions of an item
+   on the floor, cleanup will merely not remove them all instead of
+   appearing to freeze while it is removing them all.
+
+                 +          Version 1.1f - 11/11/96          +
+
+1) Rewrote offline recovery to perform a 'fast' recovery which resets
+   the active monsters, recovers the databases, and reindexes the limited
+   items.
+2) Added SYSOP GOTO SUPPORT for use with some of the add-on database
+   modules.
+3) Added support for addon module activation code entry (section 6.7)
+4) Profanity filter will now work on auction, gossip, and broadcast commands
+   (Only on broadcast channel 0)
+
+                    +         Version 1.1g - 1/4/97          +
+
+(See user release notes)
+
+                    +         Version 1.1h - 2/8/97          +
+
+1) Hopefully changed the edit bulletin command to work properly on DMA
+   servers
+2) Updated addon activation code checking to avoid some conflicts with
+   other misbehaved applications
+3) Fixed the split-screen mode so that users could not send low-ascii
+   characters to screw up other channels
+4) Re-did the level limits on PvP combat so that -1 LVlDIFF will always
+   disable PvP combat completely 
+
+                    +         Version 1.1i - 3/16/97          +
+
+1) Added a new punishment on hangup level 'none' to replace the old
+   'low' level.  Low punishment now means punish if the user is in
+   PvP combat.
+
+                    +         Version 1.1j - 6/21/97          +
+
+1) Hopefully fixed a conflict with the user listing command in FU-Globals
+   which, if the user entered at exactly the correct time during the
+   exiting of MajorMUD they could get it to incorrectly place the user
+   back into the game with a corrupt character and potentially crash
+   the BBS.  This will also explain the odd bugs that a few systems have
+   reported where a user claims to 'die' as they are exiting the game
+   and they think the only solution is to hang up.
+   (Untested solution - Jim McK. - you reported this, do you think you
+   could test this solution on your system and let me know if it worked
+   - thanks, Lance)
+2) Add section E.1 FU Globals (Please read if you are running FU Globals)
+
+                    +         Version 1.1k - 7/26/97          +
+
+1) If a user of a level greater than FULLLVL attempts to enter MajorMUD
+   without the NODMOKEY key they will not be allowed to play the game.
+2) Fixed a problem with the wccmmud.uic file (pheonix support)
+3) If more than one sysop tries to check for item hoarders at the same
+   time the second (and subsequent) sysops will be warned to quit and
+   have all other sysops quit and start over with only a single sysop
+   doing the function.
+
+                    +         Version 1.1l - 8/10/97          +
+
+1) Added support for the pause_fu and unpause_fu text variables which
+   will be in a future version of FU globals.  When this version of
+   FU globals is released then the FU globals should be disabled while
+   exiting MajorMUD.  This has not been tested.  If you run FU globals
+   and have a new version that supports this feature then please try on
+   a test system first.
+
+                    +         Version 1.1m - 10/3/97          +
+
+See user release notes
+
+                    +         Version 1.1n - 10/11/97          +
+
+Moved sysop-only release notes to WCCMMSYS.REL

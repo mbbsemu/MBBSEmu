@@ -1,0 +1,16 @@
+File name: KKGRLOO2.MP
+Path description: Kobold Tunnels, without King, and converts cash.
+Path starts: Kobold Guardroom.
+Path ends: ---
+Area of the game: Module 5
+Level recommendation: 10-15
+Type of path: Loop
+File format: New
+Monsters encountered: kobold, kobold warrior, centipede.
+Additional information:
+
+Included in the zip are KOBTKKGR.MP, KOBKKKGR.MP, KKGRKOBK.MP and KKGRKOBT.MP
+which are paths to and from the start of this loop.
+
+This loop also converts cash it collects by buying and selling iron rations.
+It lowers the exp rate a little, results in 1.5p per hour though.

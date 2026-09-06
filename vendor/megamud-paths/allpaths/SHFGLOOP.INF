@@ -1,0 +1,23 @@
+File name: SFGHLOOP.MP
+Path description: Shadowfist Temple (hidden areas only)
+Path starts: Shadowfist Temple, Great Hall.
+Path ends: ---
+Area of the game: Module 5
+Level recommendation: 20-30
+Type of path: Loop
+File format: New
+Monsters encountered: dark monk, dark apprentice, dark mystic.
+Additional information:
+
+This file uses a custom start point which I don't yet have files to and
+from. However, these should be available soon.
+
+To roam this area properly you need to be criminal or worse (villain,
+fiend). Also, you need to go to Game Data -> Monsters, and set dark monks,
+dark mystics and dark apprentices as 'Enemy' (if they aren't already),
+and check the box 'Non-hostile'. Then go to Settings -> Combat, and check
+the option 'Attack all monsters' if it isn't already checked. These things
+will enable MegaMud to rest while there are still monsters in the room
+(because when you are criminal or worse dark monks are neutral to you),
+thus increasing your rate alot.
+

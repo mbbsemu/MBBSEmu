@@ -1,0 +1,328 @@
+
+                  MajorMUD - Realm Of Legends
+     Copyright (c) 1993-2000     Metropolis, Inc. 
+                   All Rights Reserved
+
+                    User Documentation
+
+Table Of Contents		
+
+1) Introduction
+2) Creating a Character
+3) Commands
+4) Customizing your Environment 
+
+Appendix A - Contacting the authors
+Appendix B - Races
+Appendix C - Classes
+Appendix D - Game Stats
+
+==========================================================================
+
+1) Introduction
+
+   MajorMUD is an interactive, text-based adventure game which
+evolves around puzzle solving and character building.  The game
+begins in the city of NewHaven where beginners can practice their
+skills.  They then venture out to Silvermere and the world beyond.
+
+   Users start by choosing one of several races, and
+one of many classes.  Their character then becomes an adventurer
+in the Realm, each with special skills and abilities.  Beginning
+in the city of NewHaven with no money and limited weapons and 
+equipment available, the user is free to try to advance his character
+and make his fortune.
+  
+   Users advancement happens many ways.  A user can fight his way
+through hordes of monsters, or traverse the realm looking for puzzles
+to solve and wealth to find.
+
+==========================================================================
+
+2) Creating a Character
+
+Before creating a character, you should determine which race and class
+you wish to be.  Use the online help or this document to find out more
+information about each race.  Once you have determined this, merely
+enter the game from the main MajorMUD menu.  You will be given a list
+of races after which you enter the number of the race you wish.  You
+will then be given a list of classes after which you enter the number
+of your chosen class.
+
+You will then be put into a full-screen editor to enter the remaining
+pieces of information about your character:
+First Name  - You must enter a first name.  This name must be unique
+              among all other MajorMUD players on your bbs, all 
+              monsters in the game, and all game commands.  Make sure
+              you like the name you choose, because
+
+              YOU MAY NOT CHANGE YOUR FIRST NAME WITHOUT REROLLING.
+
+Last Name   - There are currently no restrictions on your last name 
+              except for the fact that it must be one word without
+              punctuation.  Your sysop may request that you change
+              this if they find it offensive.  By taking your character
+              to an appropriate training hall, you may change your last
+              name by typing TRAIN STATS (which will take you back to
+              the full screen editor).
+
+Stats       - You will be shown the base values for your stats and
+              will be given a certain number of character points to
+              assign to these stats as you choose.  Once you raise
+              a stat and then save it (by exitting the full screen
+              editor and choosing SAVE) then you MAY NOT LOWER IT AGAIN.
+              You may, however, leave your Character Points waiting to
+              be used until you know where you wish to place them.  Note
+              that your character will be at a disadvantage if you have
+              not used all of your character points.  See Appendix D -
+              Game Stats for more help on each statistic.
+
+Appearance  - You may use this screen to change your hair length, hair
+              colour, or eye colour at any time (by typing TRAIN STATS
+              in an appropriate training room for your class)
+
+Once you save your character, the game will verify that your first name
+is appropriately unique.  If it is not, you will be prompted to enter
+a new name.  This will repeat until you enter an appropriate name.
+
+You will then be shown your stat sheet and will start out in the town
+of NewHaven where you start your adventure.
+
+==========================================================================
+
+3) Commands
+
+There are many commands available to you in MajorMUD.  Not all
+commands are documented here.  The rest you will have to figure 
+out as you play the game  (Some commands will be specific to
+certain rooms).  If you cannot find the information you need in this 
+document, please use the HELP command in the game to try and find
+help on whatever you are looking for.
+
+north   south     east    west     northEast northWest southEast  southWest 
+up      down      spells  light    use       rob       list       buy 
+attack  help      look    map      status    health    inventory  whisper
+keys    eat       drink   get      drop      track     cast       give 
+join    broadcast suicide ready    wear      unready   follow     reroll 
+quiet   verbose   leave   talk     scan      stock     smash      killblow 
+sneak   picklock  hide    search   disarm    remove    rest       brief 
+profile withdraw  deposit bankbook open      close     break      aid 
+bash    kick      equip   invite   uninvite  backrank  frontrank  stash 
+arm     wield     train   party    page      lock      set        jumpkick 
+powers  invoke    read    feedback broadgang ask       greet      sell 
+forgive midrank   quit    share    wealth    action    disband	  
+topten  backstab  drag    exits    statline  punch     experience
+
+Please refer to the online help for more details about the usage of 
+these commands.
+
+==========================================================================
+
+4) Customizing your Environment
+
+There are a number of customizable features which each user may
+change to their liking.  These settings will stay with you even 
+if you reroll and start a new MajorMUD character.  At any point in
+the game, you may type PROFILE to see your current profile settings.
+
+The following are the available profile options:
+
+Display Mode:
+  This will control the amount of description you get everytime you
+  enter a room.  There are two options:
+    Brief   - Only display room header, items, people, monsters, exits
+    Verbose - Display all of above, plus full text description of room 
+
+StatusLine:
+  This option controls the style of the statusline which you see
+  as a prompt while playing MajorMUD.  There are three options:
+    Off  - All you see as a statusline is ">"
+    On   - You will see your hit points and mana or kai (if applicable)
+    Full - As for 'on', but if you press ENTER, you will also receive
+           a brief room description.
+
+Broadcast Channel:
+  This is the in-game broadcast channel which you are on.  Using the
+  BROADCAST (BR for short) command, you can send messages to everyone
+  who has the same channel as you.  If your bbs does not already have
+  the ' key or the - key assigned to a global command, then you can
+  precede a line with either of those characters to broadcast to this
+  channel as well.  A broadcast channel can be in the range of 1 - 255.
+
+Talking Speed:
+  Your talking speed determines if you have to precede every line of
+  text which you want to say with a character.  There are two options:
+    Fast - You do NOT need to precede your line with a character.  Just
+           type whatever you wish to say and it will be said to the room.
+    Slow - You must precede all talking with a character (defaults to .)
+           if you want to speak to the room.  If . does not work, it is
+           because your sysop has changed it.  Type HELP TALKING to
+           see the character which your sysop has chosen.
+
+Follow Mode:
+  When you are in a party, you will automatically follow the leader of
+  your party.  When in this mode, often you do not wish to actually see
+  any room descriptions as you move from room to room.  There are two
+  options for this mode:
+    Blind  - All you will see is the direction that you are moving
+    Normal - You will see room descriptions as though you had moved yourself
+
+Attack Interrupts:
+  If you are calling the bbs using a slow modem (less than 14.4) then
+  there are times when you may experience a backlog of text.  This means
+  that the action in the game is going on, but you still haven't seen it
+  happen yet because your modem is not fast enough to get it to you.  Some
+  people have been known to take advantage of this by sending LOTS of data
+  to you and then attacking you.  By the time you even see the first attack,
+  there is a good chance that you will already be DEAD.  To get around this
+  problem, you can turn attack interrupts on.  This will cancel all text
+  going to you as soon as someone attacks you and send you a message 
+  informing you of the attack.  Note that you may miss out on important
+  messages this way, but at least you see the fact that someone is attacking 
+  you.  There are two options for this setting:
+    Enabled  - Your output will be interrupted to display the attack message
+    Disabled - No attempt will be made to interrupt your output when attacked
+
+Receive Items:
+  Another technique which some users will do to attack you unfairly is to
+  give you a lot of useless stuff and then attack you (often they will use
+  a macro to do this as fast as possible).  The result of this is that they
+  will greatly increase your encumbrance which will then slow you down if
+  you try to run away or fight back.  You can use this option to stop
+  people from giving you anything.  There are two options:
+    Enabled  - You will accept anything you are given
+    Disabled - You will not accept anything you are given
+
+Warn on Evil:
+  There are a number of actions in MajorMUD which will cause you to earn
+  evil points.  As your number of evil points increases, the game will 
+  start to punish you by sending guards, bounty hunters, or even lightning
+  bolts after you.  If you wish to be stopped from even accidentally 
+  performing an evil action, you may use this setting to stop you.
+    On  - You will be warned before taking any evil action and stopped 
+          from performing the action
+    Off - You will not be warned and will earn evil points as usual.
+
+Allow Telepaths:
+  There are times in the game when you do not wish to be disturbed by
+  anyone else in the game.  You can use this setting to stop people from
+  telepathing to you.
+    On  - Anyone can telepath messages to you
+    Off - Nobody can telepath messages to you
+
+Block Entrance Message:
+  There are certain global messages which are sent to everyone who is
+  playing the game.  These include (but are not limited to) messages
+  indicating that a player has left or entered the realm.  If you do
+  not wish to receive these, turn this option on.
+    On  - You will not receive any global game messages
+    Off - You will receive global game messages as normal
+
+Keep Some Experience:
+  When you die your last life, or reroll your character, you have the
+  option of either starting fresh with 0 experience, or keeping some of
+  the experience of your current character in your new character.
+    On  - You will keep some experience in your next character
+    Off - Your next character will start at 0 experience again.
+  NOTE that your sysop may, at his/her discretion, disable this option
+  on a system-wide basis.
+
+Message Level:
+  This option applies to those callers on lower speed lines as well as
+  those who just don't want to be bothered with all the messages about
+  things happening around them.  There are three settings for this option.
+  You will have to experiment with them to find out which one is best for
+  you.
+    High   - You will see all messages about anything that happens around you
+    Medium - You will not see as many messages as at high
+    Low    - You will only see important messages that pertain to you
+
+Paging:
+  You may control two aspects of pages (or any bbs global messages) being
+  sent to you.  First, you may turn them on or off:
+    On  - People may page you or send you bbs global messages
+    Off - People may not page you or send you bbs global messages.
+  The second option is the frequency at which you can be paged (or 
+  telepath'd).  You may specify the maximum number of these global messages
+  which you wish to receive in a 3 second interval.
+
+Talking Responses:
+  When you are talking, there are two possible responses which the game
+  can give to you.  They are as follows:
+    Brief - The game will merely say 'Well spoken.'
+    Verbose - The game will respond with 'You say, "whatever you said"'
+
+Colour Palette:
+  There are currently 4 different colour palettes in the game (0,1,2,3)
+  which you may choose from.  The colour palette affects the colours which
+  are used in numerous places in the game.  You will have to use trial and
+  error to determine which palette is best for you, but in general palette
+  0 is medium brightness, palette 1 is dim, palette 2 is the brightest, and
+  palette 3 is a combination of 0 and 1.
+
+Suicide Password:
+  To help prevent accident suicide or reroll (as well as preventing your
+  friends from doing it while your back is turned), there is a suicide
+  password option which you may set.  Once set, you must enter it before
+  you will be able to suicide or reroll.
+
+==========================================================================
+
+Appendix A - Contacting the authors
+
+If you wish to provide any feedback or problem reports, there
+are several methods in which you can contact the authors of 
+MajorMUD.  
+
+If your board has Maillink (ask your local sysop), then you will 
+be able to use the FEEDBACK command.  To use this command, merely
+type FEEDBACK <followed with whatever you wish to say>.  An email
+message will be generated and sent directly to the author of the 
+game.
+
+Again, if your board has Maillink, then your sysop will most
+likely have setup a user discussion forum.  Although the game
+designers only scan this forum briefly due to the volume of 
+traffic, it is a good place to ask questions to see if anyone
+else has figured out the answer already.
+
+The home BBS where MajorMUD originated is available via Telnet
+(or phone if you can afford the long distance).  The name of
+the BBS is Dreamscape Online Entertainment.  
+
+Our telnet address is dsoe.com.  
+Our web page is http://www.majormud.com
+
+Other Contact Info:
+
+        Phone:  913-661-0601
+        Fax:    913-663-3200
+
+        E-mail: sales@majormud.com
+                support@majormud.com
+
+        Mail:   Metropolis, Inc.
+                8650 College Blvd., Suite 111
+                Overland Park, KS  66210
+                USA
+
+==========================================================================
+
+Appendix B - Races
+
+Please refer to the online help for more information on the races 
+available in MajorMUD
+
+==========================================================================
+
+Appendix C - Classes
+
+Please refer to the online help for more information on the classes
+available in MajorMUD.
+
+==========================================================================
+
+Appendix D - Game Stats
+
+Please refer to the online help for more information on the various
+statistics which alter your character in MajorMUD.

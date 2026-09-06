@@ -1,0 +1,17 @@
+File name: SLMCWRDF.MP
+Path description: The first file is a path from the Slum Crossroads
+  to the Western Road Fork, via the Crumbling Tunnels.  Its purpose
+  is to give you a path into the Hills in case you don't have a
+  rusty iron key handy.
+Path starts: Slum Crossroads
+Path ends: Western Road Fork
+Area of the game: Original Game and Module 1
+Level recommendation: N/A
+Type of path: Path
+File format: New
+Monsters encountered: usual for slums, crumbling tunnels and hills
+
+Additional information: Also included with this is a modified path
+  from the Western Door to the Western Road Fork.  The only
+  difference is that if the path fails (i.e., you don't get the
+  key), it uses the Crumbling Tunnels path.  Have fun!

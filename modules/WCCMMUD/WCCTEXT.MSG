@@ -1,0 +1,132 @@
+
+LEVEL6 {MajorMUD Text Blocks}
+
+
+
+GOODTEXT {[0m
+You must now choose if you want to be a truly 'lawful' citizen of the realm.
+If you answer YES to this question then you will never be allowed to instigate
+any action which would give you evil points, and any player that attacks or
+robs from you will receive three times the regular evil points in return. You
+can still attack those with a bad reputation. This option is designed
+solely for those who want to stay away from the player combat aspects of the
+game, and choosing it for any other reason (Item storage, etc...) is strictly
+prohibited.
+
+Remember, this is a very important choice. Once you have chosen Lawfulness,
+you may not remove this title, unless you start a new character.
+} T Text describing good choice
+
+
+GOODPMPT {[0m
+Do you want to be [1mLawful[0m?  [Yes/No] } T Prompt for good choice
+
+
+LEVEL99 {MajorMUD Text Blocks}
+
+
+CHSRACE {[0m
+[32mPlease choose your race [ ? for help ] : } T Prompt for a race
+
+
+CHSCLASS {[0m
+[32mPlease choose your class [ ? for help ] : } T Prompt for a class
+
+
+EDITCHA1 {[0m    .ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ.ÄÄ.
+   / [1;36mM A J O R  M U D [0;36mCharacter Creation [37m/    \  [1;30mÚÄ    [35mPoint Cost Chart    [30mÄ¿
+  [0m³                                     ÃÄÄ.   ³ [1;30m³                          ³
+  [0m³ [31m¯ [36mGiven Name   [1;37m?????????????????? [0;31m® [37m³___\_/  [1;30m³ [35m1st [0;35m10 points: [1m1 [0;35mCP each [1;30m³
+  [0m³ [31m¯ [36mFamily Name  [1;37m?????????????????? [0;31m® [37m³        [1;30m³ [35m2nd [0;35m10 points: [1m2 [0;35mCP each [1;30m³
+  [0m³ [31m¯ [36mRace         [37m?????????????????? [31m® [37m³        [1;30m³ [35m3rd [0;35m10 points: [1m3 [0;35mCP each [1;30m³
+  [0m³ [31m¯ [36mClass        [37m?????????????????? [31m® [37m³        [1;30m³     ... and so on ...    ³
+  [0m³                                     ³        [1;30m³                          ³
+  [0m³ [31m¯ [36mStrength   [37m($$$$ to $$$$)  [1m$$$$ [0;31m® [37m³        [1;30m³ [0;35m+[1m10 [0;35mto base stat:  [1m10 [0;35mCP [1;30m³
+  [0m³ [31m¯ [36mIntellect  [37m($$$$ to $$$$)  [1m$$$$ [0;31m® [37m³ [1;30mÄÄÄÄÄÄ´ [0;35m+[1m20 [0;35mto base stat:  [1m30 [0;35mCP [1;30m³
+  [0m³ [31m¯ [36mWillpower  [37m($$$$ to $$$$)  [1m$$$$ [0;31m® [37m³        [1;30m³ [0;35m+[1m30 [0;35mto base stat:  [1m60 [0;35mCP [1;30m³
+  [0m³ [31m¯ [36mAgility    [37m($$$$ to $$$$)  [1m$$$$ [0;31m® [37m³        [1;30m³ [0;35m+[1m40 [0;35mto base stat: [1m100 [0;35mCP [1;30m³
+  [0m³ [31m¯ [36mHealth     [37m($$$$ to $$$$)  [1m$$$$ [0;31m® [37m³        [1;30m³ [0;35m+[1m50 [0;35mto base stat: [1m150 [0;35mCP [1;30m³
+  [0m³ [31m¯ [36mCharm      [37m($$$$ to $$$$)  [1m$$$$ [0;31m® [37m³        [1;30mÀÄ    ... and so on ...   ÄÙ
+  [0m³                                     ³
+  ³ [31m¯  [36mHair Length   [1;37m???????????????  [0;31m® [37m³        [1;30mÚ [36mUse the Space Bar to
+  [0m³ [31m¯  [36mHair Colour   [1;37m???????????????  [0;31m® [37m³ [1;30mÄÄÄÄÄÄ´ [36mtoggle between choices for
+  [0m³ [31m¯  [36mEye Colour    [1;37m???????????????  [0;31m® [37m³        [1;30mÀ [36myour physical description
+  [0m³                                     ³
+  ³ [1;31m¯  [0;36mExit: [1;37m???? [31m®  [0;31m¯ [36mCP Left:       [31m® [37m³ [1;30mÄÄÄÄÄÄÄ [37mSAVE [36myour character or [37mEXIT
+ [0m©ÁÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ.     ³
+ \_________________________________\___/
+[1;31m!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!} T Text for character creation
+
+
+EDTCHAN2 {[0m[2J
+      M A J O R   M U D
+
+     Character Generator
+
+      Point Cost Chart
+
+ +1-10 points costs 1 CP each
++11-20 points costs 2 CP each
++21-30 points costs 3 CP each
++31-40 points costs 4 CP each
+
+Given Name  ??????????
+Family Name ??????????????????
+Race        ???????????????????????????????
+Class       ???????????????????????????????
+
+Not Used: Base Strength:   $$$$
+Not Used: Max Strength:   $$$$
+ Strength:  $$$$
+Not Used: Base Intellect:  $$$$
+Not Used: Max Intellect:  $$$$
+ Intellect: $$$$
+Not Used: Base Willpower:  $$$$
+Not Used: Max Willpower:  $$$$
+ Willpower: $$$$
+Not Used: Base Agility:    $$$$
+Not Used: Max Agility:    $$$$
+ Agility:   $$$$
+Not Used: Base Health:     $$$$
+Not Used: Max Health:     $$$$
+ Health:    $$$$
+Not Used: Base Charm:      $$$$
+Not Used: Max Charm:      $$$$
+ Charm:     $$$$
+
+             (hit space to toggle)
+ Hair Length ???????????????
+
+             (hit space to toggle)
+ Hair Colour ???????????????
+
+             (hit space to toggle)
+ Eye Colour  ???????????????
+
+ Exit: ????
+
+ CP Available: $$$$
+} T Text for character creation
+
+
+MENUTEXT {[0m[2J
+ [1mM A J O R  M U D [33mv%s
+[0m{Finn's Realm~}
+[1;35m*ANSI RECOMMENDED*
+
+[30m[[37mE[30m] . [0mEnter the Realm
+[1;30m[[37mH[30m] . [0mHelp
+[1;30m[[37mA[30m] . [0mAbout the Game
+[1;30m[[37mC[30m] . [0mGame Counts
+[1;30m[[37mT[30m] . [0mTopten Adventurers
+[1;30m[[37mG[30m] . [0mTopten Gangs
+[1;30m[[37mW[30m] . [0mWho's in the Realm
+[1;30m[[37mR[30m] . [0mRelease Notes
+[1;30m[[37mI[30m] . [0mInformation
+[1;30m[[37mX[30m] . [0mExit Game
+
+} T Main Menu text
+
+
+MENUPMPT {[1;30m[[0mMAJORMUD[1;30m][0m: } T Main Menu text
+

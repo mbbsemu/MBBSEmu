@@ -1,0 +1,42 @@
+File name: NQUEST1A.MP, NQUEST1B.MP
+Path description: Here you have a complete path to take you through
+   the first Neutral Quest!  NQUEST1A is the path for a single character.
+   NQUEST1B will take a whole group through the quest, giving them all
+   the 40k XP and the quest ring!
+Path starts: Silvermere, Town Square
+Path ends: ---
+Area of the game: Original Game and Module 1
+Level recommendation: 20+ as an individual, varied in a group.
+Type of path: Loop
+File format: New
+Monsters encountered: Because this path takes you all over the
+   place, many monsters may be encountered.  Here's most of them:
+	ankheg			bandit			brigand
+	carrion crawler		dark goblin archer	dark monk
+	displacer beast		forest spider		gnolls
+	gorgon			half-ogre bodyguard	harpy
+	manticore		mercenary		orcs
+	mermex hunter		roc hatchling		thug
+	umber hulk		wild dog
+Additional information:
+
+THINGS YOU SHOULD KNOW AND HEED!!
+
+ - These paths are LOOPS.  You will find them in the loops section
+   of MegaMud (press ALT-L).  They are configured to stop after one
+   iteration, so you don't try to do the quest multiple times.
+
+ - In order for the paths to work, you need to set your own character to
+   accept commands (Options > Game Data > Players tab > click on
+   your character).  Also, if you do the group quest, all of the group
+   members need to be set to accept commands from you.
+
+ - If you can't see well in the dark, you should bring at least a lantern,
+   and light it before you go.  You may waste some lantern life, but it's
+   a small price to pay.  Scripts tend to get confused with lighting, and
+   you don't want the path to die in the middle somewhere.  It is almost
+   1,000 steps, after all.
+
+ - This quality path was brought to you by Wubbo (wubbo@wubbo.com)
+   Comments, suggestions, or bug reports are welcome at that e-mail
+   address.  Thanks, and enjoy the path!

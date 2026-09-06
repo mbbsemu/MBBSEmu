@@ -1,0 +1,23 @@
+File name: SDSPLOP2.MP
+Path description: Small Pyramid (easy loop)
+Path starts: Small Pyramid, Withered Old Man
+Path ends: ---
+Area of the game: Module 6 
+Level recommendation: 30-45
+Type of path: Loop
+File format: New
+Monsters encountered: stronghold guard.
+Additional information:
+
+To get to the start of this loop you need a waterskin (bought from the
+general store in Khazarad or Silvermere for 5g), and you need to have
+completed the Module 6 quest up to where you get the guard sergeant to
+'blood' you.
+For this loop, you need to do the following things. Go to
+Game Data -> Monsters, and set stronghold guards as Enemy, Non-hostile
+and Low priority. 
+It is *highly* recommended you do not attack the gaurd sergeant, because
+stronghold guards protect him, and they have a nasty habit of regenning
+without a 'stronghold guard moves into the room from the blah' message,
+which means all the stronghold guards beat down on your when you try
+and attack the guard sergeant.

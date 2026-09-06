@@ -1,0 +1,16 @@
+File name: RBNKLOOP.MP
+Path description: Rhudaur banking loop.
+Path starts: Rhudaur bank.
+Path ends: ---
+Area of the game: Module 1
+Level recommendation: 15-25
+Type of path: Loop
+File format: New
+Monsters encountered: dark monk.
+Additional information:
+
+This loop, while barely being different from the default loop, is useful
+because it makes banking your collected cash easy. When you use this loop,
+set MegaMud to collect all gold, auto-deposit when you get over 500 coins
+(make sure you have it set to do your banking at the Bank of Rhudaur)
+and keep a minimum of 500 copper on hand. 

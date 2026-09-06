@@ -1,0 +1,2418 @@
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+ MajorMUD - Realm of Legends                                 Release Notes
+=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+              +   Version 1.11p - 12/30/05   +
+1) Fixed a problem with crimson chests giving out an incorrect 
+   amount of money.
+2) Fixed several (but not all) regen issues.
+3) Added a field in the inventory screen that shows what % of your
+   maximum encumbrance you are currently at.
+4) Added field for amount in gold to a player's bank balance for easier
+   viewing.
+5) Added color coding to encumbrance values.
+6) Fixed a problem that allows players to dodge after they have dropped
+   to the ground (0 hps or below).
+7) Added a second wrist slot for items.
+8) Added a face slot for items (no face items added yet, however).
+9) Added an eyes slot for items (no eyes items added yet, however).
+10) Fixed a memory leak found with regards to monster generation.
+11) Fixed a problem with cursed weapons.
+12) Changed monster initiative in combat to target attacking players
+    before targeting dropped players.
+13) Two handed weapons now appear as (Two handed) in inventory.
+14) Duplicate keys should now stack in inventory instead of being 
+    listed out individually.
+15) Removal of split screen mode.
+16) Checks for ability flags vs. class/race.
+17) A fix for attacks that don't give combat engaged messages that
+    are not sneak attacks.
+18) A fix to return items/coin to players if they try to buy from
+    an npc and do not have the proper amount needed. (sysop settable)
+19) Made some changes to the way retaliation flags are held in the 
+    game so that people can't just hang up to remove retal.
+20) Added a top list search by class name (ex: top warrior).
+21) Fixed a crash related to robbing.
+22) Fixed a problem with Saracens giving too much experience.
+23) Fixed a problem with Saracens not regenning in some areas.
+
+                 +   Version 1.11o - 12/11/2003    +
+1) Added code to fix the problem with monsters not regenerating.
+2) Adjusted level restrictions on some items.
+3) Fixed reported typos for spells and monster movements.
+4) Fixed the gnome merchant giving the magma blast scroll.
+5) Fixed the barmaid providing sellable room tickets.
+6) Fixed the bribe guard command for some jail cells.
+7) As discussed in MudIdeas, chainmail tunics are now chainmail hauberks.
+8) Fixed some monsters having incorrect magic weapon resistances.
+9) Fixed luring ganghouse guards into shops without an emblem.
+10) Monster head items are now wearable in the (Worn) slot.
+11) Made some adjustments to the 5th alignment quest weapons.
+12) Added a new area in the northern cleared fields.
+13) Enchanted dagger is now required to kill the Spectral Knight.
+
+                     +   Version 1.11n - 08/05/2003    +
+1) Items given via a NPC should no longer delete from a deathpile or during
+   cleanup.
+2) Adjusted the armour class, damage resistance and encumbrance of a
+   majority of armour items.
+3) When dying in a room with no exits, the game will now attempt to 
+   move your death pile to the previous 20 rooms you traveled, before
+   sendind it to the sysop support chamber.
+4) Attached a rubbish removal room to the sysop support chamber.
+5) Formula's for backstab combat have been adjusted.
+6) Formula's for regular combat have been adjusted.
+7) Encumbrance now effects your swings on a sliding scale.
+   At 50% encumbrance you will swing as normal, with less encumbrance your
+   amount of swings should increase, with more encumbrance they will decrease.
+8) The top list will now display experience gained on and above 10 billion.
+9) Formula for the spell wizard knock, and future spells like it have been 
+   adjusted.     
+10) When a party member is meditating it will now appear when you
+   check your party status.
+11) If you are in a protected room and a monster is with you it will no longer
+   be able to attack you.
+12) Casting detect magic spells upon an item should now correctly
+   show the item's magical value.
+13) The sunstone wristband is now loyal and can not be given or dropped,
+   if you lost it you can get a new one from Orfeo.
+14) The phoenix feather is now loyal and can not be given or dropped,
+   if you lost it you can get a new one from Morukai.
+15) The key for the high level trainer should now regen at it's set time of
+   once every 6 hours.
+16) Guardsmen will no longer teleport you to the guildmaster's chamber.
+17) The "bribe guard" command should now work in every jail cell.
+18) Added new spells and items 
+19) Fixed various typos and other reported problems
+20) Fixed the unstock all command so items are no longer repopulated in the 
+   shop at cleanup.
+21) Ganghouse emblems now provide individual stat bonus' when worn.
+22) The gangleader can now create a keyring, which can be given to another
+   gangmember for creation of ganghouse door keys.
+23) Ganghouse vaults that were unpickable should now be pickable by a thief
+   after it has completed the 4th alignment quest.
+24) Modified and added new titles for all classes.
+25) The critical hit bonus gained from being quick and deadly is now
+   based upon your agility.
+26) It is no longer possible to be quick and deadly if your encumbrance is 
+   heavy.
+27) Some undead monsters are now vulnerable to fire.
+28) The disconnect message has now changed from X has just hungup!!! to 
+   X just disconnected!!!
+
+                     +   Version 1.11M - 04/28/2003    +
+1) Fixed a crashing problem related to the crimson bracers.
+2) Lowered AC on metal armour back to 1.11l AC stats. These will be
+   boosted back up in 1.11n with the correct enc. and combat formula
+   changes for better game balance.
+
+                     +   Version 1.11m - 02/03/2003   +
+1) Teleporting to the Grand Chamber can now be done unlimited times,
+   provided you are at least level 65. 
+2) You can now enter the lair of the adult red dragon without needing  
+   a magma amulet
+3) All doors in the Crimson Passage area are bashable.
+4) Having over 100 strength will now yeild an extra encumbrance bonus
+   over the regular amount.
+5) The typo for Enumbrance when checking inventory is fixed.
+6) Other misc. changes
+
+                     +   Version 1.11l - 01/23/2003   +
+1) Level 66-75 trainer for solo players added to the existing trainer area, 
+   check the first level for clues. Once you have entered the solo trainer    
+   area through the first level, you may help other players to reach the 
+   final floor, and then enter the solo trainer area through that floor.
+2) Changed the phoenix feather to have the same immunities as the 
+   magma amulet. 
+3) It is now possible to enter lava pools without a magma amulet. Without   
+   wearing either the magma amulet or phoenix feather, you will now take    
+   damage from magma heat.
+4) Fixed the bug with the apparatus quest that didn't allow players that 
+   completed it before 1.11j to re-complete it.
+5) Fixed several grammar and typo errors as reported by players, 
+   special thanks go to Titania Hrothgar and Radi for their extensive list of 
+   errors and suggestions.
+6) Fixed some other data-releated bugs as reported by players, special thanks 
+   to everyone who emailed Frost, and thanks to Frost for compiling the list.
+7) It is again possible to change the alignment quest you are on, you can
+   pledge in the room above the fountain (still requiring a smokey talisman).
+   You can only change your alignment after completing the first quest. 
+8) Other misc. changes
+
+                     +   Version 1.11k - 01/03/2003   +
+
+1) The exp<space><text> crashing bug is fixed
+2) Any player completing the red dragon ruby quest in J will lose the
+   experience gained. Upon entering the realm your level will be set to
+   coincide with the amount minus the quest experience. You may then log out
+   and re-enter to retrain your stats.
+3) Bonus stats lost by re-completing the Ice Throne, Darkwood Gem and
+   Apparatus quests will now be re-added to your character. If you have not
+   re-completed these quests you will lose the bonuses gained by those quests
+   until you have recompleted them.
+4) The golden chalice quest can now only be completed by returning the
+   chalice to the bishop, instead of touching the black fortress alter.
+5) Other misc. changes
+
+                     +   Version 1.11j - 12/23/2002   +
+
+1)  The formula for determining the accuracy of a regular attack has changed,
+    it is now determined by your combat class, strength, agility, and
+    item/spell accuracy.
+2)  The formula for determining if an attack is successful has been changed.
+    The accuracy cap dependent upon the armour class of the defender is now
+    removed. An attackers chance to hit is now based on a curve
+3)  The method for combat has been changed, a critical hit is now determined
+    only after a hit has been determined.
+4)  The formula for determing dodge has been changed, it is now checked
+    against the accuracy of the attacker to determine if the defender
+    dodged. Your chance to dodge will vary dependant upon the attackers you
+    do battle with.
+5)  The amount of damage resisted by a magic spell, based on magic
+    resistance, has been changed.
+6)  The amount of damage resisted by a magic spell, cast on a witchunter, is
+    now enhanced when compared to non-witchunter targets.
+7)  It is now possible to take no damage from an attack, based on your damage
+    reduction. If your damage reduction is higher then the damage value of
+    the attack, the attack will 'glance' off your armour.
+8)  The amount of damage reduction given by armour has been changed to
+    reflect the liklihood of that armour deflecting an attack.
+9)  Attemping to go through an exit that does not exist in the room will now
+    stop you from sneaking.
+10) New items have been added to various monsters/shops in the realm.
+11) Most "Chest" monsters have now been changed to "chest" items.
+12) The experience given for most boss monsters is now increased, and in most
+    cases, greater then the previous cap. In lieu of this increase some boss
+    monsters were changed to reflect amount of experience given.
+13) Most monsters will no longer cast a spell more times round then a player
+    could.
+14) An area to allow training up to level 75 has been added. An NPC in
+    Khazarad will give clues to the location of the area. Once you train past
+    level 67, you will not be required to go through the entire area to
+    recieve training past that level.
+15) The amount of experience given by quests is now increased, and level
+    restricted based on their intended completion, and amount given. If you
+    have already completed any quest except for the alignment quests merely
+    redo them, and you will be compensated. Compensation for the alignment
+    quests can only be recieved once you complete up through the 5th alignment
+    quest (Module 9: Prophecy of Plague) and ask your alignment leader about
+    "Reconcile"
+16) If you have completed the 4th alignment quest (Module 7: Savage Lands)
+    and somehow lost your quest cloak, you may now get another one by asking
+    your alignment leader about "Cloak". To avoid abuse of this option, quest
+    cloaks can no longer be dropped or given away.
+17) Other misc. changes
+
+                   + Version 1.11i + Patch - 1/10/2001 +
+
+1) Fixed crashing caused by Lord of the Hunt, nexus spear, and Dusk.
+2) Added a fail safe to the hideous face not appearing
+3) The first good and neutral quest now requires you make a full round trip
+   from Markus to Annora
+4) The witchunter quest in the Crimson Fortress is now repeatable.
+5) The doors in the Negative Power Planes are bashable.
+
+                   + Version 1.11i - 12/21/2001 +
+
+1) Area effect spells that cause damage should no longer be resisted by
+   monsters.
+2) Fixed two crashing bugs caused by a monster and a room spell.
+3) Fixed monsters that regenned out of their intended area.
+4) Linked rooms that were broken in some areas.
+5) Changed the 5th evil quest to give appropriate flags and items so someone
+   who did their steps out of order wouldn't be stuck.
+6) Enabled the 5th quest to allow someone who didn't follow their quest
+   directions in 1.11h to complete their quest.
+7) Changed some monster resistances so they will take no damage instead of
+   being healed by spells.
+8) Fixed other miscellaneous bugs.
+
+                   + Version 1.11h - 11/30/2001 +
+
+1)  Added training to level 65 at the Hydra.
+2)  Fixed toplist display for characters that have passed the 4.2 billion
+    mark for people previously running the beta patch.
+3)  Fixed toplist display for characters that have rerolled and retained 
+    some experience for people previously running the beta patch.
+4)  Fixed display of experience to next level in the player's exp line for
+    people previously running the beta patch.
+5)  Added the command "unstock all" for gangshop owners to fix the problem
+    where shops did not have all 10 slots available to them.
+6)  Fixed several memory related issues that may or may not resolve the 
+    NT regen problems in prior versions.
+7)  Changed sys jail to become a more effective "time out" for problem
+    users. This does *NOT* effect monster jail such as guards or the 
+    sheriff. Now, when a player is sent to jail using the sys god
+    commands, they will be placed in "isolation" for 30 minutes, where
+    they cannot speak, telepath, gossip, auction, broadcast, etc. They
+    will only be able to sit and wear their time off or exit the realm. 
+    If they exit, their timer does not go away, it takes up where they
+    left off when they come back.
+8)  Removed quest resetting via the smoky black talisman. Players will
+    now be able to "pledge" an alignment after they have completed the
+    3rd alignment quest and before they have started the 5th alignment
+    quest. This will convert their quest flags to the appropriate 
+    equivalent of the new alignment they have pledged. 
+9)  Fixed the coding bug that allowed some bbses to access Module 8 areas
+    without having purchased an activation code.
+10) Level 10 quest weapons are now magic 2, monsters with a magic 3 rating 
+    or higher can't be hit. Additionally, level 10 training must be done
+    in the crypt now, at the respective quest spirits.
+11) A new area has been added that contains a sidequest for witchunters.
+    You must purchase Module 8 to access it.
+12) A new sidequest has been added for gypsies, this quest is in Module 4.
+13) A new sidequest has been added for missionaries, this quest is in Module
+    6.
+14) A new area has been added that allows access from Module 1 to Module 3
+    w/o the amber talisman. 
+15) New underground areas have been added that connect Module 1 to Baseline
+    and Baseline to Module 4.
+16) A new area has been added that directly connects the Darkwood Forest to
+    the Slums.
+17) The illumination spell now creates a magical "light ball" light item
+    which has to be equipped to use.
+18) Several new spells have been added for Priest, Bard, Mage and Druid,
+    check all spell shops and boss monsters for new scrolls.
+19) Some attack spells over level 35 have been upgraded to be more mana
+    efficient.
+20) Some monsters attacks that were essentially non magical have been
+    flagged to be unaffected by magic resistance.
+21) Some monster attacks that were based solely on weapon damage, have been
+    increased to reflect the strength bonus that the monster would likely
+    have.
+22) Monsters now cast certain spells the same as players i.e. blind, hold
+    person etc.
+23) Many changes to existing items, some upgrades, some downgrades.  Make
+    sure to experiment with them before going anywhere dangerous.
+24) Removed shatter from the game until it can be reworked.
+25) Shovel that can be used to dig with in the graveyard now have a random
+    chance to break.
+26) Capitalized the names of new boss monsters to make them stand out more.
+27) Other misc. changes applied and bugs fixed
+
+                   +        Version 1.11g - 10/23/2000       +
+
+1)  Gangshop duplication bug is fixed.
+2)  Ganghouse items removed from ganghouse floors at cleanup if 
+    the items don't belong to that ganghouse.
+3)  "Noises" lessened in Silvermere and surrounding areas.
+4)  Park statues all set to be visible after cleanup
+5)  Some bugs related to ganghouse commands fixed.
+6)  You can now summon guards without them disappearing after cleanup
+7)  Misc. spell and item bugs fixed.
+8)  More items sellable in the junkyard and other stores.
+
+                   +        Version 1.11f - 09/06/2000       +
+
+1)  Chainmail armor is available to Warlocks.
+2)  "Noises" added to Silvermere and surrounding areas.
+3)  Most mystic forms no longer give a bonus to criticals or dodge.
+4)  Silvermere graveyard expanded.
+5)  Gravestones added to Silvermere Graveyard, five are BBS customizable.
+6)  Negative Power Plane expanded and monsters added.
+7)  Greet messages added to some monsters.
+8)  Gangleaders can buy a healer in their ganghouse.
+9)  Rubbish rooms added to each ganghouse.
+10) Sections in the darkwood forest have been converted to gangshops for all
+    ganghouses.
+11) NT crash bug caused by cleanup now fixed.
+12) Practice monster added to portal arena.
+13) When dying in Silvermere Portal Arena or Silvermere Small Arena, you now
+    appear outside the entrance.
+14) Some monsters will now drop body parts to use as weapons.
+15) Half-Ogres can now use kai powers.
+16) Different levels of racial nightvision added.
+17) Different levels of light items added.
+18) Added new travel portals.
+19) The Silvermere Casino is open.
+20) Additional items added to the junkyard.
+21) Statues added to the park, one for each class, customizable by BBS.
+22) Gang emblems are now wearable.
+23) Beginning alignment quest NPC's can now assist you in your current
+    alignment quest.
+24) Ganghouse keys now give a message when broken.
+
+
+                   +        Version 1.11e - 05/12/2000       +
+
+1)  Fixed item sweeping on ganghouses during cleanup. This should no longer
+    happen unless done by your Sysop.
+2)  Changed meditate regeneration to appropriately match natural mana
+    regeneration per different spell groups.
+3)  Increased accuracy, defence, and hold penalties for person/monster that
+    is SMASHed per user feedback.
+4)  Removed MUD Internal Error, attack_user_monster error when using weapon
+    with an attached spell. This message should no longer appear.
+5)  Fixed gangshop bug that allowed for mass duplication of items (thanks go
+    out to the users that reported it!)
+6)  Fixed traps that unnaturally boosted a monster's hp.
+7)  Fixed "weird" swings and accuracy bug where a player would get 1 swing
+    and then 10 swings etc. as well as sudden low accuracy.
+8)  Fixed random scattering of monsters that left their regeneration area.
+9)  Set specific mage and druid armor spells to be non stackable, and
+    upgraded the value of higher level armor spells to compensate
+    (Translation: stoneskin cancels barkskin, mageshield cancels blur and
+    shld, however stoneskin and mageshield were upgraded).
+10) Changed buggy ganghouse room descriptions.
+11) Set ganghouse deeds to delete at cleanup if on the floor.
+12) Increased life of dying master assassin per user feedback.
+13) Adjusted Lieutenant flag so that is is removed in all cases that a player
+    leaves a gang.
+
+
+                   +        Version 1.11d - 05/02/2000       +
+
+1)  Fixed the crashing related to drain weapons.
+2)  Fixed crashing related to constrictor coils.
+3)  Modified gang house cleanup process. Some people were reporting double
+    fault during cleanup. This problem should be resolved. Please report
+    any continued problems to bugs@majormud.com
+4)  Fixed problem where people could premote or demote members of other
+    gangs. This function should now be working properly.
+5)  Fixed shops deleting inventory at cleanup.
+6)  Added some missing gang house room descriptions.
+7)  Adjusted the AC up on the jeweled turban and golden headdress due to
+    user feedback.
+8)  This release does not include all bugs reported with 1.11c, but a release
+    was necessary to resolve some of the more important issues quickly. An
+    additional release will follow in the near future.
+
+
+                   +        Version 1.11c - 04/28/2000       +
+
+1)  Ganghouses! Introduced ten ganghouses scattered across the realm. All
+    have user-customizable room and item descriptions. Locations to
+    Ganghouses are described in ganghouse "Deeds".
+2)  New "Deed" items, sold in the Deed Shop, purchasable only by the gang
+    leader with gang experience requirements set by the Sysop. Deeds handle
+    distribution of ganghouse keys and emblems, also the deed holder is the
+    only person who can control the ganghouse shop.
+3)  New guardian monsters for ganghouses, these monsters guard the
+    ganghouses from non gang-members. Emblems are required by gang members
+    to signify they belong to that gang. WARNING: IF YOU ATTACK THE
+    GUARDIANS WITH AN EMBLEM THEY WILL CONTINUE TO ATTACK UNTIL CLEANUP.
+4)  Added STOCK command for Gang Shops, "STOCK <item> <price> <currency>".
+5)  Added UNSTOCK command for Gang Shops, "UNSTOCK <item>".
+6)  Added MARKUP command for Gang Shops, "MARKUP <percent>".
+7)  Added new gang member type "Lieutenant". Lieutenants can invite or
+    uninvite gang members without requiring the gang leader to be online.
+8)  Added PROMOTE gang command, "PROMOTE <player name>", used to promote a
+    member to lieutenant. This command is for the gang leader only.
+9)  Added DEMOTE gang command, "DEMOTE <player name>", used to demote a
+    lieutenant to member. This command is for the gang leader only.
+10) Ganghouse rooms and items are customizable. Descriptions are stored in
+    a text file specified in the default file descriptions. You must create
+    the new description in a text file and give to your Sysop.
+11) Set certain spells to remove spells of like ability as they are not
+    stackable. These changes were done to discourage use of the "10 spell"
+    bug.
+12) Certain items set to magical due to their magic effects as per extensive
+    user feedback.
+13) Lowered magic resistance of certain items, as per extensive user
+    feedback.
+14) Mystic fighting forms changed per further testing and user feedback.
+15) Fixed bugs concerning certain monsters and monster regen areas due to
+    extensive difficulty.
+16) Changed Bash Attack Type, as well as attack, damage and speed modifiers.
+17) Added new abilities, allowing for additional commands to be used or
+    class abilities to be enhanced upon quest completion.
+18) Added taxation of ganghouses to prevent ganghouse hoarding or stagnation.
+    Taxation is withdrawn directly from the gang leader's Silvermere bank
+    account, and specified in the deed description.
+
+
+                   +        Version 1.11b - 01/28/2000       +
+
+1)  Swamp trolls and two-headed troll are no longer "immortal" once they
+    regen. This problem has now been resolved. Again, please report any
+    problems with trolls you find.
+2)  Critical hits formulas reworked. There should still be a limit on the
+    bonus to crit from using a "quick and deadly" weapon, however percentage
+    on normal critical hits should no longer be effected.
+3)  Some misc. quest issues regarding Module 7 were repaired.
+4)  Loyal items including new quest items now stay with the owner even
+    if a hang up is detected during combat. Loyal items should stay with
+    the owner in all cases.
+5)  Fang for magma blast now placed on monster.
+6)  Fixed doors that wouldn't open in various areas.
+7)  Fixed alder chest.
+8)  Fixed Shadowy Healer.
+9)  Fixed crashing problem related to manriki-gusari.
+10) Increased drop rate percentage on some quest related items.
+
+
+                   +        Version 1.11a - 12/30/1999       +
+
+1)  Fixed wrong message for platinum mace and other grammar corrections.
+2)  Fixed some misc. room errors and other reported problems.
+3)  Reports that trolls were impossible to kill, should now be fixed.
+    Please report to us if this problem still exists. Also, please include
+    the version of Worldgroup or MajorBBS you are running when reporting any
+    errors to us, so that we may test on that platform.
+4)  Changed release version scheme. 1.11a through 1.11z, then 1.12a through
+    1.12z and so on.. will be the new order for minor changes, where a major
+    release would skip to 1.2 and so forth.
+
+
+                   +        Version 1.1z - 12/28/1999        +
+
+1)  Fixed some quest problems that were missed in a final update.
+2)  Grammar fixes that were pushed in at the same time as #1.
+
+
+                   +        Version 1.1y - 12/28/1999        +
+
+1)  Made some quest monsters stationary, where before they were moveable.
+2)  Introduced new exit type "Spell Trap". This will allow for more
+    imaginative traps in future modules, and will help with guildhouses when
+    they are introduced.
+3)  Newest mystic powers not gainable by training. This shouldn't be
+    considered the standard for future mods.
+4)  Upgraded values and/or durations for all spell groups. Everyone try out
+    your spells, you should be pleasantly suprised.
+5)  Changed bland spell descriptions of some spells (ex: way of the monkey's
+    description was DV.)
+6)  Changed attack combat messages to reflect "old-style" messages, this is
+    in transition and currently permenant. Please report any errors you find.
+7)  Capped "quick and deadly" critical hit bonus. Before, "Q and D" gave an
+    unlimited bonus to criticals, now it should only add 10% of natural
+    critical hit %. (ex: Natural crit% is 20, with QnD weapon: 22%. This does
+    not effect mystic attacks (pu, ki, ju), this change is transitional.
+8)  Introduced ability to learn spells via NPC interaction. This may be seen
+    in later releases.
+9)  Introduced a good-friendly script area, (monsters attack evils, don't
+    attack good, and no eps taken.)
+10) Changed class titles up to level 55. "Master" title is now not currently
+    achievable. Feedback is welcomed.
+11) Boosted some limited items powers/abilities up to reflect the rarity of
+    the item. (ie: Lim 1 items should, in most cases, be better then Lim 3
+    items.) This includes quest items.
+12) Made first quest items require you be at least level 10 before you can
+    use them, as you can't normally get them until you are level 10.
+13) Changed critical hits back to red from yellow by popular demand.
+14) Changed quest rings to become "loyal items". This should fix quest rings
+    "poofing" on death.
+15) Added quest rings to be dropped by some new monsters so those that lost
+    their rings can now replace.
+16) Started fixing some pre-Module 7 message spelling and bug errors. Please
+    report any still outstanding that are discovered.
+
+
+                    +         Version 1.1x - 6/18/99          +
+
+1)  Added more name length validation in character creation.
+2)  Modifications to attack messages
+3)  Lots of internal enhancements that will show up in future releases
+4)  Monsters will now resist area-effect spells properly
+5)  Fixed another aspect of the mermex poison bug :)
+6)  Fixed some cases where an invited player can show up in your party 
+    when you never invited them in the first place.
+7)  If you do something to cause you to lose experience you will not 
+    destroy your gang experience anymore
+8)  Recasting with 'c' will restart combat when done during combat in
+    the same manner as re-attacking with 'a' does.
+9)  Cleaned up some extra text displayed when going through remote-action 
+    item-required exits.
+10) Fixed up /mudreg a bit and fixed the addlife option for some users
+11) The thieves kit will only enhance picklocks/find traps - it will 
+    no longer give the abilities to characters that do not already 
+    have them.
+12) Number-limited Angel-type monsters that disappear when the user they 
+    are following loses them will now correctly update the active count for
+    their kind.
+13) If a monster kills you with a spell then they will no longer get an
+    additional attack on you after you are dead.
+14) Minor top player ANSI listing adjustment.
+       ------------------------------------------------------
+15) Changed contact information to reflect new ownership and authors inside
+    the game and various notes and docs.
+16) Recompiled on new development systems for various platforms.
+17) Softened and changed magic resistance system for area spells to have
+    a lesser impact on players than steps introduced in 4) above.
+18) Corrected string substition and grammatical problems in new attack
+    messages.
+
+                    +         Version 1.1w - 12/16/98          +
+
+1)  Items that give you valueless abilities (such as poison immunity)
+    will now work properly.
+2)  Autocombat no longer breaks when you run out of mana.  It does,
+    however, consume your energy for an entire round of attacks 
+    each attack round that you're in auto-combat while casting a 
+    spell without enough mana to cast it.   
+3)  If a monster attacks you while you are sneaking it will now break
+    your sneak and penalize your next stealth roll in the same way it
+    does when a user attacks you.
+4)  If you switched race to a gaunt-one, completed the quest to get
+    the see-hidden ability, and then switched to another race you would
+    accidentally keep this ability.  This patch now fixes that so that
+    you do not get this ability any more.
+5)  After purging spells from your spellbook you would sometimes lose 
+    other spells from the spell listing (even though you still had the
+    spells).  This shouldn't happen anymore.
+6)  Help topics shouldn't cut off the last line anymore
+7)  Adjusted the HP formulas slightly to give everyone a bit more hp/level.
+8)  If you backstab someone, break combat, switch weapons to a non-backstab
+    weapon, cast a combat spell on them, break combat, and recast with 'c' 
+    it will no longer give you a 'you cannot backstab with this weapon'
+    message.
+9)  When you get experience for a kill via an area-effect spell it will
+    no longer break your auto-combat so you can continue to get experience
+    for the next kill in that room.
+10) Reordered some code so that stats were updated immediately when you
+    do something like wear or remove armour with special abilities, etc.
+11) If you are sneaking and you have just entered a room you will now
+    get a short break from being attacked by a monster.
+12) [MMPLus] /mudreg global works properly with mixed-case names now
+13) You should now be able to clear your last name (if your sysop is allowing
+    blank last names)
+14) The damage given by monster's spells will now display properly.
+15) Increased the maximum spellcasting percent and maximum magicresistance
+    percent by 1%
+16) If you backstab someone and then switch to a different kind of attack
+    before the backstab goes through you will now send a message to the
+    target as if you initiated normal combat with them (i.e. you don't get
+    a surprise non-backstab attack anymore).
+17) Sped up training mystics so that it doesn't pause the BBS anymore.
+18) Healing spells should display the original amount that was healed and
+    not the adjusted amount (i.e. if you only needed 5 hp and healed for
+    20 hp it will now say 20hp instead of 5 even though you only get the
+    5)
+19) Hopefully fixed the case where a monster would kill you and continue
+    to hit you after you died and showed up in the halls-of-the-dead.  If
+    this happens to you again, please send a capture of the battle and
+    the damage given after you die to support@majormud.ca so we can
+    isolate the real problem.
+20) Gangs that go over 4 billion experience will no longer go back to 0.
+21) Autocombat spells were sometimes being considered 'backstabs' with
+    respect to autocombat order.  This has been fixed so they will now
+    be the same as regular attacks.
+22) When a combat spell is cast on you it will now break your sneak in
+    the same manner as your sneak is broken when you are attacked.
+23) If a user is knocked to 0 or less HP as a result of failing to 
+    disarm a trap then the falls-to-the-ground message will be displayed.
+24) If you have a monster charmed then it will show (charmed) beside the
+    monster when looking at the room.
+25) Fixed a few places where KAI powers would incorrectly fail.
+26) Fixed one place where mud would incorrectly decide it should do an
+    offline recovery at cleanup.
+27) Freedom will now only affect spells with the Hold Person or 
+    Paralyze abilities
+
+                    +         Version 1.1V - 9/20/98            +
+
+1)  Fixed high-level spells that hit for negative damage
+2)  Various minor message fixes
+3)  Autocombat will now break when you're casting a spell and run out
+    of mana to cast the spell.
+4)  Fixed the non-ansi character editor
+5)  Items that are supposed to be removed from the ground at cleanup
+    that are hidden will now be removed at cleanup.
+6)  Fixed another bug which would stop you from getting evil points
+    when attacking with area-effect spells.
+7)  Gave everyone another chance to change race.  This is the LAST
+    chance you get so don't waste it and don't come crying to WCC
+    or your sysop if you make a bad choice.
+8)  If you are confused while you are in combat it will no longer
+    break your autocombat (you'll still be confused for the round,
+    you just don't have to re-engage combat for the next round).
+9)  Multi-cast per round spells will now properly recalculate the
+    success/failure roll for the second and subsequent casts per round
+10) Magic resistance is now being applied to area-effect damage spells
+    as well as to spells cast on monsters.
+11) Fixed some regeneration timers to ensure monsters generate if an
+    area is not visited for an extended period of time or if the 
+    regeneration interval is high.
+
+                    +         Version 1.1v - 9/16/98            +
+                    
+1) People will have the random component of their HP rolls re-verified
+   once and every time they change class or change race to one with a
+   lower level than their current level with their current exp.  This
+   will ensure that all existing characters get the benefits of the
+   modified hp/level formulas.
+2) The Magic Resistance formula has now been changed.  It is now based
+   (roughly) like a normal stat such as Strength.  50 is an average
+   number, while 100 is spectacular.  The stats affecting it are
+   Willpower, which affects it greatly, and Intellect, which affects
+   it slightly.  It does not increase per level now.
+3) Magic Resistance will now greatly affect the damage from combat spells.
+   If you have substandard MagicRes (below 50), you will take extra
+   damage.  If you have good MagicRes, you will take less damage.  These
+   changes are MUCH more dramatic than the previous damage reduction
+   formulas-- Witchunters will find their +30 MagicRes to be extremely
+   valuable when defending against damage spells now!  Players with
+   substandard stats may wish to increase them, as we have been warning
+   people for a long time that Willpower and MagicRes would soon become
+   important.
+4) Many of the combat damage spells have been changed to reflect the new
+   MagicRes changes.  Many are much better, especially for Priests and
+   Druids (try them!).
+5) Area-effect damage spells such as Fireball have been changed
+   dramatically.  They now use up much more Mana than before, but now
+   do MORE damage than a regular combat spell of the equivalent level!
+   This means that they can not only be used to blow up groups of
+   enemies, but can even be effectively used against a single opponent
+   if you wish to do more damage per round at the cost of using up
+   vastly more mana.
+6) Miscellaneous bugs have been fixed including the system freeze bug
+                    
+                    +         Version 1.1u - 9/9/98            +
+
+1) Fixed custom statline to work with longer statlines
+2) Monsters will now distribute items to surrounding rooms (and hide them) if
+   the room they die in is full
+3) Maximum attacks per round has now been capped at 5.
+4) If you would theoretically have more than 5 attacks per round, you will
+   still have your attacks limited to 5 but you will have an increased
+   Critical Hit chance based on how much faster you are than 5 attacks.
+5) If you ready a weapon with which you would have had more than 5 attacks,
+   and obtain the increased chance to get a critical hit, then
+   you will see the message "You are extremely quick and deadly with this
+   weapon."
+6) The effective chance of getting a critical hit has been HALVED, but the
+   damage done has been DOUBLED.  People just get way too many crits
+   now, and this change will make getting a critical hit more exciting.
+7) Monsters should retaliate more often in response to area-effect attack
+   spells.
+8) Evil points will be given appropriately when area-effect attack spells
+   are used against monsters.
+9) You can no longer overload a user by giving them tons of money
+
+                    +         Version 1.1t - 7/25/98           +
+
+1) Mostly internal changes
+2) Class titles that should have spaces in them will have spaces
+3) Added command delays to some actions that should take time and should 
+   not be able to be done in a fast-macro style (i.e. picklock, bash, etc.)
+4) Tweaked target processing so that you can specify a shorter-match target by
+   merely using the full name of the shorter match.  I.e. if there is a
+   roc hatchling and a roc in the room, "a roc" will attack the roc now where
+   before it would have been the first partial match found. 
+5) You may no longer gossip, auction, or telepath when you have the receipt of 
+   the associated messages turned off.
+6) DEFENSE CHANGES:  The natural AC given by high Agility and Charm has been
+   changed. Players now will receive a Dodge bonus based on their Agility and
+   Charm. This replaces the previous AC bonus, and is cumulative with the
+   current Dodge bonuses--i.e. Ninjas and Mystics will have this new Dodge
+   added on to their Class Dodge chance.
+7) MARTIAL ARTS CHANGES: The Martial Arts stat has been changed somewhat.
+   Players will definitely notice a change in their Martial Arts value--
+   however, the stats that make up this value (Dodge, Crits) have *not*
+   been changed with the exception of players receiving a natural Dodge
+   as described above.  This was due to inconsistancies in the formula when
+   non-Ninja and non-Mystic classes received Dodge (as a result of the
+   Multicoloured Sash or via a quest bonus, for example).
+
+
+                    +         Version 1.1s - 5/6/98            +
+
+1) Fix the quest resetting which was not giving back all the mana which it
+   should have been
+2) Added warning flag and default colouring to custom statline
+      %w - Warning flag "On" or "Off"
+      %d - use default colours (including hit point colouring)
+      %n - insert a newline into the status line
+   Example:  To display with green foreground except for the hit points:
+   set statline custom %f2[Warn=%w]%nHP=%d%h%f2/%H >
+3) Updated command line parsing to recognize keys when you enter more words
+   to match a key than you would to match an item (i.e. "use star key west"
+   will now work, even if you have another item such as "starsteel mace"
+   which was previously incorrectly matching to 'star' and ignoring the 'key'
+
+                    +         Version 1.1r - 2/28/98           +
+
+1) Users who took advantage of interaction with other module bugs to increase
+   their level artificially will be reduced back to the level they should be.
+2) When rerolling at higher levels, if 10% of your experience results in more
+   than the exp you would normally get for 1/2 your current levels then you
+   will retain 10% of your experience.  This only works if your sysop has
+   enabled the option to keep your experience after you reroll.
+3) Improved backstab damage - most noticable at higher levels
+4) Adjusted stealth so that the maximum allowed stealth has been increased
+   to almost a 100% chance while you are moving *but* you now get a penalty 
+   based on the number of users and monsters in the room.  In other words, if
+   you have a high stealth and are sneaking around an area with no users or
+   monsters then you will almost never fail.  As soon as you start sneaking
+   through areas with users in them you will incur a penalty based on the
+   number of users/monsters in the area.
+5) Fixed all the quests for addon 4 so that your encumbrance doesn't make you
+   miss out on messages or experience.
+6) Reworked regeneration rates so that all the new areas should be getting
+   populated with a better distribution of monsters.
+7) Fixed an uninvite party bug.
+   
+                    +         Version 1.1q - 1/11/98          +
+
+1) Fixed the bug that would sometimes not take chests away from you.
+2) When you leave the dwarven arena, combat should always be broken now.
+3) Fixed the item displayed when you drop so that it should always match
+   the actual item your dropped or hid.
+4) When you look at monsters you will no longer see a list of spells which
+   are cast upon them unless the spell is supposed to give a descriptive
+   message related to its effects.
+
+                    +         Version 1.1p - 1/5/98           +
+
+1)  Several small tweaks to things you won't notice
+2)  Altered initiative so that monsters will now have a chance to
+    get the first attack.
+3)  Added set maxgossip and set maxauction (similar to maxpage but
+    for gossip and auction messages)
+4)  New features to improve game playability
+5)  Leader monsters will now lead 'follower' monsters around
+6)  Monsters can now be guarded by other monsters
+7)  Increased monster regeneration in some areas. 
+8)  Gambling (in addon #4)
+9)  Treasure Chests - contents are not always the same.
+10) Monsters can now cast general (non-combat) spells
+11) Found and fixed another bug that would let you drag people
+    through exits which they should not be going through.
+12) Found and fixed another loophole which let you wear equipment
+    which you should otherwise not be able to wear.
+13) A trading shop has been established along Guild Street for users
+    to trade in some of the newly level-restricted items.
+14) New colours for different monster alignments: Depending on your
+    alignment and the alignment of the monster, its name will appear
+    in a specific colour.  Colours are: Magenta (light purple) is
+    HOSTILE (will attack you), Blue is NEUTRAL (will not attack you
+    but will attack back. Attacking neutral NPC's or townsfolk will
+    be considered an evil act), and Grey is FRIENDLY (will not
+    attack you, but will attack in self-defense).
+15) Monsters can now have more than 1 duration spell cast on them
+    at the same time.
+16) Can no longer use a backstab to sneak in an unannounced spell
+
+                    +         Version 1.1o - 11/9/97           +
+
+1) Fixed a few places where a monster's attack would not display
+   the 'drops to the ground' message.
+2) Fixed a few follow bugs
+
+                    +         Version 1.1n - 10/11/97          +
+
+1) Fixed another bug that would let you know if you were hiding.
+2) Fixed the wererat attack bug
+3) Fixed the darkness hits spell bug
+4) Fixed a number of drag-user-around bugs
+
+                    +         Version 1.1m - 10/3/97          +
+
+1) Monsters that would sometimes continue to attack you after you died should
+   no longer do this.
+2) Weapons that would sometimes continue to attack the target user after they
+   died should no longer do this.
+3) Fixed parsing of item targets so that it won't match similar items and keys
+   when the item name is a longer match than the key name match
+4) Added the forget command
+5) Limited uses for keys now works
+6) Fixed a follow bug that would allow you to follow anyone
+7) The regeneration times for monsters have been randomized a little so merely
+   knowing when the monster was killed and what its regen time is will not be
+   enough to know when it will regenerate.
+
+   
+                    +         Version 1.1l - 8/10/97          +
+                    
+1) Fixed the problem with quest abilities being given to users too many times
+   [including fixing existing users]
+2) When limited items are sold to stores that don't actually keep them in
+   inventory they will no longer be registered as being in the room (and
+   hence will regenerate appropriately again).  Sysops:  Please run a fast-
+   offline-recovery after installing 1.1l
+3) Removed a few of the bugs that would let you equip weapons which you
+   are not supposed to be able to (ie. due to evil status, etc.)
+4) Due to the abuse of some of the bugs that have been fixed in this release,
+   all the powers gained from the Ice Sorceress quest, the Dark Druid quest,
+   the Champion of Blood quest, and the She-Dragon quest have been reset.
+   ALL players will have to complete these quests again to reap their benefits.
+   The Good, Neutral and Evil quests have NOT been affected and so will not
+   have to be redone.
+   Note that certain of the quests were completed in the past due to bugs and
+   this will force those users who don't deserve the abilities to
+   go and get them for real this time. :>
+   
+                    +         Version 1.1k - 7/26/97          +
+
+1) Picklock will now display the same error regardless of the reason you fail.
+2) Increased the chance of a monster attacking you when you're running away
+   from them (leaving the room)
+3) Fixed another bug where you could determine if you were hiding successfully
+   or not
+4) Experience percentage at high levels will now be more accurate.
+5) Fixed calculations on a number of various attack protection abilities
+                    
+                    +         Version 1.1j - 6/21/97          +
+
+1)  Monsters will now regenerate hit points properly (there were some
+    cases where they would not generate at the correct rate before)
+2)  Fixed the handling of several room commands so that they will work better
+3)  Mystics can no longer get the auto-casting features of a weapon which
+    they happen to be holding while punching, kicking, or jumpkicking.
+4)  Fixed the hangup penalty so that it should catch some PvP situations
+    which it did not before.
+5)  Area-effect spells which give evil points should now also obey PvP
+    level restrictions
+6)  It should be harder to wear items which you're not supposed to be
+    able to wear.
+7)  You can not use a<enter> to re-attack a hidden user
+8)  Area-effect attack spells should give attacked users a retaliation
+    period attack now.
+9)  If you are casting an auto-combat area-effect spell and new users
+    walk into your room (or you walk into theirs) and attacking them
+    should give you evil points then you will get evil points.  Note
+    that this means that if you've already received evil points for
+    initiating the spell in the first place and a new user walks into
+    the room this means you get evil points again (the second time
+    for attacking the new user)
+10) Fixed another bug where you could determine if you were sneaking
+    successfully or not
+                    
+                    +         Version 1.1i - 3/16/97          +
+
+1) Fixed a minor bug created in the last release related to monster
+   regeneration intervals
+2) Some small cosmetic changes and misc. bug fixes
+
+                    +         Version 1.1h - 2/8/97          +
+
+1) Misc. minor bug fixes 
+2) Fixed a few things that would let you have almost unlimited negative 
+   hit points without dying
+3) Fixed some problems with time delays between monster generation in
+   the evenings
+
+                    +         Version 1.1g - 1/4/97          +
+
+1) Reset everyone's stats and force all users to train stats upon entry 
+   into the game. 
+2) When guards send you to the slums or when you use a special room command
+   to move between rooms, anyone following you will stop following you.
+
+                    +         Version 1.1f - 11/11/96        +
+
+1)  Added a whole bunch of new features to work with future add-on quests
+2)  Changed 'saint' status to something that can only be obtained through
+    a quest.  'good' is as far as you can get by just waiting it out.
+3)  Fixed the messages given when disarming traps, using up all item
+    charges, eating, drinking, summoning monsters, and a few other places
+4)  Fixed the way a number of spells worked on monsters so that more
+    spells will work properly on monsters
+5)  Mystics and Witchunters now have the ability to hit Magical creatures
+6)  When evil people die, they will not appear in the Silvermere Hall of
+    the Dead anymore
+7)  Increased level of NPC interaction
+8)  Non-damaging attack spells such as Confusion, Curse, Blind, Stun,
+    Slow (though monsters will ALWAYS get 1 attack at least) will all now
+    work on monsters. Try it. :)
+9)  When stats are reset due to overly-high values, any spells cast on the
+    user will also be terminated properly.
+10) A bunch of little database patches to fix typos, etc.
+                    
+                    +         Version 1.1e - 8/25/96        +
+
+1) Fixed a few minor bugs related to various exit types
+2) Fixed the last portion of the bug which still let you move one room after
+   being held by webbing or by being engulfed.
+3) Area effect auto-combat spells now give the correct exp for kills
+4) Fixed several minor bugs in various parts of the game
+5) New experience tables (lower again)
+                   
+                    +         Version 1.1d - 5/19/96        +
+
+1) Modified the legal system:
+   - Attacks against GOOD and SAINT characters will result in 2 times
+     the evil points earned
+   - Attacks against LAWFUL characters will result in 3 times
+     the evil points earned (see next point for lawful description)
+   - SEEDY people are now fair game for attacks without earning
+     evil points (Note that any characters which were SEEDY before
+     this upgrade have been switched to NEUTRAL so they do not incur
+     too many additional attacks)
+   - If you have less than 0 Evil points (bottom half of neutral plus
+     good plus saint) and you do any action to earn evil points then
+     you will immediately go to 10 evil points regardless of your
+     current level.
+2) When creating a new character, if your old character had 0 or
+   less EPs or it is your first character, you are given the option
+   of choosing a 'lawful' way of life.  A character created in this
+   fashion will permanently have their evil warnings enabled.
+   Attacks against them will result in more evil points given
+   (see above).  If your old character had more than 0 evil points
+   then you will not be given this option.
+3) Robbing will now give you evil points.  Every rob attempt will
+   give 1/10th of the amount of an attack.  If you do not get caught
+   then a * will not be shown by your name so that you can try to
+   get away with it, but if the target thinks that you did it and
+   try to attack you then they can without getting evil points.  If
+   you get caught then you will get a * shown beside your name during
+   the retaliation period. If, after robbing someone, you attack them
+   during the retaliation period then you will get the full attack
+   evil points and the retaliation period will be extended to the
+   normal.  Unlike attacking, continued robbing attempts during
+   the retaliation period will incur additional evil points and
+   extend the retaliation period.
+4) Various other little things
+                    
+                    +         Version 1.1c - 4/21/96       +
+
+1) Wrote some code to get around the Cheersoft globals (user listing
+   command) which cancels the channel polling routine rendering
+   commands like topten non-functional until you exitted and re-entered
+   MajorMUD.
+                    
+                    +         Version 1.1b - 4/13/96       +
+
+1) Fixed the use of weapons like flametongue so that you will not get
+   internal errors if you kill the monster with the weapon's additional
+   ability.
+                    
+                    +         Version 1.1a - 4/6/96        +
+
+1) When you die and the game cannot dispose of your items in the current
+   or surrounding rooms, it will now try to dispose of them in the 
+   rooms you previously walked through.
+2) Other various little things again
+                    
+                    +         Version 1.1 - 4/1/96         +
+
+1) Fixed the selling price on the really expensive items so that they
+   do not end up being cheaper than they should be
+2) Various other little changes 
+
+                    +      Version 1.1 [beta] - 2/17/96    +
+
+1) Fixed the bug which caused the random crashes in the 1/29/96 release
+2) Characters who were hit with the massive stats bug will be reset to
+   normal
+
+                    +      Version 1.1 [beta] - 1/29/96    +
+
+1) Fixed a bug where you got way too much when selling items to stores.  It
+   will no longer take the stores markup into account when figuring out a
+   price for an item, just your charm.
+2) Fixed the bug where monsters and items would randomly disappear and
+   reappear on some boards.
+
+                    +      Version 1.1 [beta] - 1/14/96    +
+
+1) If you get hit with a hold spell as you are moving out of a room, your
+   move should be cancelled, leaving you in the original room.
+2) A bunch of internal tweaks which will hopefully get rid of some of the
+   random events which occur on some boards
+3) Monsters should no longer cast the wrong area-effect spells
+4) Hopefully found the problem which caused weird bank balances - it is
+   due to a specific series of events which is hard to duplicate, but I'm
+   pretty sure I got it this time.
+5) That crazy casting of a different spell than the one you typed bug
+   should not happen anymore
+   
+
+                    +      Version 1.1 [beta] - 1/1/96     +
+
+1) Saints can no longer use evil-aligned items, spells, etc.
+2) Numerous small fixes 
+3) Items sold to shops will no longer disappear a few minutes after
+   selling them.
+4) Limited items sold to shops will be able to be purchased back.  Note that
+   there may be some items in shops currently which may not be purchased.
+   The game will slowly clean these up as people attempt to buy them.
+
+                    +      Version 1.1 [beta] - 12/24/95   +
+
+1)  If you die in the middle of a move, you will no longer complete the move;
+    you will reappear in the appropriate location.
+2)  After picklocking a 'keyed' door, you can now open and close it properly
+3)  When hiding and sneaking, EACH attempt is a new roll to determine if you
+    are hiding/sneaking.  This means that if you have a macro which does
+    sneak^Msneak^Msneak^Msneak^M, what might actually happen is that you
+    fail, succeed, succeed, fail and end up NOT SNEAKING.  This will result
+    in people sneaking and hiding MUCH CLOSER to the actual percentage 
+    chance that they are supposed to have and not always succeeding by
+    using macros as above.
+4)  Reduced the chance of monsters attacking you as you exit.
+5)  Area-effect evil spells should give evil points appropriately
+6)  In multi-room arenas, when you die, you keep the HP you had when you
+    entered the first arena room, not just the one you die in.
+7)  You must have at least 50% of your HP to enter a PVP arena
+8)  Better!  Faster!  Lower Experience tables!
+9)  You can now go into drag mode by merely typing DRAG <user> - you don't
+    have to specify a direction immediately.  Once in drag mode, you just
+    walk around normally and you will drag the target user.  Type DRAG by
+    itself to turn off drag mode.   
+10) Many profile options are now permanent between characters (ie. after
+    a reroll, you do not have to reset things like your colour palette)
+11) If your board is configured to force you to keep only a percentage
+    of your EP's after a reroll, you can now only do that once per day -
+    after that you will keep 100% of your evil points until the next day.
+12) When you reroll now, you will keep some of your experience.  This will
+    make it easier to switch races and classes without losing all of your
+    time invested.  You can turn this off using the SET KEEP profile 
+    toggle or SET KEEP ON/OFF.
+13) Some area-effect spells can now be resisted
+14) Mystics can invoke powers just by typing the power name now
+15) Monsters should move randomly more often
+16) Target matching when eating, drinking, or lighting should only match
+    items of the correct type
+17) You should no longer be able to attack your charmed monster to get 
+    it to attack itself.
+18) When you attack your charmed monster, as well as merely breaking the
+    charm on the monster, the spell will now also be removed from it.
+19) When picking a target for your attacks, if you have a charmed monster
+    it will be picked last.
+20) When attempting to sneak or hide, your charmed monster will not be
+    considered as a disadvantage.
+21) If you have more than one of a cursed item, and you are wearing one
+    of them and you attempt to drop/hide/give away the other cursed item
+    you will no longer be stopped.
+22) When you light an item, or when it runs out of charges, both you and
+    the room will be told of the event.
+23) When inviting members to your gang, they no longer have to be in the
+    same room as you.
+24) If levels of difference to allow pvp combat is set, and a player 
+    who is greater than that many levels lower than a fiend attacks the
+    fiend, they will be allowed to attack, and the fiend can attack back
+    while the evil timer is going on.
+25) Profile options with only two options will now work as a toggle as well
+26) Action commands will now terminate hiding or sneaking
+27) Magical monsters may only be attacked with magical weapons of a 
+    greater magical potency than the monster
+28) Added the SET STYLE command to choose between technical and fantasy
+    messages.  Currently this only affects the WHO/SCAN listing.
+29) Added the GOSSIP command to send a message to everyone (The Block
+    Entrance message profile option will disable these messages)
+30) If you are invited to a gang while you are in one, you can now leave
+    the first one and still keep the invitation to the second one.
+31) New profile option: SET GANG to toggle the display of all gang members
+    or only Online gang members for the BG command.
+32) You can no longer look at items in stores which are not in stock
+33) New command: APPRAISE <item> which will tell you how much you could
+    sell an item for at the shop you are in.
+34) Changed gossip so that it is now turned on/off with SET GOSSIP (Use
+    PROFILE to view your current settings)
+35) During any timed retailiation period, you may not enter either a 
+    protected room or a colliseum/arena (PvP combat zone).  This is done
+    to stop people from attacking and then running to safety so they can't
+    be attacked back.
+36) Saints and Good players get more EPs when they do evil actions.  You
+    can no longer move towards 'good' until after level 3.  The best 
+    reputation possible is just past saint - no matter how long you stay
+    at saint, only a simple attack will bring you down out of saint.
+37) Added an AUCTION command - same as gossip, but with its own flag 
+    (ie. SET AUCTION to toggle auction messages on and off)
+38) People with GOSSIP turned off will show with an 'x' in the scan/who list
+39) If you successfully sneak out of a room monsters will no longer 
+    follow you automatically
+40) Area-effect attack spells will now work in auto-combat mode.  Note that
+    with an area-effect auto-combat spell you get Evil Points for EACH cast
+    of the spell (if applicable) and not only for the first cast.  Also
+    note that you must manually BREAK combat to stop autocombat of an area
+    effect spell (There are a few situations which will break auto-combat 
+    of an area-spell, but merely killing someone/something is not one of 
+    them)
+41) Lowered the total number of evil points which may be obtained and 
+    reduced the ranges of each evil level.  Made archons (templars, etc.)
+    go after both villains and fiends now, with lightning only hitting 
+    fiends.  Note that all players will be adjusted to the start of whatever
+    evil level they are currently at under the new number ranges (ie. a
+    villain under the old system will now be just before the start of a
+    villain under the new system.)  Also, more EPs are now deducted each
+    day for the per-usage time (instead of 1 extra per 2 hours, it is now
+    1 extra per hour played).  The per-hour deductions are still only
+    applied if you do NO evil actions.  They are also now limited to a max
+    of 12 EPs deducted each day.
+42) Added a purge command which will purge a spell from your spellbook.
+    You must type the full command 'PURGE' to use this as there is no
+    undo.  Once you have purged a spell, you must repurchase the scroll
+    to relearn the spell.
+43) More of the cheaper items will now disappear from rooms at cleanup.
+44) For items which can be 'USE'd and 'worn' - you now must be wearing the
+    item to be able to use it.
+45) Added support for monsters to cast area-effect spells
+46) Spells with multiple remove-spell ability values on them will work now.
+47) Enhanced the logic to determine when you are allowed to sneak to allow
+    it under more conditions than previously
+48) Enhanced the use of keys on locks.  You may NO LONGER just walk through
+    the door with a key.  You must USE KEY direction and then OPEN direction
+    to unlock and open the door.
+49) Added the commands SET STATLINE CUSTOM xxx and 
+    SET STATLINE FULL CUSTOM xxx  (enter displays a short room desc).
+    The xxx can be up to 60 characters long and may include spaces, etc.
+    You may include the following variables in xxx:
+      %h - current hit points
+      %H - max hit points
+      %m - current mana
+      %M - max mana
+      %c - current wealth on hand
+      %x - current experience
+      %X - experience to next level
+      %r - resting flag " (Resting) " when resting
+      %fn - set foreground colour (n = 0-7)
+      %bn - set background colour (n = 0-7)
+      %B - bold
+      %N - normal
+      %U - underline
+      %L - blink
+      %R - reverse
+50) Added a SET GENDER <male/female> command.  Note that this MAY cost you
+    up to 32000 gold or may not be allowed at all.  Your sysop can 
+    determine how much it will
+    cost and the only way to find out how much is to take the risk and do
+    it.  You can't know what it will be like until you do it.
+51) Appraise by itself will no longer display what other people type.
+52) Area-effect auto-combat spells will now give evil points for initiating 
+    combat in the same manner as auto-combat single-target spells.
+53) Even more changes to stealth, attack, backstab, and other formulas
+54) You should now only be able to wear 2 rings at a time
+55) Level restrictions on area effect spells should not apply in the
+    PVP arenas
+56) Well over 1500 new rooms
+57) Many new monsters
+58) Hundreds of new spells and items
+59) Balancing of all the classes
+60) Players are able to train past level 20
+61) Many other unlisted changes
+
+                     +      Version 1.0z - 6/30/95       +
+
+1)  Guards will now attack outlaws as well, but will stop once they hit
+    0 hit points.
+2)  Enhanced the display of spellcasting results
+3)  Reduced the chance of templars coming after you.
+4)  You will no longer get evil points for attacking a monster which is
+    attacking you (ie. Templars, etc.)
+5)  Remove curse spells will remove cursed items which you are wearing
+6)  Added a confirmation prompt on disbanding a gang
+7)  Mystics can train in their training hall to learn new powers which
+    have been created for them at lower levels even when they don't have
+    experience to train to the next level (assuming that there are new
+    spells for them at lower levels which they do not already know)
+8)  Level restrictions are not applied in practice arenas
+9)  When leaving a practice arena, all combat related to you is broken
+10) All spells cast on a user who dies in a practice arena should be removed
+11) If you learn a neutral or good spell and subsequently turn evil, you
+    will no longer be able to cast the good/neutral spell, even though it
+    will remain in your spellbook
+12) Added directed messages (ie. >dog hi there) [Only to visible people in
+    the same room as you]
+13) Added a recharge-at-cleanup ability which allows items to have a 
+    certain number of charges per day.
+14) Some cleanup related to area effect spells
+15) Tons of little things
+16) Note to sneakers: (sneaking) is no longer displayed in the look command
+    and sneaking users are displayed when a statline full user presses enter
+17) Spells cast on hidden users will no longer give numerous times the
+    desired effect.
+18) Spells which give evil points for casting will no longer continue to
+    cast after a warning message is given to those with 'set warning on'
+19) A user with 'hold-person' cast upon them can no longer follow in a party
+20) The cases where you would cast one spell but end up casting a different
+    spell should no longer occur.
+21) New ability to remove a specific spell vs. the existing ability which
+    removes all spells with a given ability.
+22) Players with spells like 'turn' should be able to 'turn' items without
+    the game attempting to cast their turn spell.
+23) New ability to alter the rate at which you heal (including during rest)
+24) Added a %chance that automatically used abilities/cast spells based on
+    a weapon attack will be used (instead of the current 100% chance)
+25) New ability to be able to negate the value of another ability for the
+    duration of the negating spell.
+26) Once you have progressed too far to the evil side, you may no longer do
+    any evil actions until you have lost enough evil points.  
+27) Increased support for traps
+    
+                     +      Version 1.0y - 3/24/95       +
+
+1)  Played with guards and mercenaries a bit
+2)  Matching for attacking will not include yourself (as well as matching
+    for many other commands in which you are not a valid target)
+3)  Matching when looking while in combat will attempt to match against
+    whatever/whomever you are attacking before giving a list of options
+4)  Numerous misc. little adjustments which I won't list because it would
+    take me longer to list them than it did to change them
+5)  Rewrote the method in which a new character's name is validated against
+    existing characters and existing monsters so that it will not pause
+    the entire BBS while checking.
+6)  Started making some adjustments to reduce the unfair stealth BS attacks
+7)  Started playing with colour palettes because some users want one set 
+    of dim colours while others want the bright ones.  
+    Try the SET PALETTE {0/1/2/3} command. Not much is implemented yet though.
+    0 is a medium palette (new colours), 1 is a dim palette (new colours), 
+    and 2 is bold palette (old colours), 3 is combo of 0, 2
+    For any future comments regarding colours, PLEASE indicate the palette
+    which you are using.
+8)  Spells which are supposed to have a negative effect should work now
+9)  Wearing a new item should no longer auto-remove a cursed one
+10) Hot and cold defense against Monster's spells should work now
+11) You should be able to use items again
+12) You may no longer exit from a protected room (to avoid people running
+    away to a protected room and then exitting)
+
+                     +      Version 1.0x - 2/18/95       +
+    
+1)  Fixed the handling of cursed and major-cursed items
+2)  Cleaned up some of the monster attack methods
+3)  A lot of work on matching targets for all commands (ie players, monsters,
+    items in inventory, items on the floor, spells).  I've attempted to
+    catch duplicates and give a list of options instead of picking the first
+    one to partially match.  This affects a LOT of the game, so please send
+    detailed email to me (Lance@wcc) if you find weird cases due to not
+    being able to pick your target properly for any command.
+4)  Auto-cast spells linked to weapons should work more often now
+5)  Added in some more room checking for the one user who managed to end up
+    in a non-existant room.  MMUD will now place the user in the same room
+    which you normally show up in after death if their room doesn't exist.
+6)  Cleaned up the suicide and death code with respect to dropping items
+7)  Some internal cleanup which will hopefully improve performance
+8)  Fixed the cleanup routines so that items on the ground maintain the
+    correct charge level
+9)  Shockshield spells should now work properly.
+10) Alpha release of the offline recovery utility
+11) Gang leaders can now uninvite users who are not online (Their EXACT
+    name must be used to do this)
+12) Worked on the support for storing multiples of an item in a room which
+    exceed the current item limit.  The total distinct items remains the
+    same, but a room should support hundreds of a single item (if it is
+    not an item which has a set number of charges).  This is another one of
+    those dangerous changes, so if you find anything funny, please report
+    it asap.  In addition, this will only affect new items dropped in a room
+    so if there is currently a room with 12 torches in it, they will be
+    treated as 12 separate items until someone picks them up and drops them
+    again.
+13) Fixed up bugs in shockshield and in matching player names (ie for drag)
+14) Made the target matching for spells depend upon the legal targets for
+    the given spell (ie a spell which can only be cast upon a player should 
+    not attempt a match against an item or another monster)
+15) Enhanced the area effect spells to support a wider variety of targetting
+    (ie Some spells will only affect your party, some only those not in your
+    party, etc.)
+16) Spellcasters should not have to kill auto-combat twice now when they 
+    kill a user/monster
+17) The room is informed for more user events now
+
+                     +      Version 1.0w - 1/28/95       +
+
+1)  Re-enabled opening doors during combat (only opening)
+2)  Double-checked the charge on items when entering the game to ensure 
+    that old 'unlimited use' potions no longer have unlimited uses.
+3)  Fixed the support for class-specific level titles so it works again.
+4)  Fixed the reverse background so that it doesn't flash on some term progs
+5)  Weapons which auto-cast spells will not repeat casting 25 times
+6)  Switching attack types while in auto-combat is allowed now
+7)  If you die while dragging a user, the user you are dragging should not
+    show up in the reincarnation room with you.
+8)  Monsters killed as a result of a spell, a lingering effect, or another
+    monster will now give exp to all users in combat with it at the time of
+    death.
+9)  Misc. minor adjustments  
+10) The levels difference to disable attacking now also applies to robbing
+11) Evil combat spells will only give evil points when attacking good or
+    lawfull good monsters
+12) Dropping keys should properly update your weight now
+13) Keys may be stolen now
+14) Worked on support for a demo version
+
+                     +      Version 1.0v - 1/9/95       +
+
+1) Fixed a bug relating to dying with a light lit.  This could cause some
+   of the problems related to items disappearing and to not being able
+   to re-light other items.
+2) Disabled opening, closing, and locking doors or gates during combat
+3) Wrote a work-around so that the MajorJail /arrest command should no
+   longer cause duplicate items in MajorMUD
+4) If you get cutoff due to a change in class or an expired time per day
+   then it should no longer treat it as though you hung up (and therefore
+   it should not penalize you)
+5) The share command includes yourself now.
+6) You can no longer look at hidden items until they have been searched for
+   and found.
+
+                     +      Version 1.0u - 1/2/95       +
+
+1) Minor changes - mostly fixed some sysop CNF options 
+
+                     +      Version 1.0t - 1/2/95       +
+
+1) Added a SHARE <amount> <currency> [optional: WITH ROOM/WITH PARTY]
+   command to share some money by default with all the members of your 
+   party and optionally with everyone in the room.
+2) Added a WEALTH command.  It just displays your monetary situation.
+3) You can no longer Search while it is dark.
+4) Added a SET RESPONSE [BRIEF/VERBOSE] command so that you can turn
+   off the 'you said ...' when you are talking
+
+                     +      Version 1.0s - 1/1/95       +
+
+1) Fixed the exp so that all people in combat with the monster share the
+   exp again
+
+                     +      Version 1.0r - 12/31/94     +
+
+1)  Re-fixed the duplication bug with respect to training stats and waiting
+    to switch classes before exiting.
+2)  Mystics should be able to invoke KAI powers by merely typing the short
+    name (as magic users can cast using the short name)
+3)  Casting or Invoking may be done using the full spell/power name if
+    specified as part of the full command (ie including 'cast' or 'invoke')
+4)  Enabled all global commands while in the MMUD menu
+5)  LEAVE GANG will leave your gang first instead of attempting to leave
+    your party first.
+6)  When you die with a light item lit, you no longer keep the light.
+7)  The REMOVE command will now remove weapons as well (note that DISARM
+    still works)
+8)  When reading signs longer than a page, the screen should pause properly
+9)  When a monster is killed, all users in autocombat with it should break
+    combat immediately
+10) You may no longer search while blind
+11) CPs should be properly adjusted for all characters.  You may have to
+    train stats twice to see a change (if you have an old character)
+12) Fixed several areas where random numbers would never hit their maximum
+13) Reduced the experience charts a bit more
+14) Fixed the bug which caused most dispell magic activities to fail
+    (ie cure blind, cure poison)
+15) Other little things too small to note in detail
+
+                     +      Version 1.0q - 12/29/94     +
+
+1) Fixed the duplication bug related to using guest access accounts to
+   play previously created characters.
+2) Some colour changes.
+
+                     +      Version 1.0p - 12/26/94     +
+
+1) BSing, switching weapons, and re-attacking will no longer BS with 
+   invalid (normally non-BS) weapons.
+2) Added more information to the sysop release notes - sysops: Please 
+   re-read these notes looking for new additions.
+3) Light should not remain after death
+4) Poison should no longer be cumulative and should be removed properly
+
+                     +      Version 1.0o - 12/14/94     +
+
+1) Spells which are supposed to ONLY work on animals will now work 
+2) If you look <dir> or look <user> while hidden, it won't tell the room or
+   the target user.  Also, it won't check for the monster to come into your
+   room when you see it in the next room.
+3) Credit scamming has been fixed so users get kicked out when they run out
+   of credits.
+4) Adjusted attacking with respect to sneaking, hiding, re-attacking
+5) Resting is now broken more appropriately when you attempt certain commands
+6) Monster's poison will now work properly (and poison immunity will work)
+7) The BG command should now display all members of the gang, even on boards
+   with over 500 users who play MMUD.
+
+                     +      Version 1.0n - 12/02/94     +
+
+1) Ensured that starting characters get their random hp portion at level 1
+2) Reduced the chance that less agressive monsters will wander
+3) Reworked the backstab formulas
+4) Modified the way in which combat attacks are performed
+5) Numerous little adjustments
+
+                     +      Version 1.0m - 12/01/94     +
+
+1) Some tweaks to the attack formulas and the spellcasting/mana formulas
+
+                     +      Version 1.0l - 11/30/94     +
+
+1) Fixed some of the spell abilities so that you won't do 300-400 damage
+   when you have certain spells cast anymore
+2) Mystic jumpkicks and kicks will continue past the first round instead
+   of switching to normal attacks.
+3) Adjusted the mana and spellcasting formulas
+
+                     +      Version 1.0k - 11/24/94     +
+
+1) Some general cleanup and some more performance adjustments
+2) Charmed monsters should now attack other monsters (again) if you are
+   attacking another monster (ie they will attack whatever you attack)
+3) Adjusted the support for area spells to recognize some of the new
+   types which had not previously been supported but where used for 
+   some area spells.
+
+                     +      Version 1.0j - 11/20/94     +
+
+1) Some cleanup of the recovery logic done in 1.0i to handle systems with
+   1000's of active monsters efficiently
+2) When you attack GOOD and LAWFULL GOOD monsters you will get evil points
+3) With time and good behaviour, it is now possible to go to GOOD
+
+                     +      Version 1.0i - 11/19/94     +
+
+1) Played around with the monster generation routines to ensure that
+   quest monsters generate appropriately (as they used to) [Modified
+   recovery mode to help fix any existing databases which are out of sync]
+2) Modified recovery mode so that it will get rid of the duplicate
+   specific monsters if they exist.
+3) Adjusted combat formulas
+
+                     +      Version 1.0h - 11/16/94     +
+
+1) You may now drag and aid someone at 0 hp
+2) Modified initialization to work in the background for the first few 
+   minutes after the bbs starts up.  This will result in the initialization
+   taking longer, but the board will be usable (with a high load) as soon
+   as all the modules are initialized.  Added a new option, INITRATE which
+   indicates the size of each chunk of work done during initialization.
+3) Added a new sysop command: SYSOP INITIALIZE {rate} [RECOVER] which
+   will restart the recovery cycle with the given rate and optionally
+   in recovery mode.  This can be used to determine the optimal rate
+   to set your CNF option to, or it can be used merely to ensure that
+   all of your monster settings are correct.  NOTE that the RECOVER option
+   should not normally be done with any users in the game (aside from the
+   sysop entering the command - grin)
+4) Added a new CNF option POLLRATE to adjust the rate of polling saves.
+   Please read the sysop release note for more information regarding the
+   POLLRATE and INITRATE options.
+5) Shops will regenerate items properly when crossing midnight.
+6) Some performance adjustments related to the way abilities are processed.
+   The abilities adjusted are see-hidden, blind-user, paralze, 
+   defence-modifier, protective-shield, alter-energy-usage, 
+   alter-dr-by-percent, alter-damage-resistance, alter-critical-hit-chance
+7) Fixed the profanity checking so that it works (sorry about that) and
+   changed the default value to NO profanity checking.
+8) Fixed the bug where magery-level 2 was not getting any more mana than
+   magery-level 1.  This will be retroactively applied to existing chars.
+
+                     +      Version 1.0g - 11/13/94     +
+
+1) Some cleanup of changes made in 1.0f (such as makeing timed routines
+   more accurate)
+2) Removed the limit which stopped level 1 players from dropping copper
+
+                     +      Version 1.0f - 11/11/94     +
+
+1) Rewrote the recovery logic after a board crash so that it should run a 
+   lot faster because it doesn't cycle through the active monsters more
+   than once.  The recovery process should now take only a few minutes
+   although if you find that your board crashes often and takes too 
+   long to recover, then I would recommend increasing the size of your
+   room buffers.  Renamed flag file to wccrecov.flg
+2) Given this new discovery about rtkick routines, I realized that I
+   am actually using the rtkick for a number of different things.  In fact,
+   if there were 30 people in MUD and they are all in auto-combat and you
+   have other modules on your system which use timer routines, then there 
+   has always been the possibility of a freeze as we started experiencing 
+   recently.  I have modified the attack routines so that this is no longer 
+   the case.
+3) grin - Ok, while I was at it, I wrote my own kick routine so that
+   the game only uses one kick timer for the background activity
+4) You can no longer cast spells during combat
+5) Spell-shops will now tell you if you can use a given scroll
+
+                     +      Version 1.0e - 11/09/94     +
+
+1) Going on the theory that the BBS has an undocumented (or documented 
+   somewhere I haven't looked) limit on the number of background timed
+   events which may exist, I restructured the way some background events
+   are done (specifically the restocking of stores).  This will greatly
+   reduce the total number of background-timer events which are created.
+
+                     +      Version 1.0d - 11/08/94     +
+
+1) Even more error-checking added
+2) Fixed a bug where I was calling memset instead of setmem and therefore
+   potentially overwriting some memory
+3) Added obsessive type-casting on numerous function calls
+4) A few weeks ago I modified some low level routines to use what is known 
+   as a 'volatile data area' of memory.  One of the requirements for 
+   using this is not to use it during initialization.  I just found a 
+   routine which is called by initialization which nests down and 
+   eventually calls this low-level routine and uses this memory incorrectly.
+   I've changed the startup so that instead of performing all of the
+   initialization during the initialization routine, I perform it 1 second
+   after the initialization is completed.  What this means is that until
+   I decide to write it a different way, when your board starts up, your
+   initialization will 'complete' and then almost immediately your disk
+   will start working really hard (grin) and you will not be able to type.
+   Basically, I've moved this initialization step outside of the 
+   initialization routine.
+5) Fixed the code which places items in rooms at startup so that it will
+   work again
+
+                     +      Version 1.0c - 11/07/94     +
+
+1) More code-checks looking for possible infinite loops
+2) Switched back to Borland C++ v3.1 (I've been using BC 4.0 since last
+   January and I haven't had any problems, but it can't hurt to move
+   back to BC 3.1 because that's what the BBS is built under)
+3) Added checks so that all the recovery logic I put into version 1.0b
+   will only occur if the board does not shutdown properly because the
+   recovery was taking up to 1/2 hour to perform
+
+                     +      Version 1.0b - 11/06/94     +
+
+1) Experience command will display experience required for next level
+2) Monsters who have items will no longer avoid you, will no longer 
+   appear as 'shadowy figures', etc. (Small little bug, big effect)
+3) Added some profanity level checking 
+4) Added recovery logic at startup to handle situations where a
+   specifically placed monster gets out of sync and therefore would
+   not otherwise regenerate   
+5) Added more recovery logic for all room-counts of monsters generated
+   per room to ensure that it is correct upon startup.
+
+                     +      Version 1.0a - 11/05/94     +
+
+1) Changed some potential loops which could run for an extended period of
+   time under some rare circumstances effectively freezing the board
+
+                     +      Version 1.0  - 11/04/94     +
+
+1) First Official non-Beta release
+
+                     +      Version 0.5j - 11/02/94     +
+
+1) Some minor cleanup (ie. read will let you read both signs and scrolls)
+
+                     +      Version 0.5i - 11/01/94     +
+
+1) Auto-use abilities on weapons will not be applied if target is already
+   dead due to the regular attack
+2) Removed level 1 restrictions to reflect the new starting location.
+3) Adjusted the text displayed when casting area-effect spells to attempt
+   to remove the duplication in messages.
+4) Auto-cast spells applied via an item (used or attacked with) will no
+   longer fail
+5) Spells which should not work against non-living or animal type monsters
+   will no longer work
+
+                     +      Version 0.5h - 10/31/94     +
+
+1) Fixed monsters so that they continue attacking longer after a minor
+   bug in the last release which caused them to stop after the first round
+2) Adjusted the HP calculations to fix old characters HP and to accommodate
+   new methods for calculating random portions of HP/level
+3) If you are in a party and resting, the resting will be cancelled when
+   the leader moves.
+4) Modified the top command so that systems with hundreds of users
+   can increase the maximum number of top users to view without causing
+   system pauses.
+5) Fixed the give command so that it shouldn't give the wrong item as it
+   was doing under certain circumstances
+6) Non-combat spells which give you evil points will no longer be castable
+   in protected rooms.
+7) Modified spellcasting formula to even out the increase in the stat and
+   to reflect the true value of the stat with lower basic stats
+8) Fixed the telepath command
+
+                     +      Version 0.5g - 10/30/94     +
+
+1) Added a maximum level modifier for spells so lower level spells don't
+   get ridiculously powerful
+2) Cleaned up the messages displayed to the target when a spell is cast
+3) Modified the starting location for new players
+4) Reduced the overhead of some of the frequently executed background events
+5) Added a rest command which will increase your HP regeneration
+
+                     +      Version 0.5f - 10/30/94     +
+
+1)  Some more preventative code cleanup
+2)  Include experience in topten list
+3)  If you walk away from a party, you will automatically leave it
+4)  Spells doing reverse damage will work again
+5)  Increased encumbrance percentages before going heavy
+6)  Enhanced documentation of SYSOP commands
+7)  Added the (I)nformation option to the main menu
+8)  Sorted the display of your spell list by level order
+9)  Enhanced the training to display some more information
+10) Modified exp/level and hp/level to also be affected by your race.
+
+                     +      Version 0.5e - 10/28/94     +
+
+1) More code cleanup.
+
+                     +      Version 0.5d - 10/27/94     +
+
+1) Fixed monster wandering so they don't run away from you all the time
+2) When the last person leaves your party, you should return to no rank
+3) Worked on charmed monsters so they stay charmed longer
+4) Added "BUY CURING" to the temple to cure from poison
+5) Made some changes to the way spell messages are displayed to provide
+   greater flexibility
+6) Fixed the bug where new characters who rerolled ended up majorly evil
+7) When an attacker takes damage from a damaging shield, they will get a
+   message telling them about it now.
+8) Weapons may now have two sets of abilites - one which may be activated
+   upon a successful attack and one which can be activated by using the
+   weapon.
+
+                     +      Version 0.5c - 10/26/94     +
+
+1) Worked on keeping track of limited items so that they don't disappear
+   when they shouldn't disappear
+2) Fixed some other potential problems with memory
+3) Fixed the cure-poison bug which hung up on you :)
+
+                     +      Version 0.5b - 10/24/94     +
+
+1) Fixed the bug in the limited-reindex related to deleting records
+2) Fixed the background saving to ensure modified items are saved
+3) Modified the delete user account routine so that when a bbs user
+   is deleted, all of the MMUD related stuff will be deleted as well.
+
+                     +      Version 0.5a - 10/24/94     +
+
+1) Some minor spell cleanup re messages given
+2) Adjusted the way limited items are treated when a user hangs up
+3) Wrote a limited-items re-indexing routine to ensure that all limited
+   items are accounted for properly in case of other bugs losing them :)
+4) Wrote a routine to walk through all of the MajorMUD users and confirm
+   that the BBS user accounts still exist.
+5) Fixed the bug which caused characters to not save after training stats
+
+                     +      Version 0.4z - 10/24/94     +
+
+1) Fixed specific shops to sell items of any level if specified in shop
+2) Fixed the online update to add data properly in addition to changing
+
+                     +      Version 0.4y - 10/23/94     +
+
+1) Enhanced the use of poison to have both permanent poison and duration 
+   poison (both of which can be cured with cure poison and are immune with
+   immune poison)
+2) In addition to being able to "use <weapon> <target>", added the ability 
+   to have a weapon automatically perform special abilities upon 
+   successfull attacks with the weapon
+3) Enhanced the support for one-time-cast spells which are auto-activated 
+   when an item is used.
+4) Tons of work on abilities (don't ask which ones... You'll see them as
+   new spells are created)
+
+                     +      Version 0.4x - 10/22/94     +
+
+1) Monster spellcasting supports monster duration/level spell modifiers
+2) Provided support for a variety of messages when an item disappears
+   from your inventory due to running out of charges
+3) Cleaned up more abilities
+4) Added support for an area-specific room in which you will be reincarnated
+5) You can no longer cast spells while unconscious
+
+                     +      Version 0.4w - 10/22/94     +
+
+1) Added a SAVEKEY sysop option to give sysops the option of allowing
+   guest users to play the game without saving their characters. 
+*****   NOTE: SYSOPS:  ENSURE THIS KEY IS SET PROPERLY FOR YOUR SYSTEM
+2) Moved level99 options from the WCCMMUD.MSG file into WCCTEXT.MSG to
+   support the gradual moving of hard-coded text into a message file.
+3) Added a MAILUSER sysop option to send copies of all MMUD generated 
+   mail to a local user as defined by the MAILUSER option.
+4) Fixed a few more of the methods to find hidden players illegally
+
+                     +      Version 0.4v - 10/21/94     +
+
+1) Fixed use of multi-valued spells (multi-ability spells)
+2) Added resistance abilities against hot, cold, stone, and lightning spells
+3) Restrict monster spell casting per round to become even with users
+4) Added support for spells to shatter weapons (and quality weapons which
+   cannot be shatterred)
+5) You can no longer find hidden people by casting a spell on them
+6) You can no longer find hidden people by inviting them 
+7) Added a SYSOP DISBAND gang command
+8) Added and updated even more abilities
+
+                     +      Version 0.4u - 10/20/94     +
+
+1) Fixed the restocking logic in shops
+2) Added and Updated some abilities
+
+                     +      Version 0.4t - 10/16/94     +
+
+1) Continued work on online database update utility
+2) Fixed problem with restocking some items in limited-quantity stores
+3) Added more logic to keep track of the location of limited items
+4) Modified the clearing evil points routine (for boards who are resetting)
+   so that it works as a polling routine (i.e. low system overhead)
+
+                     +      Version 0.4s - 10/12/94     +
+
+1) Fixed that d#$ned casting attack spells in protected rooms again :(
+2) Fixed the bug where you could initiate combat, follow into a protected
+   room, and then chase after your target when they leave and get a bunch
+   of attacks grouped together.
+3) Fixed the messages displayed when an area effect spell is cast.
+4) Added support for placed items in rooms which will regenerate when
+   the first item generated disappears
+5) If a spell has a short name, you must type it completely to cast it - 
+   you may no longer type portions of the long spell name.
+6) Started adding support for users to gain abilities attached to their
+   characters as they progress through the game
+7) Added support for fixed ability values on a spell in addition to the
+   variable ones (for spells with multiple abilities - grin)
+
+                     +      Version 0.4r - 9/25/94      +
+
+1) First set of complete formula rewrites
+
+                     +      Version 0.4q - 9/25/94      +
+
+1) Added a QUIT command in addition to the regular X to leave the game
+2) If a help topic is longer than a screen, it should pause now
+3) Fixed the party command so that it displays the party members :)
+4) Failed bashes against doors should only tell you once
+5) Hopefully fixed the bug where some items would randomly change to other
+   items when they were dropped or picked up.
+6) Worked on adding more abilities for use in creating spells, etc.
+7) Disabled casting spells in protected rooms again
+8) First draft of online update utility for database patches (sysops: please
+   heed the warning off the sysop-menu and do not use this yet - grin)
+9) Enabled searching when YOU are not in auto-combat (or auto-cast)
+
+                     +      Version 0.4p - 9/17/94      +
+
+1) Added some sysop commands to help those boards who are resetting to
+   clear all of the stored evil points.
+2) Enhanced the logic which determines when autocombat breaks so that
+   autocombat will stay on slightly longer when chasing someone.  Also
+   discovered that auto-casting would break much too early and fixed that.
+3) Messages to the room when you drop or pickup something are low priority
+
+                     +      Version 0.4o - 9/14/94      +
+
+1)  Fixed some minor bugs in a few of the new 0.4n changes
+2)  You must search for and find a hidden item prior to being able to get it.
+3)  Disabled the train stats command if any of your stats are altered (i.e.
+    if you currently have a bard spell cast upon you)
+4)  Cleaned up the messages given when bashing open doors and normal exits
+5)  Made the who command display in a random order 
+6)  If you are following someone who goes through an exit which you can not
+    go through, you will stop following them.
+7)  Added a check to stop you from making a bank deposit which would roll 
+    your account back to 0
+8)  You may now only train stats in your training room
+9)  Added more error checking/reporting related to all database access to
+    attempt to either stop or catch the bug which has caused 2 unresolved
+    database errors so far.
+10) When a monster kills a user, it should tell the correct room now
+11) If a mystic attacks with no weapon, it will be treated as a punch
+
+                     +      Version 0.4n - 9/11/94      +
+
+1)  Disabled the GUARD command
+2)  Fixed the bug that caused movement to be slower the faster you typed :)
+    (ie. movement is FASTER now)
+3)  Cut the pause in half when typing SNEAK
+4)  Added a SET SPEECH command which toggles fast and slow talking
+5)  Major rework on monster attacking to provide support for multiple
+    attack types for each monster (including spellcasting for monsters).
+6)  Fixed some monster regeneration bugs which caused some monsters to
+    stop regenerating completely.
+7)  Hopefully fixed the looking through open doors bug
+8)  Added a GET <currency> command which will pick up all of the VISIBLE
+    specified currency in the room.  eg. GET GOLD will get all of the
+    visible gold.
+9)  Classes which should not have the following abilities will no longer
+    get them at higher levels: Stealth, Dodge, Thievery, Find Traps,
+    Picklocks, Tracking
+10) When you attempt to follow someone who has not invited you, it will
+    no longer tell the person that you made the attempt.
+11) When a user falls to the ground unconscious, it should tell the room now
+12) If there is no exit in a particular direction, you will not get a 
+    delay when attempting to move in that direction.  If there is an exit
+    which you may not go through, then you will still get a pause (ie.
+    a locked door will still pause because it is the time you spent
+    attempting to open it)
+13) If you attempt to wear an item on a body location on which you are
+    already wearing an item, the first item will be automatically removed.
+    Note that this will not auto-disarm a two-handed weapon if you attempt
+    to wear an off-hand item such as a shield.
+14) You may now cast a spell without typing 'cast' before the spell name.
+    Note that you can still use 'cast', and if you type cast by itself it
+    will still go into re-casting mode as before.
+15) Added support for a short alternative casting name for each spell 
+16) Hopefully fixed the drag bug related to dying while being dragged
+17) Added support for monster sex (he/she/it)
+18) Added support for spells to last longer as the caster's level increases
+19) Added support for more variety in titles on a per class per level basis
+    plus added support for different male/female titles
+20) Added support for help at the Race and Class prompts when creating a
+    new character (using help or ?)
+21) Added support for monsters and npcs to randomly say things 
+22) Added a CNF configurable option for the percentage of evil points which
+    are retained after a final death.
+
+                     +      Version 0.4m - 8/21/94      +
+
+1) Added a midrank command.
+2) Added a SET ENTRANCES <On/Off> command to disable the global entrance
+   and exit messages whenever someone enters or exits the game.
+3) Whenever you enter the game, your weight carried is adjusted to ensure 
+   that you have a resolution in case there are future weight bugs.
+4) When you die, and all of your items/keys drop to the ground, if the 
+   room is full, it will attempt to hide the item, and then to drop it in
+   an adjacent room.
+
+                     +      Version 0.4l - 8/14/94      +
+
+1) Modified the handling of global commands so that the FastPace globals
+   will work with the game again.
+2) Worked on some of the background processing to try to reduce system load
+
+                     +      Version 0.4k - 8/8/94      +
+
+1) Automatically reset CPs and Stats if user has taken advantage of a bug
+   which ended up raising their stats and giving them negative CP
+
+                     +      Version 0.4j - 8/7/94      +
+
+1) Started work on the messaging level profile option 
+   (SET MESSAGE (High/Medium/Low) -- Only Low currently makes a difference)
+2) When you give money to another user, both users are auto-saved
+3) Started adding logic to disallow specific global commands in the game
+
+                     +      Version 0.4i - 8/1/94      +
+
+1) If another module assumes that a message file is open, MajorMUD will
+   now restore the message file state so that the other modules error will
+   no longer appear as a problem with MajorMUD.
+2) Fixed the gang bugs when creating or disbanding
+3) Started to add support for limiting the number of a particular item in
+   the game (will enable more regenerative monsters in the future)
+4) When you die, if you have money in the bank, you will not be given more.
+5) Started implementing the specific counts of items in stores
+
+                     +      Version 0.4h - 7/28/94     +
+
+1) When a party leader types a direction instead of an action command,
+   the entire party will no longer move through the action exit.
+2) Worked on support for spells to increase your maximum allowable weight
+3) Added a FORGIVE user command which will remove the evil points gained
+   by the person you are forgiving if they recently attacked you.
+4) Enhanced the way monsters follow users so that they will not necessarily
+   follow a user forever.
+5) Reduced the chance of a monster getting an 'instant' attack when you
+   enter a room.
+
+                     +      Version 0.4g - 7/27/94     +
+
+1) More work on monster generation
+2) Added a SET TELEPATH ON/OFF command to disable receipt of telepaths
+3) Ensured that the effects of spells are properly removed when you die
+4) Fixed the bankbook command when not in a bank
+5) Pressing <ENTER> with a full statline should not display hidden people
+6) Worked on fixing the support for potions
+
+                     +      Version 0.4f - 7/24/94     +
+
+1) Different debugging stuff added :)
+
+                     +      Version 0.4e - 7/18/94     +
+
+1) More work on exit types
+2) More work on monster generation and monster areas
+3) You can now 'USE KEY <dir>' to unlock a keyed door
+4) TOPTEN will now only work for up to 10 users, top gang as well
+5) Monsters will no longer follow sneaking users
+6) Cleaned up the type ahead buffers so the keystrokes don't echo until
+   they are actually being entered.
+7) Increased evil points gained when backstabbing.
+8) If you are not allowed to use or equip an item, you will still be allowed
+   to pick it up and sell it.
+
+                     +      Version 0.4d - 7/13/94     +
+
+1) Took out some debugging stuff
+
+                     +      Version 0.4c - 7/13/94     +
+
+1) More modifications to abilities for spells, etc.
+2) Modified the way party members follow their leader
+3) Modified the entry of commands to make it easier to script the game
+4) Some minor adjustments
+
+                     +      Version 0.4b - 7/08/94     +
+
+1) When you LOOK <dir>, you will now see if a monster comes into your room
+2) You can no longer re-initiate auto-combat using (A) or (C) if your 
+   previous target is not in the same room as you.
+3) Casting a spell during the same round will no longer use up mana when
+   it tells you that you've already cast a spell.
+4) Inviting someone to your gang multiple times will not increase the
+   number of members incorrectly anymore.
+5) Lanterns won't work forever anymore - Also, you must 'LIGHT' light items
+6) Added a SET WARNING <on/off> command which will warn you if you are
+   about to do something which will give you evil points and will stop
+   you from doing it.  For now, you must turn warnings OFF to be able to
+   perform evil acts.  (Note that there is still a chance that you might
+   not get told {grin} - You can't _always_ be warned.)
+7) Major rework in the handling of spells and abilities.
+
+                     +      Version 0.4a - 7/03/94     +
+
+1) Assorted small changes (eg. you can now uninvite someone before they
+   follow you)
+2) For sysops: Added NOPLAYKY in CNF options
+3) For sysops: Added PUNHUP in CNF options - level of punishment for 
+   dropping carrier while in the game.
+4) First draft of room-specific command support.
+5) Enhanced monster generation logic
+
+                     +      Version 0.3o - 6/25/94     +
+
+1) You may now hangup in the MUD Menu without being treated as though you
+   hung up while in the game.
+2) Fixed the TOP GANG command so that it will order based on Gang Experience
+   Unfortunately, this was due to an incorrectly defined database, so all
+   the gangs had to be deleted.  [sorry]
+3) It will now tell you that you were penalized when you login again after
+   hanging up or disconnecting while playing the game.
+4) You will no longer 'dodge' an attack when you are unconscious.
+5) You can no longer determine what a user doesn't have by attempting to rob.
+6) If you BS when you're not hidden/sneaking, it will appear as though you
+   are backstabbing, but will act as a normal attack.
+7) You may no longer GIVE to hidden users.
+8) Users who you may attack without getting evil points now show with a *
+
+                     +      Version 0.3n - 6/25/94     +
+
+1) Modified backstab formulas.
+2) Gangs will now accumulate experience based on experience earned by 
+   members while they are in the gang.
+3) Modified random monster follow logic
+4) Monsters will now resist spells in the same manner as users.
+
+                     +      Version 0.3m - 6/24/94     +
+
+1)  Fixed the Bard songs which affect your stats so that you may not cast
+    them multiple times before the first one wears off 
+    [Note to WCC users: I'm shocked that you didn't find this one!]
+2)  Added an appropriate delay when robbing. Also disabled all robbing 
+    in protected rooms
+3)  LOOK <dir> will now give the same detail as moving (re: brief/verbose)
+4)  Each ring may only be worn once (and you can only wear 2)
+5)  Added the command LEAVE GANG to leave your gang.
+6)  Keys will now drop when you die/suicide
+7)  Modified the defence value for monsters when being backstabbed.
+8)  Potentially fixed the random bug where a monster would appear to gain an
+    extraordinary amount of health (it related to casting some spells)
+9)  Increased the penalties for dropping carrier (hanging up)
+10) Modified monster generation a bit.
+11) Fixed the jumpkick bug which would freeze the board.  [Tech note for 
+    those who care: a bug in a formula caused it to attempt a random number
+    greater than 3, but less than 2 - not possible {grin}]
+
+                     +      Version 0.3l - 6/13/94     +
+
+1) Fixed the bug reported by Gameland (thank you) which caused a GP during
+   background processing under certain conditions.  [Technical point for 
+   those who a) care and b) have the source code: usrnum was not being set
+   appropriately during the timed events and a call to hasmkey required
+   this value to be set appropriately... therefore GP... sometimes...]
+2) hehe... even better... This was a performance problem.  Eliminated the
+   unnecessary call to check for the key which was causing the crash above.
+3) Added an UNINVITE MEMBER <user name> which will remove a user from your
+   gang.  Also, modified so that the only other way to get out of the gang
+   is to reroll, or die your last life.
+
+                     +      Version 0.3k - 6/12/94     +
+
+1) Adjusted the monster generation logic to eliminate large concentrations 
+   of monsters in one location
+2) Changed the way in which 'time in the game' is calculated yet once more.
+   This time, it will not be succeptible to the varying granularity of the
+   time between saving users.  Unfortunately, the first day you install this
+   release, your time reported in the game will be inaccurate.
+3) The BG command will now properly display if the leader is in the game.
+
+                     +      Version 0.3j - 6/11/94     +
+
+1) Hopefully fixed the <invalid pointer> errors in monster messages
+2) Added a FORCE command which is identical to the BASH command
+3) Fixed the board freezing problem when you attempt to give > 32767 of any
+   currency to another user :)
+4) Fixed the toll exits so that they will not crash the board :)
+5) Started to add support for the gang commands:
+      CREATE GANG <gang name>    -- Requires 100000 experience
+      INVITE MEMBER <user name>  -- Only the gang leader can invite members
+      BROADGANG _or_ BG [<text>] -- By itself lists gang members
+      TOPTEN GANGS _or_ TOP <n> GANGS
+      DISBAND GANG               -- Only the gang leader can disband the gang
+        -- Note that after a gang is disbanded, the name may not be used
+           until the day after all ex gang members have entered the game
+
+                     +      Version 0.3i - 6/9/94      +
+
+1) Disabled sneaking and hiding when you are in a room with a monster who
+   is attacking you (i.e. all non-Lawfull Good monsters)
+2) Hopefully fixed the PARTY command so that if someone drops carrier, they
+   are appropriately removed from the party
+3) If you attempt to backstab when you may not legally backstab (i.e. you 
+   have a two-handed weapon, or you are not sneaking or hiding) then you will
+   attack as if it was a normal attack.
+4) Disallowed initiating combat with monsters in protected rooms.
+5) Toll exits will now accept the toll no matter what currency you have on
+   you (assuming you have enough value to cover the toll)
+6) When a light source disappears from your inventory, the weight will now
+   be removed.
+7) You can now attack sneaking players
+
+                     +      Version 0.3h - 6/6/94      +
+
+1) Fixed the nightly reporting so that it should report the minutes in the
+   game correctly (previously, would report as though users were saved 
+   once a minute and would not reflect saving once every 2 or 3 minutes)
+2) The MAP command will no longer break up a party
+3) If you buy something which is too heavy for you, it will no longer charge
+4) You may now wear more than one ring at a time
+5) Hunger and thirst are no longer displayed (until we actually use hunger/
+   thirst, if we decide to ever use them)
+6) Characters created prior to version 0.3f had a chance at not being able
+   to light anything.  This has been fixed now.
+7) Added support for items limited to specific classes and/or races; also
+   added support to disallow anit-magic classes from carrying magical items
+8) When casting combat spells, you will now initiate auto-casting even if
+   you aren't currently ready to cast the spell (you will then cast as soon
+   as you are ready)
+
+                     +      Version 0.3g - 6/5/94      +
+
+1) Fixed the cleanup routines so that they should not stop the system from
+   restarting  (I was able to reproduce the same symptoms as reported at 
+   cleanup with a re-installed 'out-of-the-box' version of the BBS.  
+   MajorMUD will now cleanup properly on a base version [6.12])
+2) The Arena will now have more monsters in it
+3) Fixed the 'CAST' command with no target (will restart combat with the
+   last target you were casting at if you have not 'attacked' since the
+   last cast)
+4) Fixed room illumination spells so that they will work properly now
+5) Until a better solution can be implemented, level 1 users may no longer
+   drop, hide, or give away anything.  When they suicide or are killed, 
+   none of their possessions will drop to the ground.  Level 1 users may 
+   also not be robbed.
+
+                     +      Version 0.3f - 6/4/94      +
+
+1)  Modified topten to take a parameter to display more users (topten 50)
+2)  Starting at level 2, buying and selling in stores will convert your
+    currency to the largest denominations
+3)  When Backstabbing a monster it will say 'Attempting to Backstab' now
+4)  The page count limit now also applies to telepaths (i.e. pages and
+    telepaths combined) [You cannot block telepaths entirely though]
+5)  Wandering guards will now attack evil users
+6)  If a monster attacked you recently, then you may not hide or sneak
+7)  Fixed the Feedback command to send mail from "SYSOP".  This assumes that
+    the sysop account has the appropriate key to send MHS mail.
+8)  Modified the name matching code to support multiple words more accurately
+    (i.e. You can now "read scroll of ethereal shield")
+9)  Made changes to the way in which light items are handled (now you can 
+    light them and then remove them multiple times)
+10) Ensured that the player's character is saved when they run out of credits
+11) Changed the default statline for new users to `full' instead of just `on'
+
+                     +      Version 0.3e - 6/3/94      +
+
+1) Fixed the accounting error where the time in the game was not recorded
+   properly (and therefore free time was not working properly)
+
+                     +      Version 0.3d - 6/2/94      +
+                     +  First Official Public Release  +
+
+1) Fixed that bug I introduced in the last version when reading scrolls
+2) Modified the mystic attacks
+
+                     +      Version 0.3c - 6/1/94      +
+
+1) More of the same as the last 2 versions {grin}
+2) Can no longer cast multiple duration spells with similar effects on a user
+3) Fixed the bug where sometimes you would read a new scroll and it would
+   tell you that you have already got the spell.
+4) Added validation on player names
+5) When you are killed in a colliseum, you will only regain the amount of hp
+   which you had when you entered the colliseum.
+
+                         +      Version 0.3b      +
+
+1) Many modifications to support distribution to other BBS's
+
+                         +      Version 0.3a      +
+
+1) Added commands to support talking with NPCs and other monsters
+2) Internal restructuring to enable distribution to other BBS's
+3) Looking will now tell you if someone is sneaking
+4) Monsters now have a random chance of dropping items
+5) Further enhancements to the exits - more descriptions, more variety
+6) You may no longer look at hidden users
+7) Modified the Backstab formulas
+
+                         +      Version 0.2o      +
+
+1) Added a SEARCH <direction> command to find some hidden doors
+2) Updated a number of statistics formulas
+
+                         +      Version 0.2n      +
+
+1) More support for locked doors, gates, hidden exits, and remote actions.
+2) Enhanced timed commands
+3) Modified exitting so that you can type BREAK during your meditation to
+   stop meditation.
+
+                         +      Version 0.2m      +
+
+1) Enhanced the support for doors, gates, and hidden exits.
+2) Fixed some bugs with critical hits
+
+                         +      Version 0.2l      +
+
+1) Enhanced critical hits
+2) Modified Sneak
+3) Some visual changes (colours, etc.)
+
+                         +      Version 0.2k      +
+
+1) Fixed the bug where certain people could crash the board with feedback :)
+2) Fixed the FRONTRANK command
+
+                         +      Version 0.2j      +
+
+1) Added the concept of a 'protected' room - no PVP combat at all
+2) Added more evil effects
+3) Added a FEEDBACK command which will email me with a line of comments
+   (@WCC for remote BBS').  [Also, internal error reporting via EMail]
+4) Modified the speed of punching, kicking, jumpkicking
+5) Introduced the concept of a 'critical hit' (Must either TRAIN or REROLL
+   to be able to get the correct chance at a critical hit.)
+6) Enhanced the frontrank/backrank support in combat
+     
+                         +      Version 0.2i      +
+
+1) Added a DISMISS GUARD command which will release your guard.
+2) Fixed the random bug which would cause monsters to 'not die'
+3) Modified the LOOK command so that you can look at an item in a store
+   before you buy it.
+4) Started adding the effects for being evil.
+5) Modified the effects of charm in stores.
+
+                         +      Version 0.2h      +
+
+1) Death occurs at 0 hp in any colliseum room (i.e. practice arena)
+2) Fixed up light levels (hopefully) {grin}
+3) Added new exit types (doesn't concern users until the appropriate
+   quests are written; just Cat, Rasputin, and Orfeo)
+
+                         +      Version 0.2g      +
+
+1) Some performance improvements (not user-perceivable when in the game, 
+   just at the board level)
+2) Fixed the bug where you couldn't ready some weapons together.
+
+                         +      Version 0.2f      +
+
+1) First release of Evil System.
+
+                         +      Version 0.2e      +
+
+1) Fixed attacking sneaking/hidden users
+2) When an items uses are gone (i.e. a scroll has been read) and it 
+   disappears, the weight is now deducted from your weight carried.
+3) Poison should no longer affect you after you die (or suicide)
+4) Modified name matching logic when buying items in a store
+5) Fixed the bug where certain situations would cause a suicide command
+   to effectively reroll - also, breaking combat should not tell you that 
+   you are 'no longer dragging' if you were not originally dragging.
+6) When you attempt to read a scroll which does nothing for you, it
+   should not disappear from your inventory.
+7) Attack or Cast on a line by itself will attempt to reinitiate auto-combat
+   or auto-casting with the last user/monste with which you were in combat
+   with.
+8) Modified auto-combat to stop properly when attacking monsters.
+
+                         +      Version 0.2d      +
+
+1) Fixed the robbing bug where your currency goes to extremes
+2) Modified the generation of Lair monsters
+
+                         +      Version 0.2c      +
+
+1) Fixed mana so you don't get more than your maximum
+2) You may no longer rob someone of something worn or a readied weapon.
+3) You may no longer steal money from someone by giving them money.
+
+                         +      Version 0.2b      +
+
+1) New combat system
+2) Modified method/rate of hp and mana regeneration
+3) Only one person can drag another user at a time
+4) Enhanced support of the USE/READ/DRINK/EAT commands to support healing
+   potions, etc.
+5) First release of the ROB command (only from users currently)
+6) Added a receive items flag which will stop other players from giving 
+   you items or currency.  Command is: SET RECEIVE <on/off> to turn it
+   on or off.  PROFILE to view the current status.
+
+                         +      Version 0.1w      +
+
+1) Blah... not much
+
+                         +      Version 0.1v      +
+
+1) Whisper works now
+2) Modified initiation of combat to interrupt your typing.  Use the commands
+   SET INTERRUPT {ON/OFF}   and   PROFILE
+3) Added a 'blind follow' mode which will not display room descriptions 
+   to following users.  Use the commands
+   SET FOLLOW {BLIND/NORMAL}   and PROFILE
+4) First release of Bard spells (alter stats style spells)
+
+                         +      Version 0.1u      +
+
+1) First release of Scrolls
+2) Fixed the train stats/ctrl-o bug
+3) Fixed Bank command errors
+
+                         +      Version 0.1t      +
+
+1) A few more colour changes
+2) A lot of spell changes - most noticably descriptive changes, so please
+   report any peculiarities (I expect a number as this is STILL not done)
+
+                         +      Version 0.1s      +
+
+1) A few colour changes
+2) A few adjustments to sneak and hide
+3) A few adjustments to death and suicide
+
+                         +      Version 0.1r      +
+
+1) Fixed the bug where some users were crashing the BBS when they trained
+2) Modified the delays during sneaking and hiding
+
+                         +      Version 0.1q      +
+
+1) First release of Kai powers
+2) Nightly Cleanup routine will sweep items and currency out of sight
+
+                         +      Version 0.1p      +
+
+1) Modified the way in which certain items can give you special abilities
+2) Ensured that spells stop affecting you after you die.
+3) Modified Backstab so that 2-handed weapons may not be used to backstab
+4) Restrict Punches to classes explicitly with the Punch ability
+
+                         +      Version 0.1o      +
+
+1) A number of little things
+2) Modified the price of items to use your charm when calculating a price
+3) Added error checks on allowable names
+
+                         +      Version 0.1n      +
+
+1) Added a BASH <direction> command which will let you bash through
+   locked doors.
+2) Classes restricted to one-handed weapons may not wear off-hand armour
+   (i.e. Shields)
+3) Increased the chance of aggressive monsters following you.
+4) Modified the spells/items which each user is allowed to purchase in
+   each store.
+
+                         +      Version 0.1m      +
+
+1) Made numerous error-checking modifications in the hopes of eliminating
+   crashes.  Please note that we will be resetting the game to clear any
+   potentially corrupt data.  This will happen sometime this weekend 
+   (probably Sunday the 23rd early am).  Please don't ask for any 
+   character modifications -- we will not be doing any because numerous
+   other changes have affected the way in which EXP is earned, and the
+   amounts per level, etc. In other words, Please do NOT ask.
+2) Broadcast by itself will tell you who is in your broadcast group.  Also,
+   the letters - or ' will start a broadcast (but ' will not override the
+   global ' unless your ;cc is set to 0)
+3) Modified the Party command to display invited users as 'invited'
+4) Toned down the rate at which monsters will enter rooms around you.
+
+                         +      Version 0.1l      +
+
+1) Fixed the automatic timed saves of the characters
+2) Fixed some sneak/drag bugs (you never stopped)
+3) Added the command SET MAXPAGES {n} which will allow you to configure
+   the number of pages which you can receive in a 3 second period.  Use
+   the PROFILE command to see your current setting.  For users suffering
+   from 'macro paging', we suggest setting this value to 1.
+
+                         +      Version 0.1k      +
+
+1) Modified Sneaking and Hiding rules (Modified Backstab)
+2) Fixed training so that you get back your lives/level
+3) Reduced the experience gained from killing users
+4) Fixed 'macro-paging' by limiting the number of pages you can receive
+   in a row.  (i.e. you can only recieve 1 page every 3 seconds)
+
+                         +      Version 0.1j      +
+
+1) Fixed the Cure-Poison spell ability such that (a) It doesn't tell you
+   that you are poisoned and (b) You don't continually increase in HP.
+2) Fixed looking through locked doors.
+3) Disabled combat style spells in shops.
+4) Modified the allowable armour so that classes only allowed up to 
+   chainmail may no longer use Scalemail (and allowed Scalemail users to
+   use Chainmail)
+5) Modified combat style spells so that you cannot attack yourself 
+6) If you have 2 or more of an item and 1 is readied or worn and you drop, 
+   stash, or hide that item, you will drop, stash, or hide the one you don't 
+   have readied or worn.
+7) Modified death so that you lose all of your bank accounts.  (Only on
+   Reroll, Suicide NOW, and final death)
+8) Increased delay time prior to commencing attacks against level 1 users
+   (i.e. Level 1 users get more time to run away)
+9) Modified the chance to hit formula - You 'should' hit more often now.
+
+                         +      Version 0.1i      +
+
+1) Fixed the bug introduced in 0.1h re: HP 
+     -- Sorry about that one, I put the wrong formula in! :)
+2) Fixed the random text which appeared when you died and ran out of
+   lives. (Please tell me if this happens again, thanks)
+
+                         +      Version 0.1h      +
+
+1) Monster's will no longer see you if you are hidden
+2) Modified the calculation of HP and HP earned per level
+3) Fixed the HELP EXPERIENCE command to display appropriately
+4) Modified the attack values to increase chance of hitting as
+   levels increase
+
+                         +      Version 0.1g      +
+
+1) Made more modifications to attack speed
+2) Fixed encumbrance when you suicide to reset
+3) Made Shops and Hotel Rooms safe from attacks
+4) Added an editted flag to warn users of editted players (i.e. sysops)
+5) Fixed BUY or SELL in stores to work properly when you don't specify
+   the item/spell you wish to buy
+6) In addition to typing 'sneak east', you can now type 'sneak' and 
+   then type 'east' to sneak east.
+7) Modified the LEAVE command to first leave your Party, and then to
+   leave your broadcast group.
+8) Added checks to ask the user to enter their suicide password.  If they
+   press enter, the password remains blank.
+
+                         +      Version 0.1f      +
+
+1) Fixed the name bug so that you can't have blank names
+2) Fixed the changing of your name during the game so that it
+   effectively cannot be done.
+3) Modified the speed of attacks so they are more appropriate
+   [ Read Craig's email in the forums about the penalties for
+     using heavy armour in low levels ]
+4) Fixed locked doors 
+5) Modified Gates
+
+                         +      Version 0.1e      +
+
+This release contains the following updates:
+
+1)  Misc. small items (These always exist)
+2)  Modified calculation of Secondary Character Statistics upon training
+3)  Modified training levels so that you get additional CP to assign to 
+    your character.  Fixed the Character Editor so that it will use 
+    these CP properly.  NOTE that any characters created prior to this 
+    update will not qualify for this fix.  You must reroll your characters
+    to get this value.
+4)  Added the 'R' Release Notes option to the main menu (Created a release
+    notes file!)
+5)  Added the 'Experience' command 
+6)  Modified the menu to display a prompt after a choice (such as topten) 
+    instead of the whole menu.
+7)  Fixed the <invalid pointer> when buy a spell which was too expensive
+8)  Fixed the experience earned when casting a spell on a monster
+9)  Fixed the mana used when a spell fails
+10) Some more performance enhancements

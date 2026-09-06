@@ -1,0 +1,2902 @@
+{
+  "rooms": {
+    "?lucky strike casino:n": {
+      "title": "?lucky strike casino:n",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "?temple street:e": {
+      "title": "?temple street:e",
+      "exits": [
+        "s",
+        "e",
+        "w"
+      ]
+    },
+    "account => accounting functions": {
+      "title": "ACCOUNT => Accounting functions",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "adventurer's guild foyer": {
+      "title": "Adventurer's Guild, Foyer",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "adventurer's guild main room": {
+      "title": "Adventurer's Guild, Main Room",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "adventurer's guild universal trainer": {
+      "title": "Adventurer's Guild, Universal Trainer",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "alley": {
+      "title": "Alley",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "arena": {
+      "title": "Arena",
+      "exits": [
+        "d",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "arena -- change the status of the arenas": {
+      "title": "ARENA     -- Change the status of the arenas",
+      "exits": [
+        "u"
+      ]
+    },
+    "arena entrance": {
+      "title": "Arena Entrance",
+      "exits": [
+        "d",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "arena practice room": {
+      "title": "Arena Practice Room",
+      "exits": [
+        "d",
+        "n",
+        "u"
+      ]
+    },
+    "arena stands": {
+      "title": "Arena Stands",
+      "exits": [
+        "d",
+        "s",
+        "w"
+      ]
+    },
+    "arena stands concession store": {
+      "title": "Arena Stands, Concession Store",
+      "exits": [
+        "e",
+        "s"
+      ]
+    },
+    "back room mystic trainer": {
+      "title": "Back Room, Mystic Trainer",
+      "exits": [
+        "s"
+      ]
+    },
+    "bloodied booth": {
+      "title": "Bloodied Booth",
+      "exits": [
+        "e"
+      ]
+    },
+    "brass street": {
+      "title": "Brass Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "bridge": {
+      "title": "Bridge",
+      "exits": [
+        "e",
+        "n",
+        "ne",
+        "s",
+        "sw",
+        "w"
+      ]
+    },
+    "bridge street": {
+      "title": "Bridge Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "ch user-id credits minson current module": {
+      "title": "Ch User-ID                       Credits    MinsOn Current Module",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "clerical training room": {
+      "title": "Clerical Training Room",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "clsstats => view class statistics": {
+      "title": "CLSSTATS => View Class Statistics",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "colin's maces": {
+      "title": "Colin's Maces",
+      "exits": [
+        "e"
+      ]
+    },
+    "copy using which user's data?": {
+      "title": "Copy using which user's data?",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "create what user-id?": {
+      "title": "Create what User-ID?",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "create what user-id? matt": {
+      "title": "Create what User-ID? matt",
+      "exits": [
+        "n",
+        "e",
+        "w",
+        "d"
+      ]
+    },
+    "crown street": {
+      "title": "Crown Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "crypt": {
+      "title": "Crypt",
+      "exits": [
+        "d",
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "crypt lower level": {
+      "title": "Crypt, Lower Level",
+      "exits": [
+        "d",
+        "n",
+        "s",
+        "u"
+      ]
+    },
+    "crypt small chamber": {
+      "title": "Crypt, Small Chamber",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "crypt stone hallway": {
+      "title": "Crypt, Stone Hallway",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "curio shop": {
+      "title": "Curio Shop",
+      "exits": [
+        "n",
+        "s"
+      ]
+    },
+    "curious goods": {
+      "title": "Curious Goods",
+      "exits": [
+        "s"
+      ]
+    },
+    "d": {
+      "title": "D",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "dark alley": {
+      "title": "Dark Alley",
+      "exits": [
+        "w"
+      ]
+    },
+    "dark tunnel": {
+      "title": "Dark Tunnel",
+      "exits": [
+        "e",
+        "n",
+        "nw",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "docks": {
+      "title": "Docks",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "search down",
+        "w"
+      ]
+    },
+    "done": {
+      "title": "Done",
+      "exits": [
+        "d",
+        "s"
+      ]
+    },
+    "dungeon entrance": {
+      "title": "Dungeon, Entrance",
+      "exits": [
+        "n",
+        "s",
+        "u"
+      ]
+    },
+    "eak experi": {
+      "title": "EAK EXPERI",
+      "exits": [
+        "n",
+        "s",
+        "w",
+        "se"
+      ]
+    },
+    "ence 120000": {
+      "title": "ENCE 120000",
+      "exits": [
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "estwall street": {
+      "title": "Estwall Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "failed save player": {
+      "title": "Failed save player",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "fountain": {
+      "title": "Fountain",
+      "exits": [
+        "e",
+        "go manhole",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "general store": {
+      "title": "General Store",
+      "exits": [
+        "e",
+        "n"
+      ]
+    },
+    "graveyard": {
+      "title": "Graveyard",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "sw",
+        "w"
+      ]
+    },
+    "graveyard east of tomb": {
+      "title": "Graveyard, East of Tomb",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "graveyard eastern edge": {
+      "title": "Graveyard, Eastern Edge",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "graveyard entrance": {
+      "title": "Graveyard Entrance",
+      "exits": [
+        "e",
+        "sw",
+        "w"
+      ]
+    },
+    "graveyard entry": {
+      "title": "Graveyard, Entry",
+      "exits": [
+        "e",
+        "n",
+        "ne",
+        "sw",
+        "w"
+      ]
+    },
+    "graveyard north of tomb": {
+      "title": "Graveyard, North of Tomb",
+      "exits": [
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "graveyard north-east edge": {
+      "title": "Graveyard, North-East Edge",
+      "exits": [
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "graveyard northern edge": {
+      "title": "Graveyard, Northern Edge",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "graveyard south-east corner": {
+      "title": "Graveyard, South-East Corner",
+      "exits": [
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "graveyard southern edge": {
+      "title": "Graveyard, Southern Edge",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "sw",
+        "w"
+      ]
+    },
+    "graveyard tomb entrance": {
+      "title": "Graveyard, Tomb Entrance",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "graveyard west of tomb": {
+      "title": "Graveyard, West of Tomb",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "graveyard western edge": {
+      "title": "Graveyard, Western Edge",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "guild street": {
+      "title": "Guild Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "guild street northern end": {
+      "title": "Guild Street, Northern End",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "guild street southern end": {
+      "title": "Guild Street, Southern End",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "hand)": {
+      "title": "Hand)",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "sw",
+        "u",
+        "w"
+      ]
+    },
+    "hand) torch": {
+      "title": "Hand), torch",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "helfgrim's blades": {
+      "title": "Helfgrim's Blades",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "homely hearth": {
+      "title": "Homely Hearth",
+      "exits": [
+        "n"
+      ]
+    },
+    "intersection of brass st. & river st.": {
+      "title": "Intersection of Brass St. & River St.",
+      "exits": [
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of bridge st. & crown st.": {
+      "title": "Intersection of Bridge St. & Crown St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of crown st. & brass st.": {
+      "title": "Intersection of Crown St. & Brass St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of estwall st. & crown st.": {
+      "title": "Intersection of Estwall St. & Crown St.",
+      "exits": [
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of estwall st. & oak st.": {
+      "title": "Intersection of Estwall St. & Oak St.",
+      "exits": [
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of estwall st. & river st.": {
+      "title": "Intersection of Estwall St. & River St.",
+      "exits": [
+        "e",
+        "n"
+      ]
+    },
+    "intersection of guild st. & crown st.": {
+      "title": "Intersection of Guild St. & Crown St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of guild st. & river st.": {
+      "title": "Intersection of Guild St. & River St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of river st. & bridge st.": {
+      "title": "Intersection of River St. & Bridge St.",
+      "exits": [
+        "e",
+        "n",
+        "ne",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of river st. & mystic alley": {
+      "title": "Intersection of River St. & Mystic Alley",
+      "exits": [
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of river st. & westwall st.": {
+      "title": "Intersection of River St. & Westwall St.",
+      "exits": [
+        "n",
+        "w"
+      ]
+    },
+    "intersection of silver st. & brass st.": {
+      "title": "Intersection of Silver St. & Brass St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of silver st. & bridge st.": {
+      "title": "Intersection of Silver St. & Bridge St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of silver st. & park st.": {
+      "title": "Intersection of Silver St. & Park St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of stone st. and crown st.": {
+      "title": "Intersection of Stone St. and Crown St.",
+      "exits": [
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of temple st. & stone st.": {
+      "title": "Intersection of Temple St. & Stone St.",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "intersection of westwall st. & crown st.": {
+      "title": "Intersection of Westwall St. & Crown St.",
+      "exits": [
+        "e",
+        "n",
+        "s"
+      ]
+    },
+    "item quantity price": {
+      "title": "Item                          Quantity    Price",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "k": {
+      "title": "K",
+      "exits": [
+        "n",
+        "u"
+      ]
+    },
+    "klymack": {
+      "title": "Klymack",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "klymacks": {
+      "title": "Klymacks",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "sw",
+        "w"
+      ]
+    },
+    "lawful matt cross - paladin novice": {
+      "title": "Lawful Matt Cross      -  Paladin Novice",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "lucky strike casino": {
+      "title": "Lucky Strike Casino",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "magic shoppe": {
+      "title": "Magic Shoppe",
+      "exits": [
+        "n"
+      ]
+    },
+    "main system menu (top)": {
+      "title": "Main System Menu (TOP)",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "majormud - rol": {
+      "title": "MajorMUD - ROL",
+      "exits": [
+        "u"
+      ]
+    },
+    "matt": {
+      "title": "Matt",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "matt gave you 104 silver": {
+      "title": "Matt gave you 104 silver",
+      "exits": [
+        "w"
+      ]
+    },
+    "matt gave you 7 gold": {
+      "title": "Matt gave you 7 gold",
+      "exits": [
+        "d",
+        "w"
+      ]
+    },
+    "name: klymacks urmom": {
+      "title": "Name: Klymacks Urmom",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "u",
+        "w"
+      ]
+    },
+    "name: matthew cross": {
+      "title": "Name: Matthew Cross",
+      "exits": [
+        "s"
+      ]
+    },
+    "newhaven adventurer's guild": {
+      "title": "Newhaven, Adventurer's Guild",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "sw",
+        "w"
+      ]
+    },
+    "newhaven arena": {
+      "title": "Newhaven, Arena",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "sw",
+        "u",
+        "w"
+      ]
+    },
+    "newhaven armour shop": {
+      "title": "Newhaven, Armour Shop",
+      "exits": [
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "newhaven betram": {
+      "title": "Newhaven, Betram",
+      "exits": [
+        "n"
+      ]
+    },
+    "newhaven docks": {
+      "title": "Newhaven, Docks",
+      "exits": [
+        "borrow skiff",
+        "n",
+        "nw",
+        "s"
+      ]
+    },
+    "newhaven forest path": {
+      "title": "Newhaven, Forest Path",
+      "exits": [
+        "n",
+        "nw",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "newhaven general store": {
+      "title": "Newhaven, General Store",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "newhaven guild": {
+      "title": "Newhaven, Guild",
+      "exits": [
+        "s"
+      ]
+    },
+    "newhaven healer": {
+      "title": "Newhaven, Healer",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "newhaven narrow path": {
+      "title": "Newhaven, Narrow Path",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "newhaven narrow road": {
+      "title": "Newhaven, Narrow Road",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "sw",
+        "u",
+        "w"
+      ]
+    },
+    "newhaven nathaniel": {
+      "title": "Newhaven, Nathaniel",
+      "exits": [
+        "s"
+      ]
+    },
+    "newhaven spell shop": {
+      "title": "Newhaven, Spell Shop",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "newhaven village entrance": {
+      "title": "Newhaven, Village Entrance",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "newhaven weapon shop": {
+      "title": "Newhaven, Weapon Shop",
+      "exits": [
+        "s"
+      ]
+    },
+    "newhaven weapons shop": {
+      "title": "Newhaven, Weapons Shop",
+      "exits": [
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "ninja training room": {
+      "title": "Ninja Training Room",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "none": {
+      "title": "NONE",
+      "exits": [
+        "s"
+      ]
+    },
+    "none red": {
+      "title": "NONE               red",
+      "exits": [
+        "s"
+      ]
+    },
+    "oak street": {
+      "title": "Oak Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "paladin training room": {
+      "title": "Paladin Training Room",
+      "exits": []
+    },
+    "park": {
+      "title": "Park",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "park plaza": {
+      "title": "Park Plaza",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "park street": {
+      "title": "Park Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "perience 6": {
+      "title": "PERIENCE 6",
+      "exits": [
+        "u"
+      ]
+    },
+    "picklocks: 0": {
+      "title": "Picklocks:       0",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "sw",
+        "u",
+        "w"
+      ]
+    },
+    "picklocks: 42": {
+      "title": "Picklocks:      42",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "se",
+        "u",
+        "w"
+      ]
+    },
+    "picklocks: 45": {
+      "title": "Picklocks:      45",
+      "exits": [
+        "s"
+      ]
+    },
+    "picklocks: 48": {
+      "title": "Picklocks:      48",
+      "exits": [
+        "n",
+        "s",
+        "u"
+      ]
+    },
+    "picklocks: 54": {
+      "title": "Picklocks:      54",
+      "exits": [
+        "d",
+        "n",
+        "s",
+        "u"
+      ]
+    },
+    "picklocks: 56": {
+      "title": "Picklocks:      56",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "picklocks: 60": {
+      "title": "Picklocks:      60",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "picklocks: 68": {
+      "title": "Picklocks:      68",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "sw",
+        "w"
+      ]
+    },
+    "picklocks: 72": {
+      "title": "Picklocks:      72",
+      "exits": [
+        "e",
+        "u"
+      ]
+    },
+    "pier": {
+      "title": "Pier",
+      "exits": [
+        "borrow skiff",
+        "s"
+      ]
+    },
+    "priestly training room": {
+      "title": "Priestly Training Room",
+      "exits": [
+        "n"
+      ]
+    },
+    "realm deeds shop": {
+      "title": "Realm Deeds Shop",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "river street": {
+      "title": "River Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "river street eastern end": {
+      "title": "River Street, Eastern End",
+      "exits": [
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "s": {
+      "title": "S",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "save": {
+      "title": "SAVE",
+      "exits": [
+        "s"
+      ]
+    },
+    "sea-blue": {
+      "title": "SEA-BLUE",
+      "exits": [
+        "s"
+      ]
+    },
+    "sea-blue save": {
+      "title": "SEA-BLUE    SAVE",
+      "exits": [
+        "s"
+      ]
+    },
+    "secret passage": {
+      "title": "Secret Passage",
+      "exits": [
+        "e",
+        "n",
+        "ne",
+        "nw",
+        "s",
+        "se",
+        "sw",
+        "w"
+      ]
+    },
+    "select an option (or ? for menu): ?": {
+      "title": "Select an option (or ? for menu): ?",
+      "exits": [
+        "n",
+        "e",
+        "w",
+        "d"
+      ]
+    },
+    "select an option (or ? for menu): account": {
+      "title": "Select an option (or ? for menu): account",
+      "exits": [
+        "n",
+        "e",
+        "w",
+        "d"
+      ]
+    },
+    "select an option (or ? for menu): users": {
+      "title": "Select an option (or ? for menu): users",
+      "exits": [
+        "n",
+        "e",
+        "w",
+        "d"
+      ]
+    },
+    "select an option (or ? for menu): x": {
+      "title": "Select an option (or ? for menu): x",
+      "exits": [
+        "n",
+        "e",
+        "w",
+        "d"
+      ]
+    },
+    "select an option: usercopy": {
+      "title": "Select an option: usercopy",
+      "exits": [
+        "n",
+        "e",
+        "w",
+        "d"
+      ]
+    },
+    "select an option: x": {
+      "title": "Select an option: x",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "select one of the": {
+      "title": "Select one of the",
+      "exits": [
+        "n",
+        "e",
+        "w",
+        "d"
+      ]
+    },
+    "sentara's clothing back room": {
+      "title": "Sentara's Clothing, Back Room",
+      "exits": [
+        "d",
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "sentara's clothing basement": {
+      "title": "Sentara's Clothing, Basement",
+      "exits": [
+        "u"
+      ]
+    },
+    "sentara's clothing front room": {
+      "title": "Sentara's Clothing, Front Room",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "sewer tunnel": {
+      "title": "Sewer Tunnel",
+      "exits": [
+        "e",
+        "n",
+        "nw",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "sewer tunnel intersection": {
+      "title": "Sewer Tunnel, Intersection",
+      "exits": [
+        "e",
+        "nw",
+        "s",
+        "w"
+      ]
+    },
+    "sewer tunnel junction": {
+      "title": "Sewer Tunnel, Junction",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "sewer tunnel junction (below ts)": {
+      "title": "Sewer Tunnel, Junction (below TS)",
+      "exits": [
+        "u"
+      ]
+    },
+    "sheriff's office": {
+      "title": "Sheriff's Office",
+      "exits": [
+        "e",
+        "n",
+        "s"
+      ]
+    },
+    "short": {
+      "title": "SHORT",
+      "exits": [
+        "s"
+      ]
+    },
+    "silver street": {
+      "title": "Silver Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "silver street eastern end": {
+      "title": "Silver Street, Eastern End",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "silver street western end": {
+      "title": "Silver Street, Western End",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "silvermere residence": {
+      "title": "Silvermere Residence",
+      "exits": [
+        "d",
+        "e",
+        "u"
+      ]
+    },
+    "skali's fine armour back room": {
+      "title": "Skali's Fine Armour, Back Room",
+      "exits": [
+        "s"
+      ]
+    },
+    "skali's fine armour front room": {
+      "title": "Skali's Fine Armour, Front Room",
+      "exits": [
+        "e",
+        "s",
+        "w"
+      ]
+    },
+    "skali's fine armour showroom": {
+      "title": "Skali's Fine Armour, Showroom",
+      "exits": [
+        "e",
+        "n",
+        "s"
+      ]
+    },
+    "small cavern": {
+      "title": "Small Cavern",
+      "exits": [
+        "n",
+        "s"
+      ]
+    },
+    "small pier": {
+      "title": "Small Pier",
+      "exits": [
+        "n",
+        "s"
+      ]
+    },
+    "sovereign street": {
+      "title": "Sovereign Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "sovereign street northern end": {
+      "title": "Sovereign Street, Northern End",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "stone street": {
+      "title": "Stone Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "syntax: buy {item}": {
+      "title": "Syntax: BUY {item}",
+      "exits": [
+        "n"
+      ]
+    },
+    "sys": {
+      "title": "SYS",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "sys tw": {
+      "title": "SYS TW",
+      "exits": [
+        "d",
+        "n",
+        "s",
+        "se",
+        "u",
+        "w"
+      ]
+    },
+    "sys tweak level 10": {
+      "title": "SYS TWEAK LEVEL 10",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    },
+    "temple chapel": {
+      "title": "Temple Chapel",
+      "exits": [
+        "e"
+      ]
+    },
+    "temple foyer": {
+      "title": "Temple Foyer",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "temple hall": {
+      "title": "Temple Hall",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "temple healer": {
+      "title": "Temple Healer",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "temple spell store": {
+      "title": "Temple Spell Store",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "temple street": {
+      "title": "Temple Street",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "temple street eastern end": {
+      "title": "Temple Street, Eastern End",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "the": {
+      "title": "The",
+      "exits": [
+        "n",
+        "s"
+      ]
+    },
+    "thi": {
+      "title": "Thi",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "sw",
+        "u",
+        "w"
+      ]
+    },
+    "thief training room": {
+      "title": "Thief Training Room",
+      "exits": [
+        "e"
+      ]
+    },
+    "thieves' guild": {
+      "title": "Thieves' Guild",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "this": {
+      "title": "This",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "s",
+        "u",
+        "w"
+      ]
+    },
+    "this huge": {
+      "title": "This huge",
+      "exits": [
+        "e",
+        "n",
+        "sw",
+        "u",
+        "w"
+      ]
+    },
+    "this makeshift store carries a small assortment of": {
+      "title": "This makeshift store carries a small assortment of",
+      "exits": [
+        "n"
+      ]
+    },
+    "thuluk's marvelous axes": {
+      "title": "Thuluk's Marvelous Axes",
+      "exits": [
+        "e"
+      ]
+    },
+    "to prevent accidental suicide or reroll these commands": {
+      "title": "To prevent accidental suicide or reroll, these commands",
+      "exits": [
+        "s"
+      ]
+    },
+    "town square": {
+      "title": "Town Square",
+      "exits": [
+        "e",
+        "go manhole",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "tweak": {
+      "title": "TWEAK",
+      "exits": [
+        "u"
+      ]
+    },
+    "tweak e": {
+      "title": "TWEAK E",
+      "exits": [
+        "u"
+      ]
+    },
+    "u": {
+      "title": "U",
+      "exits": [
+        "s"
+      ]
+    },
+    "urmom 40": {
+      "title": "Urmom    40",
+      "exits": [
+        "s"
+      ]
+    },
+    "urmom klymacks": {
+      "title": "Urmom                  Klymacks",
+      "exits": [
+        "s"
+      ]
+    },
+    "usercopy ... create a new user-id": {
+      "title": "USERCOPY ...  Create a new User-ID",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "wailing hound tavern": {
+      "title": "Wailing Hound Tavern",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "w"
+      ]
+    },
+    "westwall street": {
+      "title": "Westwall Street",
+      "exits": [
+        "e",
+        "n",
+        "s"
+      ]
+    },
+    "willpower: 30 charm: 40 magicres: 35": {
+      "title": "Willpower: 30     Charm:   40          MagicRes:       35",
+      "exits": [
+        "s"
+      ]
+    },
+    "winding alley": {
+      "title": "Winding Alley",
+      "exits": [
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "x": {
+      "title": "X",
+      "exits": [
+        "u"
+      ]
+    },
+    "x ... exit system (logoff)": {
+      "title": "X ... Exit System (Logoff)",
+      "exits": [
+        "d",
+        "e",
+        "n",
+        "w"
+      ]
+    },
+    "ys tweak level": {
+      "title": "YS TWEAK LEVEL",
+      "exits": [
+        "e",
+        "n",
+        "s",
+        "se",
+        "w"
+      ]
+    }
+  },
+  "edges": [
+    {
+      "from": "?lucky strike casino:n",
+      "dir": "s",
+      "to": "lucky strike casino"
+    },
+    {
+      "from": "?temple street:e",
+      "dir": "w",
+      "to": "temple street"
+    },
+    {
+      "from": "adventurer's guild foyer",
+      "dir": "e",
+      "to": "adventurer's guild main room"
+    },
+    {
+      "from": "adventurer's guild foyer",
+      "dir": "w",
+      "to": "guild street northern end"
+    },
+    {
+      "from": "adventurer's guild main room",
+      "dir": "e",
+      "to": "adventurer's guild universal trainer"
+    },
+    {
+      "from": "adventurer's guild main room",
+      "dir": "w",
+      "to": "adventurer's guild foyer"
+    },
+    {
+      "from": "adventurer's guild universal trainer",
+      "dir": "w",
+      "to": "adventurer's guild main room"
+    },
+    {
+      "from": "alley",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "arena",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "arena entrance",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "arena entrance",
+      "dir": "s",
+      "to": "town square"
+    },
+    {
+      "from": "arena entrance",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "arena practice room",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "arena stands",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "arena stands",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "arena stands concession store",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "back room mystic trainer",
+      "dir": "s",
+      "to": "intersection of guild st. & river st."
+    },
+    {
+      "from": "back room mystic trainer",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "brass street",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "brass street",
+      "dir": "n",
+      "to": "hand)"
+    },
+    {
+      "from": "brass street",
+      "dir": "s",
+      "to": "intersection of crown st. & brass st."
+    },
+    {
+      "from": "bridge",
+      "dir": "ne",
+      "to": "graveyard entrance"
+    },
+    {
+      "from": "bridge",
+      "dir": "s",
+      "to": "bridge street"
+    },
+    {
+      "from": "bridge",
+      "dir": "sw",
+      "to": "bridge street"
+    },
+    {
+      "from": "bridge street",
+      "dir": "n",
+      "to": "intersection of river st. & bridge st."
+    },
+    {
+      "from": "bridge street",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "clerical training room",
+      "dir": "s",
+      "to": "temple hall"
+    },
+    {
+      "from": "crown street",
+      "dir": "e",
+      "to": "intersection of bridge st. & crown st."
+    },
+    {
+      "from": "crown street",
+      "dir": "w",
+      "to": "intersection of crown st. & brass st."
+    },
+    {
+      "from": "curio shop",
+      "dir": "n",
+      "to": "back room mystic trainer"
+    },
+    {
+      "from": "curio shop",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "curious goods",
+      "dir": "s",
+      "to": "silver street"
+    },
+    {
+      "from": "d",
+      "dir": "n",
+      "to": "dungeon entrance"
+    },
+    {
+      "from": "docks",
+      "dir": "e",
+      "to": "intersection of guild st. & river st."
+    },
+    {
+      "from": "docks",
+      "dir": "n",
+      "to": "pier"
+    },
+    {
+      "from": "docks",
+      "dir": "s",
+      "to": "intersection of guild st. & river st."
+    },
+    {
+      "from": "docks",
+      "dir": "search down",
+      "to": "pier"
+    },
+    {
+      "from": "dungeon entrance",
+      "dir": "n",
+      "to": "small cavern"
+    },
+    {
+      "from": "dungeon entrance",
+      "dir": "s",
+      "to": "newhaven arena"
+    },
+    {
+      "from": "estwall street",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "estwall street",
+      "dir": "w",
+      "to": "silver street eastern end"
+    },
+    {
+      "from": "fountain",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "fountain",
+      "dir": "go manhole",
+      "to": "sewer tunnel junction (below ts)"
+    },
+    {
+      "from": "general store",
+      "dir": "n",
+      "to": "silver street"
+    },
+    {
+      "from": "graveyard",
+      "dir": "e",
+      "to": "graveyard"
+    },
+    {
+      "from": "graveyard",
+      "dir": "s",
+      "to": "hand)"
+    },
+    {
+      "from": "graveyard",
+      "dir": "w",
+      "to": "graveyard entrance"
+    },
+    {
+      "from": "graveyard eastern edge",
+      "dir": "w",
+      "to": "graveyard"
+    },
+    {
+      "from": "graveyard entrance",
+      "dir": "e",
+      "to": "graveyard"
+    },
+    {
+      "from": "graveyard entrance",
+      "dir": "sw",
+      "to": "bridge"
+    },
+    {
+      "from": "graveyard entrance",
+      "dir": "w",
+      "to": "bridge"
+    },
+    {
+      "from": "graveyard entry",
+      "dir": "e",
+      "to": "graveyard southern edge"
+    },
+    {
+      "from": "graveyard south-east corner",
+      "dir": "w",
+      "to": "graveyard"
+    },
+    {
+      "from": "graveyard southern edge",
+      "dir": "e",
+      "to": "graveyard"
+    },
+    {
+      "from": "graveyard southern edge",
+      "dir": "n",
+      "to": "graveyard tomb entrance"
+    },
+    {
+      "from": "graveyard southern edge",
+      "dir": "w",
+      "to": "graveyard entry"
+    },
+    {
+      "from": "graveyard tomb entrance",
+      "dir": "e",
+      "to": "graveyard"
+    },
+    {
+      "from": "graveyard tomb entrance",
+      "dir": "s",
+      "to": "graveyard southern edge"
+    },
+    {
+      "from": "graveyard tomb entrance",
+      "dir": "w",
+      "to": "graveyard"
+    },
+    {
+      "from": "guild street",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "guild street",
+      "dir": "n",
+      "to": "guild street northern end"
+    },
+    {
+      "from": "guild street",
+      "dir": "s",
+      "to": "guild street southern end"
+    },
+    {
+      "from": "guild street northern end",
+      "dir": "e",
+      "to": "adventurer's guild foyer"
+    },
+    {
+      "from": "guild street northern end",
+      "dir": "n",
+      "to": "intersection of guild st. & river st."
+    },
+    {
+      "from": "guild street northern end",
+      "dir": "s",
+      "to": "guild street southern end"
+    },
+    {
+      "from": "guild street southern end",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "guild street southern end",
+      "dir": "n",
+      "to": "guild street northern end"
+    },
+    {
+      "from": "guild street southern end",
+      "dir": "s",
+      "to": "town square"
+    },
+    {
+      "from": "guild street southern end",
+      "dir": "w",
+      "to": "helfgrim's blades"
+    },
+    {
+      "from": "hand)",
+      "dir": "e",
+      "to": "graveyard south-east corner"
+    },
+    {
+      "from": "hand)",
+      "dir": "n",
+      "to": "newhaven narrow path"
+    },
+    {
+      "from": "hand)",
+      "dir": "s",
+      "to": "brass street"
+    },
+    {
+      "from": "hand)",
+      "dir": "sw",
+      "to": "bridge"
+    },
+    {
+      "from": "hand)",
+      "dir": "w",
+      "to": "graveyard southern edge"
+    },
+    {
+      "from": "hand) torch",
+      "dir": "n",
+      "to": "sewer tunnel junction"
+    },
+    {
+      "from": "hand) torch",
+      "dir": "s",
+      "to": "newhaven general store"
+    },
+    {
+      "from": "hand) torch",
+      "dir": "u",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "helfgrim's blades",
+      "dir": "e",
+      "to": "guild street southern end"
+    },
+    {
+      "from": "homely hearth",
+      "dir": "n",
+      "to": "silver street western end"
+    },
+    {
+      "from": "intersection of brass st. & river st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of brass st. & river st.",
+      "dir": "n",
+      "to": "guild street southern end"
+    },
+    {
+      "from": "intersection of brass st. & river st.",
+      "dir": "w",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of bridge st. & crown st.",
+      "dir": "w",
+      "to": "crown street"
+    },
+    {
+      "from": "intersection of crown st. & brass st.",
+      "dir": "e",
+      "to": "crown street"
+    },
+    {
+      "from": "intersection of crown st. & brass st.",
+      "dir": "n",
+      "to": "brass street"
+    },
+    {
+      "from": "intersection of estwall st. & crown st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of estwall st. & oak st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of estwall st. & river st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of guild st. & crown st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of guild st. & crown st.",
+      "dir": "n",
+      "to": "guild street"
+    },
+    {
+      "from": "intersection of guild st. & crown st.",
+      "dir": "s",
+      "to": "guild street"
+    },
+    {
+      "from": "intersection of guild st. & river st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of guild st. & river st.",
+      "dir": "n",
+      "to": "back room mystic trainer"
+    },
+    {
+      "from": "intersection of guild st. & river st.",
+      "dir": "s",
+      "to": "guild street northern end"
+    },
+    {
+      "from": "intersection of guild st. & river st.",
+      "dir": "w",
+      "to": "docks"
+    },
+    {
+      "from": "intersection of river st. & bridge st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of river st. & bridge st.",
+      "dir": "n",
+      "to": "bridge"
+    },
+    {
+      "from": "intersection of river st. & bridge st.",
+      "dir": "s",
+      "to": "bridge street"
+    },
+    {
+      "from": "intersection of river st. & bridge st.",
+      "dir": "w",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of river st. & mystic alley",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of river st. & mystic alley",
+      "dir": "w",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of silver st. & brass st.",
+      "dir": "w",
+      "to": "silver street"
+    },
+    {
+      "from": "intersection of silver st. & bridge st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of silver st. & bridge st.",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "intersection of silver st. & park st.",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "intersection of silver st. & park st.",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "intersection of temple st. & stone st.",
+      "dir": "e",
+      "to": "temple street"
+    },
+    {
+      "from": "intersection of temple st. & stone st.",
+      "dir": "w",
+      "to": "temple hall"
+    },
+    {
+      "from": "k",
+      "dir": "n",
+      "to": "dungeon entrance"
+    },
+    {
+      "from": "klymack",
+      "dir": "n",
+      "to": "newhaven adventurer's guild"
+    },
+    {
+      "from": "klymacks",
+      "dir": "e",
+      "to": "graveyard southern edge"
+    },
+    {
+      "from": "klymacks",
+      "dir": "n",
+      "to": "graveyard tomb entrance"
+    },
+    {
+      "from": "klymacks",
+      "dir": "w",
+      "to": "graveyard"
+    },
+    {
+      "from": "lawful matt cross - paladin novice",
+      "dir": "n",
+      "to": "town square"
+    },
+    {
+      "from": "lucky strike casino",
+      "dir": "n",
+      "to": "temple street"
+    },
+    {
+      "from": "magic shoppe",
+      "dir": "n",
+      "to": "intersection of guild st. & river st."
+    },
+    {
+      "from": "matt",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "matt",
+      "dir": "n",
+      "to": "back room mystic trainer"
+    },
+    {
+      "from": "newhaven adventurer's guild",
+      "dir": "s",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "newhaven arena",
+      "dir": "n",
+      "to": "newhaven spell shop"
+    },
+    {
+      "from": "newhaven arena",
+      "dir": "u",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "newhaven armour shop",
+      "dir": "n",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven armour shop",
+      "dir": "s",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven betram",
+      "dir": "n",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven docks",
+      "dir": "borrow skiff",
+      "to": "small pier"
+    },
+    {
+      "from": "newhaven docks",
+      "dir": "n",
+      "to": "newhaven forest path"
+    },
+    {
+      "from": "newhaven forest path",
+      "dir": "nw",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven forest path",
+      "dir": "s",
+      "to": "newhaven docks"
+    },
+    {
+      "from": "newhaven general store",
+      "dir": "n",
+      "to": "newhaven narrow path"
+    },
+    {
+      "from": "newhaven guild",
+      "dir": "s",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "newhaven healer",
+      "dir": "e",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "newhaven narrow path",
+      "dir": "e",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven narrow path",
+      "dir": "n",
+      "to": "newhaven spell shop"
+    },
+    {
+      "from": "newhaven narrow path",
+      "dir": "nw",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven narrow path",
+      "dir": "s",
+      "to": "newhaven general store"
+    },
+    {
+      "from": "newhaven narrow path",
+      "dir": "w",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "newhaven narrow road",
+      "dir": "d",
+      "to": "newhaven arena"
+    },
+    {
+      "from": "newhaven narrow road",
+      "dir": "e",
+      "to": "newhaven narrow path"
+    },
+    {
+      "from": "newhaven narrow road",
+      "dir": "n",
+      "to": "newhaven adventurer's guild"
+    },
+    {
+      "from": "newhaven narrow road",
+      "dir": "w",
+      "to": "newhaven healer"
+    },
+    {
+      "from": "newhaven nathaniel",
+      "dir": "s",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven spell shop",
+      "dir": "s",
+      "to": "newhaven arena"
+    },
+    {
+      "from": "newhaven village entrance",
+      "dir": "n",
+      "to": "newhaven weapons shop"
+    },
+    {
+      "from": "newhaven village entrance",
+      "dir": "s",
+      "to": "newhaven armour shop"
+    },
+    {
+      "from": "newhaven village entrance",
+      "dir": "se",
+      "to": "newhaven forest path"
+    },
+    {
+      "from": "newhaven village entrance",
+      "dir": "w",
+      "to": "newhaven narrow path"
+    },
+    {
+      "from": "newhaven weapon shop",
+      "dir": "s",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "newhaven weapons shop",
+      "dir": "s",
+      "to": "newhaven village entrance"
+    },
+    {
+      "from": "ninja training room",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "oak street",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "park",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "park plaza",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "park street",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "picklocks: 42",
+      "dir": "d",
+      "to": "newhaven arena"
+    },
+    {
+      "from": "picklocks: 42",
+      "dir": "e",
+      "to": "newhaven narrow path"
+    },
+    {
+      "from": "picklocks: 42",
+      "dir": "n",
+      "to": "newhaven adventurer's guild"
+    },
+    {
+      "from": "picklocks: 42",
+      "dir": "u",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "picklocks: 42",
+      "dir": "w",
+      "to": "newhaven healer"
+    },
+    {
+      "from": "picklocks: 54",
+      "dir": "u",
+      "to": "temple healer"
+    },
+    {
+      "from": "picklocks: 56",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "picklocks: 68",
+      "dir": "sw",
+      "to": "bridge"
+    },
+    {
+      "from": "pier",
+      "dir": "borrow skiff",
+      "to": "newhaven docks"
+    },
+    {
+      "from": "pier",
+      "dir": "s",
+      "to": "docks"
+    },
+    {
+      "from": "priestly training room",
+      "dir": "n",
+      "to": "temple hall"
+    },
+    {
+      "from": "river street",
+      "dir": "e",
+      "to": "intersection of river st. & bridge st."
+    },
+    {
+      "from": "river street",
+      "dir": "s",
+      "to": "wailing hound tavern"
+    },
+    {
+      "from": "river street",
+      "dir": "w",
+      "to": "intersection of guild st. & river st."
+    },
+    {
+      "from": "river street eastern end",
+      "dir": "e",
+      "to": "river street"
+    },
+    {
+      "from": "river street eastern end",
+      "dir": "n",
+      "to": "guild street southern end"
+    },
+    {
+      "from": "river street eastern end",
+      "dir": "w",
+      "to": "river street"
+    },
+    {
+      "from": "secret passage",
+      "dir": "e",
+      "to": "back room mystic trainer"
+    },
+    {
+      "from": "sentara's clothing front room",
+      "dir": "s",
+      "to": "silver street western end"
+    },
+    {
+      "from": "sentara's clothing front room",
+      "dir": "w",
+      "to": "town square"
+    },
+    {
+      "from": "sewer tunnel",
+      "dir": "d",
+      "to": "sewer tunnel junction"
+    },
+    {
+      "from": "sewer tunnel",
+      "dir": "e",
+      "to": "sewer tunnel junction"
+    },
+    {
+      "from": "sewer tunnel",
+      "dir": "n",
+      "to": "sewer tunnel junction"
+    },
+    {
+      "from": "sewer tunnel",
+      "dir": "s",
+      "to": "sewer tunnel junction"
+    },
+    {
+      "from": "sewer tunnel",
+      "dir": "w",
+      "to": "sewer tunnel intersection"
+    },
+    {
+      "from": "sewer tunnel intersection",
+      "dir": "e",
+      "to": "sewer tunnel"
+    },
+    {
+      "from": "sewer tunnel intersection",
+      "dir": "s",
+      "to": "sewer tunnel"
+    },
+    {
+      "from": "sewer tunnel intersection",
+      "dir": "w",
+      "to": "sewer tunnel"
+    },
+    {
+      "from": "sewer tunnel junction",
+      "dir": "n",
+      "to": "sewer tunnel"
+    },
+    {
+      "from": "sewer tunnel junction",
+      "dir": "s",
+      "to": "sewer tunnel"
+    },
+    {
+      "from": "sewer tunnel junction",
+      "dir": "u",
+      "to": "town square"
+    },
+    {
+      "from": "sewer tunnel junction",
+      "dir": "w",
+      "to": "sewer tunnel"
+    },
+    {
+      "from": "sewer tunnel junction (below ts)",
+      "dir": "u",
+      "to": "town square"
+    },
+    {
+      "from": "silver street",
+      "dir": "e",
+      "to": "intersection of silver st. & brass st."
+    },
+    {
+      "from": "silver street",
+      "dir": "n",
+      "to": "curious goods"
+    },
+    {
+      "from": "silver street",
+      "dir": "s",
+      "to": "general store"
+    },
+    {
+      "from": "silver street",
+      "dir": "w",
+      "to": "silver street western end"
+    },
+    {
+      "from": "silver street eastern end",
+      "dir": "w",
+      "to": "intersection of silver st. & brass st."
+    },
+    {
+      "from": "silver street western end",
+      "dir": "e",
+      "to": "silver street"
+    },
+    {
+      "from": "silver street western end",
+      "dir": "n",
+      "to": "sentara's clothing front room"
+    },
+    {
+      "from": "silver street western end",
+      "dir": "s",
+      "to": "homely hearth"
+    },
+    {
+      "from": "silver street western end",
+      "dir": "w",
+      "to": "town square"
+    },
+    {
+      "from": "skali's fine armour back room",
+      "dir": "s",
+      "to": "skali's fine armour showroom"
+    },
+    {
+      "from": "skali's fine armour front room",
+      "dir": "e",
+      "to": "skali's fine armour showroom"
+    },
+    {
+      "from": "skali's fine armour front room",
+      "dir": "s",
+      "to": "temple street eastern end"
+    },
+    {
+      "from": "skali's fine armour showroom",
+      "dir": "n",
+      "to": "skali's fine armour back room"
+    },
+    {
+      "from": "skali's fine armour showroom",
+      "dir": "s",
+      "to": "skali's fine armour front room"
+    },
+    {
+      "from": "small cavern",
+      "dir": "s",
+      "to": "dungeon entrance"
+    },
+    {
+      "from": "small pier",
+      "dir": "s",
+      "to": "docks"
+    },
+    {
+      "from": "sovereign street",
+      "dir": "n",
+      "to": "town square"
+    },
+    {
+      "from": "sovereign street northern end",
+      "dir": "n",
+      "to": "town square"
+    },
+    {
+      "from": "sys tw",
+      "dir": "u",
+      "to": "temple healer"
+    },
+    {
+      "from": "temple chapel",
+      "dir": "e",
+      "to": "temple hall"
+    },
+    {
+      "from": "temple foyer",
+      "dir": "e",
+      "to": "intersection of temple st. & stone st."
+    },
+    {
+      "from": "temple foyer",
+      "dir": "w",
+      "to": "temple hall"
+    },
+    {
+      "from": "temple hall",
+      "dir": "e",
+      "to": "temple street"
+    },
+    {
+      "from": "temple hall",
+      "dir": "n",
+      "to": "temple healer"
+    },
+    {
+      "from": "temple hall",
+      "dir": "s",
+      "to": "temple spell store"
+    },
+    {
+      "from": "temple healer",
+      "dir": "d",
+      "to": "picklocks: 54"
+    },
+    {
+      "from": "temple healer",
+      "dir": "s",
+      "to": "temple hall"
+    },
+    {
+      "from": "temple spell store",
+      "dir": "n",
+      "to": "temple hall"
+    },
+    {
+      "from": "temple street",
+      "dir": "e",
+      "to": "temple street eastern end"
+    },
+    {
+      "from": "temple street",
+      "dir": "s",
+      "to": "lucky strike casino"
+    },
+    {
+      "from": "temple street",
+      "dir": "w",
+      "to": "intersection of temple st. & stone st."
+    },
+    {
+      "from": "temple street eastern end",
+      "dir": "e",
+      "to": "town square"
+    },
+    {
+      "from": "temple street eastern end",
+      "dir": "n",
+      "to": "skali's fine armour front room"
+    },
+    {
+      "from": "temple street eastern end",
+      "dir": "s",
+      "to": "bank of godfrey"
+    },
+    {
+      "from": "temple street eastern end",
+      "dir": "w",
+      "to": "temple street"
+    },
+    {
+      "from": "thi",
+      "dir": "d",
+      "to": "this huge"
+    },
+    {
+      "from": "thi",
+      "dir": "n",
+      "to": "newhaven adventurer's guild"
+    },
+    {
+      "from": "thief training room",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "thieves' guild",
+      "dir": "w",
+      "to": "secret passage"
+    },
+    {
+      "from": "this",
+      "dir": "d",
+      "to": "this huge"
+    },
+    {
+      "from": "this",
+      "dir": "e",
+      "to": "newhaven narrow path"
+    },
+    {
+      "from": "this",
+      "dir": "n",
+      "to": "newhaven adventurer's guild"
+    },
+    {
+      "from": "this",
+      "dir": "s",
+      "to": "newhaven general store"
+    },
+    {
+      "from": "this huge",
+      "dir": "u",
+      "to": "newhaven narrow road"
+    },
+    {
+      "from": "town square",
+      "dir": "e",
+      "to": "silver street western end"
+    },
+    {
+      "from": "town square",
+      "dir": "go manhole",
+      "to": "sewer tunnel junction (below ts)"
+    },
+    {
+      "from": "town square",
+      "dir": "n",
+      "to": "guild street southern end"
+    },
+    {
+      "from": "town square",
+      "dir": "s",
+      "to": "sovereign street northern end"
+    },
+    {
+      "from": "town square",
+      "dir": "w",
+      "to": "temple street eastern end"
+    },
+    {
+      "from": "wailing hound tavern",
+      "dir": "n",
+      "to": "river street"
+    },
+    {
+      "from": "wailing hound tavern",
+      "dir": "w",
+      "to": "guild street northern end"
+    },
+    {
+      "from": "winding alley",
+      "dir": "e",
+      "to": "river street"
+    }
+  ]
+}

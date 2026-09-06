@@ -1,0 +1,11 @@
+[][Wulfman]
+[HK43:Hidden Keep:Recreation Room]
+[HK37:Hidden Keep:Hallway]
+E4300042:BE600062:7:-1:0:::
+E4300042:0000:w
+E4300010:0000:w[search w]
+7B140000:0000:d
+4FE10010:0000:e
+BE600040:0000:e[search e]
+BE600012:0000:n
+BE600018:0000:e

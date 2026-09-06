@@ -1,0 +1,13 @@
+Jagged.zip Pathfile bundle - for the support of DTH and black orc areas.
+40 files 32k including this text
+it would be very time consuming to list each path and the function of each.... 
+it is advisable to import these files as a group as many use rooms not defined in mega default, selective import can result in orphaned paths.
+
+this path file bundle supports free movement from the crumbling tunnels entrance to the western road fork, and black orc areas.
+includes paths to and from the rocky passage to the silver river as well as loops for crumbling tunnels, torchlit tunnels (black orc area), 
+paths to and from gnolls guard post, A loop which covers the entire northern section of DTH beginning and ending at Western road fork.
+also includes a path directly to the earthy cave, mod 5 quest roots required by Morukai.
+
+NONE of these paths requires a rusty iron key or skiff and the crumbling tunnels route to DTH may be listed as a failure path in the event that 
+one is not in inventory.
+

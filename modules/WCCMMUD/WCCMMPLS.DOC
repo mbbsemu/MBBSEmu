@@ -1,0 +1,13 @@
+              MajorMUD Plus - Entertainment Edition
+              -------------------------------------
+
+MajorMUD Plus is an add-on package for the MajorMUD role-playing game.
+
+It provides the following additional functionality for MajorMUD:
+
+* User-definable character descriptions (with optional charge)
+* Registries for MajorMUD characters
+* Ability to purchase lives (optionally for credits, copper, or days)
+* Offline action editor
+* Global MajorMUD registry lookup (/mudreg)
+

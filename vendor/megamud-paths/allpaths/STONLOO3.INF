@@ -1,0 +1,16 @@
+File name: STONLOO3.MP
+Path description: Stone Elementals, large loop.
+Path starts: Redstone Tunnel
+Path ends: ---
+Area of the game: Module 4
+Level recommendation: 30-40
+Type of path: Loop
+File format: New
+Monsters encountered: stone elemental.
+Additional information:
+
+This path not only does the standard stone elementals area (covered by the
+default path), but several other areas stone elementals regen in, which means
+this loop has a higher theoretical maximum exp p/h.
+
+This path avoids the gemstone juggernaut.

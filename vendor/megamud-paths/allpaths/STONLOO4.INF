@@ -1,0 +1,13 @@
+File name: STONLOO4.MP
+Path description: Stone Elementals (complete area plus regen fixer).
+Path starts: Redstone Tunnel
+Path ends: ---
+Area of the game: Module 4
+Level recommendation: 30+
+Type of path: Loop
+File format: New
+Monsters encountered: stone elemental.
+Additional information:
+
+This loop does the complete stone elementals area, and also strays a bit to
+help keep the regen alive for longer. It avoids the gemstone juggernaut.

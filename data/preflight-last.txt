@@ -1,0 +1,26 @@
+ok	stage	demo — play. codes stay blocked until you write data/finns-stage	/home/klymacks/Code/Repo/Projects/majormud/data/finns-stage
+ok	MajorMUD DLL	present	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMUD.DLL
+ok	MajorMUD MDF	present	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMUD.MDF
+ok	MajorMUD MSG	present	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMUD.MSG
+ok	MajorMUD MSG.original (DEMO restore)	present	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMUD.MSG.original
+ok	Plus DLL	present	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMPLS.DLL
+ok	Plus MDF	present	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMPLS.MDF
+ok	Plus MSG	present	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMPLS.MSG
+ok	appsettings	present	/home/klymacks/Code/Repo/Projects/majormud/config/appsettings.json
+ok	modules.json	present	/home/klymacks/Code/Repo/Projects/majormud/data/modules.json
+ok	WCCMMUD.MSG ACTIVATE	DEMO	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMUD.MSG
+ok	MSG.original ACTIVATE	DEMO restore point	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMUD.MSG.original
+ok	WCCMMPLS.MSG ACTIVATE	DEMO	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMPLS.MSG
+ok	WCCADDON.SYS	no file (correct until stage addons)	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCADDON.SYS
+ok	activation-later.txt	snapshot of live BTURNO / ACTIVATE / addons	/home/klymacks/Code/Repo/Projects/majormud/data/activation-later.txt
+ok	wccaddon.sys.saved	absent	/home/klymacks/Code/Repo/Projects/majormud/data/wccaddon.sys.saved
+ok	WCCADDON.SYS.saved	absent	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCADDON.SYS.saved
+ok	WCCMMUD.MCV	matches MSG	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMUD.MCV
+ok	WCCMMPLS.MCV	matches MSG	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCMMPLS.MCV
+ok	GSBL.BTURNO	92784632	/home/klymacks/Code/Repo/Projects/majormud/config/appsettings.json
+ok	modules.json Identifier	WCCMMUD	/home/klymacks/Code/Repo/Projects/majormud/data/modules.json
+warn	WCCRECOV.FLG	leftover lock — stop/reboot delete this	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCRECOV.FLG
+ok	BBSUSR.DB vs Accounts	2 users: MATT, SYSOP	/home/klymacks/Code/Repo/Projects/majormud/data/BBSUSR.DB
+ok	character	sysop/Klymacks	/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/WCCUSERS.db
+ok	clean DEMO boots	32 clean DEMO boot(s) recorded	/home/klymacks/Code/Repo/Projects/majormud/data/boot-history.jsonl
+ok	last boot	256 users, DEMO	/home/klymacks/Code/Repo/Projects/majormud/data/last-boot.json

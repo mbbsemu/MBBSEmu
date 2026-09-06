@@ -1,0 +1,16 @@
+File names: ORCMSLMC.MP, SLMCORCM.MP
+Path description: To and from Orc Mansion and Slum Crossroads
+Path starts: Orc Mansion and Slum Crossroads
+Path ends: Orc Mansion and Slum Crossroads
+Area of the game: Original Game
+Level recommendation: N/A
+File format: New
+Type of path: Path
+
+Additional Information:
+
+Without these paths, Megamud will backtrack to the Western Door
+anytime you walk between Silvermere and the Orc Mansion.  These
+two paths will avoid this, and save about 20 steps each way.
+
+Author:  Salacious Crumb (salacious.crumb@dgpi.com)

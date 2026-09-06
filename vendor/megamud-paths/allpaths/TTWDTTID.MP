@@ -1,0 +1,16 @@
+[][Wulfman@acebbs.net]
+[TTWD:Dragon's Teeth Hills:Torchlit Tunnels, Tall Wooden Door]
+[TTID:Dragon's Teeth Hills:Torchlit Tunnels, Iron Door]
+5FC00052:7CB00058:12:-1:0:::
+5FC00052:0000:w
+65A00054:0000:w
+65A00050:0000:w
+65A00014:0000:s
+65A00005:0000:s
+65A00051:0000:w
+65A00054:0000:w
+65A00014:0000:s
+65A00005:0000:s
+65A00005:0000:s
+65A00011:0000:e
+65A00051:0000:e

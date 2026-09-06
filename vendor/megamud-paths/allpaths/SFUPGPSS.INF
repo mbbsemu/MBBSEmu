@@ -1,0 +1,60 @@
+File name: SFUPGPSS.MP
+Path description: Path through great pyramid, level 1 (default one doesn't work).
+Path starts: Firepit under pyramid.
+Path ends: Stone Sphinx level 1.
+Area of the game: Module 6
+Level recommendation: N/A
+Type of path: Path
+File format: New
+Monsters encountered: unsure.
+Additional information:
+
+This path replaces the default MegaMud path through the great pyramid's first
+level, as the default one doesn't work.
+
+As a tip for people travelling through the great pyramidm take these bits
+of advice from Wulfman (many thanks to him for these):
+
+
+First lvl of the great pyramid, begins at firepit ends at sphinx on lvl
+1 (this may require adding "ask sphinx fire" and an up depending on the
+lvl 2 path you are intending to use. This path works... however, no path
+is going to work in the pyramid 100% of the time. Depending on changes
+in room checksums as doors are opened this path may still need some
+work. It will not however cause the lockup problems or loading failure
+problems of the default path.
+Keep in mind that the entire pyramid is designed to mess with a script.
+Get held by an undead priest or stop to rest and you will end up back in
+the firepit lvl.
+Things that will increase this path's probability of success will depend
+upon your character class and the gear available to you.
+
+Obstacles:
+Various types of warriors, wussies... ignore them if at all possible.
+Asps, light damage but long lasting poison that can really add up
+Undead Priests, FEAR them.... they cast versions of hold and blind that
+last forever it seems... as well as "a dark spell" that can knock 40-50
+HP off you twice a round...
+
+
+Tactics: Grab yourself a cooler full of soda.... a couple bags of chips
+and some Ho-Ho's... disable call wasting... put something soothing on
+the headphones, and nail the door shut.... OH, a really comfy chair is a
+must..... prepare to camp out on this one.
+
+if you can't sneak past these guys or run away, dispatch them as quickly
+as possible, if one gets a cast of hold on you, use diamond studded ring
+or cast freedom ASAP and KEEP MOVING.
+
+If you get low on HP don't wait to die... drop carrier, you will
+re-enter in the firepits, just like the crypt quest puts you out in the
+front entrance to the crypt.
+
+Gear:
+cure poison potions - even if you can cast cure/anti... save your mana
+for casting freedom and cure blindness.
+ethereal amulet - get all the magic res you can get your paws on.
+green potions - speed is of the essence... you get no special bonus for
+how many monsters you kill on this lvl... take too long and you fall on
+your butt in the firepits.
+Diamond studded Ring only 3 in a game, not a must have but it sure helps

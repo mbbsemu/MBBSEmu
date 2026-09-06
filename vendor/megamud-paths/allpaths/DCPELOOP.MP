@@ -1,0 +1,12 @@
+[Tentacled Abominations Loop][Jeff Yurkiw]
+[DCPE:Black House:Dark Cavern, Pool's Edge]
+4BA05001:4BA05001:8:-1:0:::
+4BA05001:0000:n
+4BA00404:0001:nw
+4BA01040:0001:w
+4BA04010:0001:sw
+4BA00104:0001:s
+4BA01001:0001:se
+4BA00410:0001:e
+4BA01140:0001:ne
+

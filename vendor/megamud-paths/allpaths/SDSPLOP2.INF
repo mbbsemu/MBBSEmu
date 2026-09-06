@@ -1,0 +1,30 @@
+File name: SDSPLOP2.MP
+Path description: Small Pyramid (harder loop)
+Path starts: Small Pyramid, Entrance
+Path ends: ---
+Area of the game: Module 6 
+Level recommendation: 35-45
+Type of path: Loop
+File format: New
+Monsters encountered: stronghold guard, undead monsters (unsure of names).
+Additional information:
+
+To get to the start of this loop you need a waterskin (bought from the
+general store in Khazarad or Silvermere for 5g), and you need to have
+completed the Module 6 quest up to where you get the guard sergeant to
+'blood' you.
+To run this loop, you need to have completed the Module 6 up to the
+stage where you give the withered old man a tankard of ale.
+For this loop, you need to do the following things. Go to
+Game Data -> Monsters, and set stronghold guards as Enemy, Non-hostile
+and Low priority. 
+This loop ventures a small way into the undead area below the small
+pyramid, and is recommended for higher level people only.
+It is *highly* recommended you do not attack the gaurd sergeant, because
+stronghold guards protect him, and they have a nasty habit of regenning
+without a 'stronghold guard moves into the room from the blah' message,
+which means all the stronghold guards beat down on your when you try
+and attack the guard sergeant.
+
+Included in this zip is SDSPDVVS.MP and DVOTSDSP.MP which are direct paths
+to and from the start of this loop.

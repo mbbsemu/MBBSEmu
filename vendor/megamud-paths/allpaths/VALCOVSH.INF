@@ -1,0 +1,15 @@
+File name: OVSHVALC.MP
+Path description: Valley Path Crossroads to Overgrown Shrine
+Path starts: Valley Path Crossroads
+Path ends: Overgrown Shrine
+Area of the game: Module 4
+Level recommendation: N/A
+Type of path: Path
+File format: New
+Monsters encountered: bandit, bandit leader, crocodile, giant crocodile,
+                      swamp leech.
+Additional information:
+
+This path is useful for people doing the Module 4 quest (the overgrown
+shrine is a location you need to visit twice in the quest, and MegaMud
+doesn't know how to get there with it's default path set).

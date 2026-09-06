@@ -1,0 +1,35 @@
+; WCCMMPLS.MDF
+
+Module Name: MajorMUD Plus 
+
+
+
+Developer: Metropolis, Inc.
+
+Unconditional
+Internal
+
+Requires: WCCMMUD
+Replaces:
+
+Install:
+
+Online user manual: WCCMMPLS.DOC
+
+DLLs: WCCMMPLS
+MSGs: WCCMMPLS
+
+Btrieve page size:    2048
+Btrieve files:        1
+
+Cleanup:
+
+Event-1:
+Event-2:
+Event-3:
+Event-4:
+
+Add-On Utility:
+
+I Need: WCCMMUD
+Needs Me: WCCMMUD

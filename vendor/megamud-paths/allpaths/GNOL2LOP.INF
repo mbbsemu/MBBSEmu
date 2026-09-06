@@ -1,0 +1,21 @@
+File name: GNOL2LOP.MP
+Path description: Gnoll Encampment, easy loop.
+Path starts: Hillside Path, Guard Post.
+Path ends: ---
+Area of the game: Module 1
+Level recommendation: 18-25
+Type of path: Loop
+File format: New
+Monsters encountered: gnoll axeman, gnoll scout.
+Additional information:
+
+Included in the zip are BOATGNOL.MP, GNCHGNOL.MP, GNOLBOAT.MP and
+GNOLGNCH.MP which are paths to and from the start of this loop, depending
+which way you come in from. If you come via the silvery river (fastest
+way if you are coming from Silvermere), you will need a wooden skiff. If
+you come via the Dragon's Teeth Hills, you won't need anything, unless you
+come from inside the slums, in which case you need a rusty iron key.
+
+This loop is designed for lower level people, as it excludes the chieftain.
+The paths to and from the start of this loop are also useful for the
+default Gnolls loop.

@@ -1,0 +1,14 @@
+File name: BOSPLOOP.MP
+Path description: Bountiful Oasis Loop.
+Path starts: Bountiful Oasis, Shimmering Pool.
+Path ends: ---
+Area of the game: Module 6
+Level recommendation: 40+
+Type of path: Loop
+File format: New
+Monsters encountered: handsome man, beautiful woman, rakshasha.
+Additional information:
+
+To use this loop, you need to change handsome man and beautiful woman to
+'Enemy' and 'Non-hostile' under Game Data -> Monsters (this is because when
+you attack the men or women, they transform into rakshashas).

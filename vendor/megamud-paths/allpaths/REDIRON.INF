@@ -1,0 +1,15 @@
+File name: 4 FILES.
+Path description: Gather red iron ore for the module 6 quest.
+Path starts: Sandstone Quarry.
+Path ends: Black Pit.
+Area of the game: 6
+Level recommendation: N/A
+Type of path: Path
+File format: New
+Monsters encountered: unsure.
+Additional information:
+
+To run this path, you will need a pickaxe and a red iron key. MegaMud will
+automatically divert to get these if you don't have them. This route is
+combined into two paths each way, to get around MegaMud's
+single-required-item-path limitation.

@@ -1,0 +1,17 @@
+[][RoB Goins aka Magic]
+[LCMF:Scorching Desert:Limestone Caverns, Manscorpion Fork]
+[LCHP:Scorching Desert:Limestone Caverns, Huge Pit  Pre-Hydra]
+C5804500:4AC08400:13:-1:0:::
+C5804500:0000:nw
+C5801400:0000:nw
+C5801500:0000:nw
+C5805400:0000:nw
+C5801400:0000:nw
+C5801400:0000:nw
+C5801401:0000:n
+C5800104:0000:ne
+C5804500:0000:nw
+C5801400:0000:nw
+C5801100:0000:ne
+C5804200:0000:ne
+4AC08400:0000:rest

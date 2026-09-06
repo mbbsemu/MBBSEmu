@@ -1,0 +1,9 @@
+[][Wulfman]
+[HK02:Hidden Keep:Keep Wall Path]
+[HK01:Hidden Keep:Keep Wall Path]
+55100060:55100094:5:-1:0:::
+55100060:0000:w
+55100050:0000:w
+55100050:0000:w
+55100050:0000:w
+55100050:0000:w

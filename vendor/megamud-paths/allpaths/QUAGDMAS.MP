@@ -1,0 +1,15 @@
+[][Doomsday]
+[QUAG:Dwarven Mines:Bottom of Ancient Stair]
+[DMAS:Dwarven Mines:Copper Mine (Ancient Stair)]
+61C14000:ADA40004:10:-1:0:::
+61C14000:0000:u
+2F740100:0000:ne
+2F704010:0000:e
+2F710040:0000:u
+2F741000:0000:se
+2F700404:0000:s
+2F710001:0000:u
+2F744000:0000:sw
+2F700140:0000:w
+2F710010:0000:u
+

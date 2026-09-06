@@ -1,0 +1,10 @@
+[][Dios]
+[DRKT:Black Fort:Darkened Tunnels]
+[NEWM:Black Fort:New Master Assassin]
+5AF00040:F1B00004:6:-1:0::FMASDRKT.mp:
+5AF00040:0000:n
+5AF00005:0000:n
+5AF00005:0000:n
+5AF00006:0000:n
+5AF00059:0200:n
+53000055:0080:n

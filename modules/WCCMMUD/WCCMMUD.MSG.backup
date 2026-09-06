@@ -1,0 +1,20 @@
+LEVEL0 {MajorMUD}
+
+FILE01 {WCCMMUD.MSG}
+
+
+LEVEL3 {MajorMUD}
+
+ Enter the activation code which Metropolis gave you when
+ you purchased this package.
+
+ If you have not done so yet, PLEASE read the sysop
+ release notes to find out HOW TO APPLY a database
+ update.  This is EXTREMELY important because if there
+ are database updates which you have not applied then
+ your game will not function properly.
+
+ACTIVATE {BYPASS} S 30 BYPASS
+
+ This is the number of normal credits which will be 
+ consumed while in the game.  Exempt users are not 

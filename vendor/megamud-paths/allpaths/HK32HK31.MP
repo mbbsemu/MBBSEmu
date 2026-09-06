@@ -1,0 +1,11 @@
+[][Wulfman]
+[HK32:Hidden Keep:Hallway, Stairwell Up]
+[HK31:Hidden Keep:Closet]
+4FE10010:8E500028:7:-1:0:::
+4FE10010:0000:e
+BE600050:0000:e
+BE600040:0000:sea e
+BE600040:0000:sea e
+BE600040:0000:sea e
+BE600040:0000:sea e
+BE600040:0000:e

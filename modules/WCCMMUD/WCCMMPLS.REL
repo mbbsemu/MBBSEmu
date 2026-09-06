@@ -1,0 +1,617 @@
+
+                       MajorMUD Plus!
+                    Entertainment Edition.
+
+        Copyright (c) 1996-2000   Metropolis, Inc.
+                   All Rights Reserved
+
+                     LIMITED warranty
+
+This documentation and any related software are sold "as-is",
+without any warranty either expressed or implied, including,
+but not limited to, the implied warranties of merchantability,
+fitness for a particular purpose, and loss of profits or other
+economic damages.  Metropolis, Inc. does not warrant
+that the operation of this software will be uninterrupted or
+error-free.  In no event and under no circumstances will 
+Metropolis, Inc. be liable for any damages in excess of the
+sum paid by customer for the product to which any claim for
+damages relates.
+
+                         License
+
+By installing, taking delivery of, or downloading this software,
+which refers to any or all executable, library, documentation,
+and support files included with this product, any any 
+reproductions, whether in machine readable or printed form, 
+you agree to the following terms:
+
+You may:
+1. Install and operate this software on a single machine.
+2. Make one copy this software into machine-readable or
+   printed form, for backup or archival purposes in support of
+   your use of this software.
+
+This software is licensed to a single corporation or person,
+for operation on a single machine only.  Once licensed, the
+license to use this software is NOT TRANSFERABLE to any other
+person or corporation without the express, written permission
+of Metropolis, Inc.
+
+NOTE: The term "operation on a single machine" includes the following
+within its definition when MajorMUD Plus is being run on a DMA server
+(either the DMA server which is currently sold by Vircom, or any future
+program which provides similar functionality):  Only a SINGLE host-BBS
+(of the same MBBS Registration number as the DMA server) may be allowed
+to have access to the MajorMUD Plus running on the DMA server. Any
+subsequent systems which you wish to allow to connect to your DMA server
+must be both authorized by Metropolis, Inc. and must purchase a
+non-transferrable copy of MajorMUD Plus from Metropolis, Inc.
+
+This software may not be used as a demo product.  You must purchase
+an activation code from Metropolis, Inc. prior to running this
+on your system.  
+
+YOU MAY NOT USE, COPY, MODIFY, MERGE, DISASSEMBLE, OR TRANSFER
+THIS SOFTWARE, IN WHOLE OR IN PART, EXCEPT AS EXPRESSLY
+PROVIDED FOR IN THIS LICENSE.
+
+Violation of any parameter of this license will result in
+the immediate forfeiture of said license.
+
+NOTE: If you are reading this as part of the basic MajorMUD installation
+then you must read the file wccmmud.rln for all of the licensing information
+relating to the base product as well.
+
+==========================================================================
+
+               ***** Technical Support *****
+
+Metropolis, Inc. is based in Overland Park, KS USA.  You can 
+contact us via:
+
+        Phone:  (913) 661-0601
+        Fax:    (913) 663-3200
+
+        E-mail: sales@majormud.com
+
+        Mail:   Metropolis, Inc.
+                8650 College Blvd, Suite 111
+                Overland Park, KS  66210
+
+        Web:    www.majormud.com        (sysops)
+                www.mudcentral.com      (users)
+
+We would love to hear any suggestions, criticisms, questions, or
+other comments which you might have.
+
+==========================================================================
+
+DOCUMENTATION:
+
+This documentation contains sections on:
+
+1) INTRODUCTION 
+2) INSTALLATION
+3) CONFIGURATION
+3.1) EMAIL NOTIFICATION
+4) ONLINE SYSOP FUNCTIONS
+5) MAJORMUD PLUS OFFLINE UTILITIES
+
+Appendix A - CNF Options
+Appendix Z - Release Specific Notes
+
+
+==========================================================================
+
+1) INTRODUCTION:
+
+MajorMUD Plus - Entertainment Edition is an add-on module
+for MajorMUD.  It will extend MajorMUD to include the
+following features:
+
+- User definable descriptions (displayed after the generated
+  description)
+- User customizable registries
+- Optional charge for changing descriptions
+- Optional charge to purchase lives
+- Optional email message instead of charging for lives
+- Global mud registry lookup
+- Contest mode 
+
+It also includes the following sysop functions:
+
+- View any user's description
+- Delete a user's description
+- Approve a user's description
+- Delete a user's registry (the customizable portion)
+- Offline Action Editor (integrated into WCCMMUTL from the
+  initial MajorMUD installation - you must purchase MajorMUD
+  Plus - Entertainment Edition to activate the option)
+
+==========================================================================
+
+2) INSTALLATION:
+
+MajorMUD Plus - Entertainment Edition is shipped within the MajorMUD
+release.  If you have installed the latest version of MajorMUD then
+you will have a copy of MajorMUD Plus awaiting an activation code.
+
+Once you have purchased an activation code from Metropolis
+(Phone: 913-661-0601) you just have to use option '3' from the BBS
+menu to enter it into the ACTIVATE option in the WCCMMPLS.MSG file.
+You may also want to do further custom configuration (see section
+3 in this document "Configuration")
+
+2.1) Contents of the installation files
+
+MajorMUD Plus Entertainment Edition will be shipped in the MajorMUD
+release .ZIP file.  The files pertaining to MajorMUD Plus - EE are:
+
+WCCMMPLS.DLL  - The MajorMUD Plus - Entertainment Edition DLL
+WCCMMPLS.MSG  - The CNF options for MajorMUD Plus
+WCCMMPLS.MDF  - The module definition file for MajorMUD Plus-EE
+WCCMMPLS.DOC  - User documentation for MajorMUD Plus-EE
+WCCMMPLS.REL  - This file (The sysop release notes for MMPLusEE)
+
+==========================================================================
+
+3) CONFIGURATION:
+
+After installing MajorMUD Plus, enter your activation code
+under CNF level 3 (Security and Accounting) in the ACTIVATE
+option.  At this point you will also want to set the other
+level 3 and level 4 options appropriately for your system
+(See Appendix A for a description of the options available).
+
+You do not need to add any menu page for MajorMUD Plus (and
+you should not either - it will serve no purpose).  MajorMUD
+Plus will automatically integrate itself into the MajorMUD menu.
+
+3.1) EMAIL NOTIFICATION
+
+If you are running MajorMUD on a DMA server then you can enable the
+'email notification' feature for purchases instead of using credits/
+days (which don't make sense to use on a DMA server).  Refer to
+section 3.1 of wccmmud.rln for more information on the settings
+PLUS_PURCHASE_EMAIL_USERID and SEND_EMAIL_FOR_PURCHASES.
+
+MAKE SURE THAT your DNS machines are listed in the TCPSITES.BAN file
+if you are forwarding your email to your main bbs via an internet
+mail address.
+
+==========================================================================
+
+4) ONLINE SYSOP FUNCTIONS
+
+The following sysop functions have been added and are accessed
+via the MajorMUD Plus - Entertainment Edition menus:
+
+- Approve a user's description
+- View a user's Description
+- Delete a user's Description
+- Delete a user's Registry
+
+4.1) Approve a user's Description
+To view a user's description, choose option 's' from the MMPlusEE
+main menu to get the sysop's description menu.  Choose the 'A'
+option to approve a user's description and then type in the name of
+the character you wish to approve the description for.
+
+4.2) View a user's Description
+
+To view a user's description, choose option 's' from the MMPlusEE
+main menu to get the sysop's description menu.  Choose the 'V'
+option to View a user's description and then type in the name of
+the character you wish to view the description for.
+
+4.3) Delete a user's Description
+
+As for viewing a description but choose the option 'D' to delete
+the description.
+
+4.4) Delete a user's Registry
+
+From the MajorMUD Plus - Entertainment Edition Registry menu,
+choose the option 'R' to delete a registry.  Enter the name of
+the character whose registry you wish to delete.
+
+==========================================================================
+
+5) MAJORMUD PLUS OFFLINE UTILITIES
+
+5.1) Action Editor
+
+MajorMUD Plus - Entertainment edition will activate the offline
+action editor in the MajorMUD offline utilities program (WCCMMUTL.EXE) as
+well as the clear plus data option in the same program.
+
+When you choose the action editor, you will be given a screen displaying
+the contents of an action and a menu of choices.
+The choices are as follows:
+
+Done      - Select this when you are finished changing actions
+Next      - Select this to move to the next action in the database
+Previous  - Select this to move to the previous action in the database
+New       - Select this to create a new action in the database
+Change    - Select this to change the currently displayed action
+Delete    - Select this to delete the currently displayed action.  Note
+            that even though you can delete WCC originated actions, they
+            will not be permanently deleted.  The next time a database
+            update is released from WCC they will be recreated.
+Help      - Select this for help on the allowable variables in the actions
+
+For each action word you may specify the following pieces of information:
+
+Action Name
+  - This is the name of the action which the user will type
+Board Specific Flag
+  - If you set this flag to YES then the action will not be over-written
+    by the next database update from WCC
+Single Messages
+  - These are messages displayed when the action name is typed by itself
+    with no target (eg. "LAUGH").  The first line is the one that is
+    shown to the user who typed the action.  The second line is shown
+    to the room that the user is in.
+To:User Messages
+  - These are messages displayed when the action name is typed followed
+    by a user name (eg. "LAUGH DORSHAR").
+To:Monster Messages
+To:Item in Inventory Messages
+To:Item on floor Messages
+
+Each message may contain the following variables to customize the messages
+to the situation:
+
+%i - Name of the initiator of the action
+%p - his or her based on the initiator
+%P - him or her based on the initiator
+%t - Name of the target of the action
+
+%fn - set foreground colour (n=0-7)
+%bn - set background colour (n=0-7)
+%B - Bold
+%N - Normal
+%U - Underline
+%L - Blink
+%R - Reverse
+
+
+5.2) Resetting
+
+When you choose the "Clear Plus data" you will be prompted to confirm
+the action.  Read the following before answering 'yes'.
+
+This function will delete ALL of the MajorMUD registries on your system
+as well as ALL of the MajorMUD character descriptions.  There is NO UNDO
+operation - once this operation is done you can not get them back without
+restoring your BBS from a backup (which you should take before running
+this task).  NOTE that this function is less than efficient (i.e. it is
+mighty slow) but this is also something which should almost never be
+done so you just have to live with the time required :)
+
+Typically you will only do this when you are resetting your MajorMUD game.
+
+
+5.3) Contest Mode
+
+Contest mode is a feature in which you can offer external (i.e. not directly
+related to MajorMUD) prizes for the collection of 'runes' which will be 
+distributed throughout the realm.  Typical prizes will be things such as
+credits, days on a membership, gift certificates, etc. - it is up to you
+to decide what you want to give away.  You may just want to run the contest
+just for the sake of seeing who can gather the most runes in a given period of
+time.
+
+There are several methods to start a contest:
+
+A) Menu Driven
+- With the BBS down, choose option '8' (Add-on utilities) from the BBS menu
+- Choose 'WCCMMUTL' (MajorMUD utilities)
+- Choose 'Contests'
+- Choose 'Start New Contest'
+- Decide on the type of contest you want.  Your options are 'visible' (all 
+  contest items will be 'visible' on the floor) or 'hidden' (all contest
+  items will be 'hidden' in the rooms).  Obviously a 'hidden' contest is
+  much more difficult.
+
+B) Command Line
+- From the dos command prompt run the command BBSBTR to load the btrieve
+  database engine
+- Run the command "WCCMMUTL -contest -start" to be prompted for the type of 
+  contest *OR*
+- Run the command "WCCMMUTL -contest -start -hidden" to start a hidden 
+  contest *OR*
+- Run the command "WCCMMUTL -contest -start -visible" to start a visible
+  contest
+
+The results of the contest startup will be appended to the file wcccntst.res.
+This will be a list of all the rooms in which the items were placed.
+
+
+Finishing a contest can be done in one of two ways:
+
+A) Menu Driven
+- As for starting a contest but select 'Finish Old Contest' instead of start
+
+B) Command Line
+- From the dos command prompt run the command BBSBTR to load the btrieve
+  database engine
+- Run the command "WCCMMUTL -contest -finish" 
+
+The results of the contest will be appended to the file wcccntst.res.  You
+should now go through this file (using a text editor of your choice) to
+tabulate the results of the contest and hand out the prizes as you see fit.
+
+
+You can get the status of a contest in two ways as well:
+
+A) Menu Driven
+- As for starting a contest but select 'Get status of Contest' instead of 
+  start
+
+B) Command Line
+- From the dos command prompt run the command BBSBTR to load the btrieve
+  database engine
+- Run the command "WCCMMUTL -contest -status" 
+
+The results of the contest will be appended to the file wcccntst.res.  You
+should now go through this file (using a text editor of your choice) to
+tabulate the results of the contest and display them as you see fit.
+
+
+It is recommended that you delete or rename the wcccntst.res file after you
+have completed the distribution of prizes for a contest so that you do not
+accidentally get confused with multiple sets of contest results in the file.
+
+Contest Files:
+WCCCNTST.FLG - this file is present when a contest is in progress
+WCCCNTST.RES - this is the results file.  It will record where items are
+               placed when the contest is started (be careful to not let
+               mudops see this file if you think they may use the 
+               locations to  cheat).  It will also record the locations where
+               all the items end up at the end of a contest.
+
+Suggested change to your BBSCLEAN.BAT file:
+
+---------------------------------------------------
+rem Check to start a contest
+if not exist contest.go goto no_start
+wccmmutl -contest -start -visible
+move contest.go contest.nul
+goto no_contest
+
+:no_start
+rem Check to stop a contest
+if not exist contest.fin goto no_stop
+wccmmutl -contest -finish
+move contest.fin contest.nul
+
+:no_stop
+rem Check for contest status
+if not exist contest.sts goto no_contest
+wccmmutl -contest -status
+move contest.sts contest.nul
+
+:no_contest
+---------------------------------------------------
+
+After making the above changes, create the file contest.go to start a
+contest, contest.fin to finish one, and contest.sts to get the status
+of one.
+
+==========================================================================
+
+
+Appendix A - CNF Options
+
+
+-- Level 3 -- Security and Accounting -- 
+
+
+ACTIVATE  Enter the activation code which WCC gave you when you 
+          purchased this package.
+
+DESCCHRG  Every time a user wants to use MajorMUD Plus to change
+          their description they will be charged this many
+          credits.  Enter 0 to disable the charge.
+
+DESCCOPP  Every time a user wants to use MajorMUD Plus to change
+          their description they will be charged this many
+          copper pieces.  Enter 0 to disable the charge.
+
+DESCDAYS  Every time a user wants to use MajorMUD Plus to change
+          their description they will have this many days
+          deducted from their membership.
+          Enter 0 to disable the charge.
+
+BUYLIFE   Every time a user wants to buy a life in MajorMUD Plus
+          they will be charged this many credits.  Enter -1 to
+          disable this option.
+
+COPPLIFE  In addition to credits, you may also charge users
+          game currency (in copper units) to buy a life.  Note
+          that this option is disabled if BUYLIFE is set to -1.
+
+DAYSLIFE  In addition to credits and copper, you may also charge
+          users membership days to buy a life.
+          Note that this option is disabled if BUYLIFE is set
+          to -1.
+
+SYSOPKEY  Users with this key will be able to perform sysop options
+          within MajorMUD Plus.
+
+-- Level 4 -- Configuration Options -- 
+
+MINYEAR   The MajorMUD Plus Registry will display an age for the
+          user when looked up.  This age is calculated based upon
+          the number of minutes of playtime the user has.  You may
+          adjust the ages of your users by adjusting this value.
+
+STARTAGE  When using a defaulted age, the age will start at
+          STARTAGE and then add years based on game time and
+          MINYEAR.
+
+DESCLEN   Use this option if you wish to limit the number of lines
+          allowed in the personalized description.  It may be set
+          for between 1 and 10 lines.  If you reduce this value
+          after users have longer descriptions then they will
+          continue to have long descriptions until they attempt to
+          change them.
+
+NEEDAPPR  If you wish to validate all user descriptions before they
+          are used in the game, set this option to Yes
+
+APPRUSER  User to receive email notifications of descriptions that
+          require approval.  Leave this blank to receive no email.
+
+REGCOLR   This is the ANSI colour sequence which will be used
+          to display the user-specified custom registry values.
+
+REGGLOB   This is the global registry lookup command to lookup 
+          MajorMUD Plus registry entries.
+
+-- Level 6 -- Text Blocks -- 
+
+
+CHARDESC  This is the menu which the user gets before changing their
+          description.
+
+ABOUDESC  This text will be shown as a result of the about box
+          on the character descriptions menu.
+
+MAINMENU  This is the main menu which users will see when they
+          enter MajorMUD Plus from the MajorMUD main menu.
+
+LIFEOPT   This is an additional menu which users will see
+          if the BUYLIFE option is set to anything other
+          than -1.
+
+SYSMENU   This is an additional menu which users with the
+          sysop key will see at the main MajorMUD Plus
+          menu.
+
+CONFLIFE  This is the prompt to confirm the purchase of
+          a life.
+
+INFOTEXT  This is the text block which will be displayed
+          when the user chooses the information option on
+          the main MajorMUD Plus menu.
+
+SYSMMENU  This is the sysop menu for viewing and deleting
+          character descriptions.
+
+MENUPMPT  This is the MajorMUD Plus menu prompt.
+
+REGDISP   REGDISP is the first half of the registry printout.  This
+          information is based upon their in-game statistics.
+
+REGDISP0  REGDISP0-9 are the 10 customizable registry entries.  Whatever
+REGDISP1  you put here will be used both for prompting the user for entry
+REGDISP2  as well as for displaying the information.  Note that you
+REGDISP3  must make sure that each of these line up as you want them to
+REGDISP4  and that they are no longer than 20 characters on the screen.
+REGDISP5 
+REGDISP6 
+REGDISP7 
+REGDISP8 
+REGDISP9 
+
+REGPMPT0  REGPMPT0-9 are the 10 customizable registry entries.  Whatever
+REGPMPT1  you put here will be used both for prompting the user for entry
+REGPMPT2  of the value for the associated REGDISP value
+REGPMPT3  
+REGPMPT4  
+REGPMPT5 
+REGPMPT6 
+REGPMPT7 
+REGPMPT8 
+REGPMPT9 
+
+REGAGE    This is the description field for the age override in the registry.
+
+REGAGEP   This is the prompt for the age override in the registry.
+
+REGEDPMT  This prompt will be displayed while in the process of
+          editing your registry information
+
+REGPMPT   This is the prompt which will be displayed at the registry
+          menu.
+
+REGMENU   This is the registry menu which will be displayed
+          when the character registries option is chosen from
+          the main MajorMUD Plus menu.
+
+REGSMENU  This is the sysop menu which will be displayed
+          to users with the sysop key.
+
+REGUNAME  This is the prompt given when the user is asked for
+          a registry name to lookup.
+
+REMUNAME  This is the prompt given when the sysop is asked for
+          a registry name to remove.
+
+USRNOTFD  This is displayed when a record for the given
+          MajorMUD user can not be found.
+
+INVENTRY  This is displayed when an invalid menu choice is
+          made.
+
+NOTAPPRV  This is displayed to a user on the description
+          menu when they have an unapproved description.
+
+DSCNOCRD  This message is displayed when a user tries to
+          change their description without enough credits
+          in their account.
+
+LIFNOCRD  This message is displayed when a user tries to
+          buy a life without enough credits in their account.
+
+LIFNOCHR  This message is displayed when a user tries to
+          buy a life when they don't have a MajorMUD character
+
+LIFNOLIF  This message is displayed when a user tries to
+          buy a life when they already have 9 lives left.
+
+LIFSUCES  This message is displayed when a user successfully
+          purchases a life.
+
+NOREGFND  This message will be given when a user searches for
+          registry entries and none are found.
+
+REGFOUND  This is the summary line of the number of registry
+          entries found as a result of a search.
+
+==========================================================================
+
+Appendix Z - Release Specific Notes
+
+      + Version 1.0a - Initial Release +
+
+1) Initial Version
+
+      + Version 1.0b - 4/13/97 +
+
+1) Fixed the description editor to work on a DMA server
+2) Fixed the display of days to purchase a life to display properly
+
+      + Version 1.0c - 6/21/97 +
+
+1) A blank value for APPRUSER will mean that no email is generated
+   when a description is entered.
+2) Added "Clear plus data" to the MajorMUD offline utilities.  See
+   description above in section 5.
+
+      + Version 1.0d - 2/7/98  +
+
+1) Will now log to the majormud log file when credits or days are 
+   deducted from a user
+2) Added 'contest' mode (see section 5.3 of this document)
+
+      + Version 1.0e - 5/21/98  +
+
+1) Will now log every time a user purchases a life, regardless of
+   how they are charged.
+2) Will no longer send 2 emails if the account to send email for plus is
+   the same as the one for MajorMUD core.
+3) New CNF text block to display to the user after buying a life.

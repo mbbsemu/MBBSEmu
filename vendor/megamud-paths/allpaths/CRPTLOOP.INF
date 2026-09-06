@@ -1,0 +1,17 @@
+File name: CRPTLOOP.MP
+Path description: Full crypt loop (all three levels)
+Path starts: Graveyard Crypt level 1
+Path ends: ---
+Area of the game: Original Game
+Level recommendation: 7-10
+Type of path: Loop
+File format: New
+Monsters encountered: skeleton, zombie, shade, wight.
+Additional information:
+
+Included in this zip is CRSHCRY1.MP, which is used to re-start this loop
+if it fails (ie the pull lever door closes before you reach it). Simply
+add CRSHCRY1.MP as well as CRPTLOOP.MP and this path will do it's
+re-starting automatically.
+
+You can only use this loop if you are level 11 or below.

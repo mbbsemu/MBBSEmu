@@ -1,0 +1,2573 @@
+
+LEVEL6 {MajorMUD Help}
+
+Note that HLPB0 is a place marker.  After that, the code will search through
+each second line (Starting with HLPT1) looking for the user's topic until
+it reaches the topis 'Help' which is marking the end.
+
+To add topics, merely add a pair of HLPTnnnn and HLPBnnnn PRIOR to the
+HL1T9999 topic and after the HLPT1A topic.
+
+HL1B0 {[0m[2JType [1;33mHELP [0mfollowed by a topic for help on that topic
+([1;36mNOTE: [0mIf you are in the
+Help Sub-menu, there is no need to type [1;33mHELP[0m, just the topic will be fine)
+
+[1;33mTips     [0m- A few tips to help you get started.
+[1;33mCommands [0m- A list of commands available within the game
+[1;33mStats1   [0m- An explanation of the statistics of your character
+[1;33mStats2   [0m- A continuation of stats1, including help on allocating your stats
+[1;33mCombat   [0m- Everything you need to know about killing others
+[1;33mRaces    [0m- A list of the various races
+[1;33mClasses  [0m- For help on a certain class, type Help <Classname>
+[1;33mCommun   [0m- Communicating with others in the realm
+[1;33mInfo     [0m- A list of information commands, and how to use them
+[1;33mSpells   [0m- Everything you need to know about spellcasting
+[1;33mShops    [0m- Buying and selling of items in the Realm
+[1;33mLaws     [0m- Before thinking of doing anything nasty, read this
+[1;33mMovement [0m- How to travel throughout the Realm
+[1;33mParty    [0m- You have friends? Well here's how to use them
+[1;33mItems    [0m- Commands related to items within the game
+[1;33mHelp     [0m- A quick description of how to use the help system
+[1;33mTopics   [0m- A list of all available topics
+[1;33mProfile  [0m- Setting up your personal options within the game
+[1;33mMisc     [0m- Miscellaneous commands
+[1;33mSet      [0m- Various toggleable profile options
+} T Base Help Topic
+
+
+HL1T1 {Commands comands} S 30 Help Topic String
+
+
+HL1B1 {[0m[2J   [1mMovement: [0mNorth, East, South, West, Northeast, Southeast, Southwest,
+             Northwest, Sneak, Hide, Drag <Char Name>, Go <Location>
+
+       [1mInfo: [0mLook, Look <Direction>, Status, Inventory, Bank, Topten, Statline,
+             Help, Search, Health, Brief, Verbose, Map, Profile, Keys, Track <User>
+
+     [1mCombat: [0mAttack, Bash, Punch, Kick, Jumpkick, Backstab (BS), Break, Aid
+
+      [1mItems: [0mWear, Remove, Use, Get, Light, Drop, Stash, Give
+
+      [1mShops: [0mList, Buy, Sell, Inventory 
+
+[1mCommunicate: [0m%c<Message>(Talking), %c<Message>(Yelling)
+
+      [1mParty: [0mInvite, Join, Follow, Party
+
+     [1mSpells: [0mSpells, Cast <Spellname>, Mana, Invoke <Kai Power>, Powers
+
+    [1mProfile: [0mStatline On/Off/Full/Custom, Brief, Verbose, Talk fast, Talk Slow
+
+       [1mMisc: [0mSuicide, Reroll, Train, Train Stats, Greet, Ask
+
+For full detailed information on each command, type the according sub-header.
+(Ie... If you wanted to find out about sneak, type help movement)
+          } T Commands Help Topic
+
+
+HL1T1A {Communications telepaths talking forget communicate yelling speaking telepathy} S 54 Help Topic String
+
+
+HL1B1A {[0m[2J
+[1m%c<TEXT>             [0m- Allows you to communicate to others in the same room
+                      as yourself (Ie... .Hey Dakor, how's life?)
+[1m%c<TEXT>             [0m- Allows you to be heard in adjacent rooms, as well as
+                      the one you are currently in.
+[1m/Username <TEXT>    [0m- Allows you to telepath to someone. He/She will be the
+                      only one to hear your words.
+[1mAsk <NPC> <MESSAGE> [0m- To solve certain quests, etc... you will sometimes have
+                      to seek out information from various NPCs (Non-Player
+                      Characters). For example, if have heard that Jack the
+                      bartender knows a certain something about, say, the
+                      Holy Sword, you would type Ask Jack Holy Sword.
+[1mSay <MESSAGE>       [0m- Some areas in the game require you to say certain words
+                      or sentences. For example, if the password to the
+                      Thieves Guild was ORANGE you would stand before the
+                      entrance and type [1;36mSay Orange[0m.
+[1mGossip <MESSAGE>    [0m- Everything that you say in gossip will be heard by all
+                      who have their gossip flag turned on. You may toggle it
+                      on or off by simply typing "Gossip".
+[1mAuction <MESSAGE>   [0m- Exactly the same as gossip. Mostly used as a channel to
+                      trade or sell items to other adventurers.
+[1mForget <Player> [0m-Typing this once will cause any telepaths from the
+		      player to be ignored. Typing this the second time with the same player
+                      specified will allow you to see their telepaths. Typing "Forget" by itself will show
+		      all users you are not receiving telepaths from.
+} T Help Body
+
+
+HL1T2 {Combat attacking bash punch kick jumpkick kill force autocombat fire fight kick killblow} S 41 Help Topic String
+
+
+HL1B2 {[0m[2J[1;33mAttack    Bash      Backstab    Fire    Cast
+Kick      Punch     Jumpkick    Break
+
+[37mAttack <OPPONENT>   [0m- Basic attack command. Will attack with whatever weapon
+                      is readied. If you are unarmed, you will punch.
+[1mBash <OPPONENT>     [0m- More powerful attack. Does more damage, but harder to
+[1mForce                 [0mland.  Also good for knocking down doors.
+[1mBackstab <OPPONENT> [0m- Only allowed if you are successfully hiding or sneaking
+                      Easier to land, and does very high damage at higher
+                      levels.  (BS for short)
+[1mPunch               [0m- Basic Mystic attack command.
+[1mKick                [0m- Slower and less accurate than a punch, but will cause
+                      more damage. (Good for martial artists)
+[1mJumpkick            [0m- The most devastating martial arts attack. Can be used
+                      from the backrank very effectively. Mystics only.
+[1mBreak               [0m- Will break off autocombat.
+
+} T Help Body
+
+
+HL1T3 {Races} S 30 Help Topic String
+
+
+HL1B3 {[0m[2J
+Type [1;33mHELP [36m<Race Name> [0mfor specific help on a race.
+} T Help Body
+
+
+HL1T4 {Classes} S 30 Help Topic String
+
+
+HL1B4 {[0m[2J
+Type [1;33mHELP [36m<class name> [0mfor specific help on a class.
+
+Type [1;33mHELP CLASS POWERS [0mfor descriptions of the powers assigned to classes.
+
+Type [1;33mHELP CLASS SKILLS1 [0mor [1;33mHELP CLASS SKILLS2 [0mfor descriptions of the skills
+assigned to classes.
+
+} T Help Body
+
+
+HL1T4A {Class Powers} S 30 Help Topic String
+
+
+HL1B4A {[0m[2J
+ [1mHP/level: [0mThe number of Hit Points a class gains when going up a level, plus
+           or minus the Health adjustment.
+
+ [1mMagic: [0mThe type and level of magic use the character has. The type of magic
+        'Mage, Druid, etc...' is self-explanatory. A magic level of 1
+        indicates minor magical abilities 'ie. Priest-1'. A magic level of 2
+        is average magical skill, and a magic level of 3 shows excellent
+        magical powers. Kai powers are a Mystic's mental powers, and a Mystic
+        will gain new ones as he gets more experienced.
+
+ [1mCombat: [0mThis is a measure of the combat effectiveness of the class. A combat
+         of 1 is Poor, 2 is Fair, 3 is Average, 4 is Good, and 5 is
+         Excellent. This affects accuracy and speed of attacks.
+
+ [1mWeapons: [0mThis shows what weapons a character may use. 1-handed means any
+          one-handed weapon, Any means, of course, any weapon. Blunt means
+          only blunt weapons may be used (mace, etc...) and Staff means only
+          the staff and dagger may be used.
+
+ [1mArmour: [0mLike weaponry, this indicates what armour a class may use. Scale
+         means up to and including scale armour. Leather means up to and
+         including Studded Leather. Any class may wear robes.
+} T Help Body
+
+
+HL1T4B {Class Skills1 class skills 1 traps} S 41 Help Topic String
+
+
+HL1B4B {[0m[2J
+ [1mBash: [0mThis is the ability to deal a heavy, innacurate blow. See HELP COMBAT
+       for details. Any class may Bash, but character classes with weak combat
+       will rarely hit.
+
+ [1mStealth: [0mThis is the skill of sneaking and concealment. A character with
+          this skill can lurk in wait, concealed in the shadows of the room
+          by typing HIDE. This can be used for a backstab. Also, you can
+          sneak into a room by typing SNEAK and then moving. If you are lucky,
+          no-one will see you, and then you can try to HIDE immediately or
+          backstab some unfortunate person.
+
+ [1mTraps: [0mAnyone with the Traps skill is proficient in finding and disarming
+        traps. Normally anyone can find a trap by searching, but someone with
+        the Traps skill has a much higher chance. Also, a traps expert can
+        attempt to disarm any trap he finds.
+
+ [1mLockpicking: [0mThis is the skill of unlocking locked doors. Some doors cannot
+              be picked, and some are harder to pick than others. Once a door
+              is successfully unlocked with this skill, it may be opened
+              quite easily (unless there is a trap also!). Most locks are
+              specially enchanted so that they will re-lock after a certain
+              amount of time, so don't get yourself stuck anywhere.
+
+} T Help Body
+
+
+HL1T4C {Class Skills2 Class Skills 2 thievery martial arts dodge} S 41 Help Topic String
+
+
+HL1B4C {[0m[2J
+ [1mThievery: [0mRobbing someone is a difficult skill, especially if the foe is not
+           just another mark. Thievery is the ability to steal cash or items
+           (non-equipped) from a character. A successful Thievery attempt will
+           either gain you one item, or a substantial amount of cash from the
+           target's money pouch.
+
+ [1mTracking: [0mEveryone leaves a trail behind them while travelling around, even
+           while sneaking. With this skill, it is possible to track someone
+           wherever he goes. It is quite useful in setting up ambushes, to see
+           if the target has passed nearby recently.
+
+ [1mDodge: [0mThis is the ability a Mystic has to dodge attacks and missiles
+        (including missile spells) by acrobatically leaping and rolling. This
+        ability increases as the character get more experienced.
+
+ [1mMartial Arts: [0mThis is the skill Mystics use in their unarmed combat. This
+               ability allows you to attack with Punches, Kicks, and Jumpkicks
+               as opposed to only Punches from an ordinary unarmed foe. The
+               damage these attacks do increases with level, as does the
+               chance of a critical hit.
+
+ No Magic Items: As a result of their vows, WitchHunter can not, and would not
+} T Help Body
+
+
+HL1T5 {Info topten search who scan maps status high} S 41 Help Topic String
+
+
+HL1B5 {[0m[2J[1;33mTopten  Bank    Map      Track   Who
+Stats   Health  Save  Keys  Spells  Look     Search
+
+[37mLook        [0m- Will display all the current details of the room you are in. You
+              may look into adjacent rooms by typing Look <Direction>.
+[1mStatus      [0m- Will display your character's statistics, abilities, etc... For
+              those familiar to role-playing games, this would be called a
+              character sheet.
+[1mInventory   [0m- Displays your current possessions, including wealth on-hand, and
+              which items you have equipped.
+[1mMap         [0m- Displays a map of Silvermere. [44mANSI[40m required.
+[1mBank        [0m- Will display how much money you have stored in the bank.
+[1mWho         [0m- Displays all the current users in the Realm.
+[1mTopten      [0m- Will display the top ten adventurers in the game.
+[1mSearch      [0m- Will search the room for any hidden items, locations, etc... You
+              may also search specific objects by typing search <Object> (Ie...
+              Search Cabinet)
+[1mTrack       [0m- Allows you to pick up the trail of a certain user. You must have
+              the Track skill to use this ability.
+[1mKeys        [0m- Displays all the keys in your key-ring
+
+} T Help Body
+
+
+HL1T6 {Spells cast invoke magic chant} S 41 Help Topic String
+
+
+HL1B6 {[0m[2J[1;33mCast     Spells     Health    Break    Read <Scroll name>   Invoke
+Break
+
+[37mCast <Spellname>   [0m- Will cast a spell accordingly, if you have enough mana
+                     points available. For combat spells, type Cast <Spellname>
+                     <Target>.  Cast by itself will re-initiate combat if
+                     appropriate.
+[1mInvoke <Kai Power> [0m- Will invoke the appropraite Kai power, if you are a Mystic
+                     and have enough Kai points to use it.
+[1mRead <Scroll name> [0m- If you are of the appropriate class and level to cast the
+                     spell in question, you will memorize the spell and the
+                     scroll will disappear
+[1mSpells             [0m- Will display all the spells currently known.
+[1mPowers             [0m- Will display all the Kai powers currently known.
+[1mHealth             [0m- Displays your current Health and Mana Points. Useful if
+                     you are not using the Statline option.
+[1mBreak              [0m- Will break off casting of auto-combat spells.
+
+} T Help Body
+
+
+HL1T7 {Shops buy sell list order} S 40 Help Topic String
+
+
+HL1B7 {[0m[2J[1;33mList     Buy      Sell
+
+[37mList   [0m- Displays the public items that are currently available in the
+               current room. This will display all the necessary information on
+[s               purchasing an item, including it's going price and how many items[u
+[0;1m               [0mare available.
+[1mBuy <Item>   [0m- Will attempt to purchase an item at the best price possible
+               (based on your charm).
+[1mSell <Item>  [0m- Will attempt to sell an item at the best price possible (Again
+               this is based on your charm).
+[1mAppraise     [0m- Informs you on the selling price you will receive for
+                the item that you are appraising.
+
+} T Help Body
+
+
+HL1T8 {Movement travel north south east west northeast northwest southeast southwest up down ne nw se sw} S 41 Help Topic String
+
+
+HL1B8 {[0m[2J[1;33mNorth      East     South    West    Northwest   Northeast   Southwest
+Southeast  Up       Down     Sneak   Exits       Picklock    Go <Location>
+
+[37mN, E, S W, NE, SE, [0m- General movement commands (North, East, South, West,
+[1mSW, NW, Up, Down     [0metc...) To get to special locations, you may have to
+                     type a corresponding action command. (Ie... Go Hole,
+                     or Climb Tree). You should experiment with various
+                     commands.
+[1mHide               [0m- If your class permits it, you will be able to hide
+                     amongst the shadows.
+[1mSneak              [0m- If class permits, you will be able to effectively
+                     walk from room to room without being seen moving.
+
+} T Help Topic
+
+
+HL1T9 {Party frontrank backrank midrank invite uninvite rank parties partys} S 48 Help Topic
+
+String
+
+
+HL1B9 {[0m[2J[1;33mInvite     Uninvite    Party     Join    Backrank   Frontrank
+
+[37mInvite <USERNAME>   [0m- Will invite someone into your adventuring group.
+[1mUninvite <USERNAME> [0m- Will kick someone out of your adventuring group.
+[1mJoin <USERNAME>     [0m- Allows you to join another user, but ONLY if he/she
+                      has already invited you.
+[1mLeave               [0m- Pretty straightforward.
+[1mParty               [0m- Will display who is in your adventuring group, and what
+                      ranks they are in.
+[1mBackrank            [0m- If you are in someone's adventuring group, this will
+                      put you into the back rank. You will be harder to hit
+                      in combat, but will also have a harder time hitting
+                      opponents with close combat attacks. Great for magic
+                      users casting ranged spells, or players with missile
+                      weapons.
+[1mFrontrank           [0m- Will place you into the frontrank, if a spot is currently
+                      available. At least the same amount of users must be in the front
+                      rank as the back. You will have an easier time hitting opponents,
+		      but will get hit easier as well.		      
+} T Help Body
+
+
+HL1T10 {Training room advancement} S 30 Help Topic String
+
+
+HL1B10 {[0m
+To train to the next level, you must find the appropriate training room
+for your class.  Once you have found it, you may purchase training if you
+have adequate experience.
+
+After you have been trained, you may use the TRAIN STATS command to
+redistribute your new CP among your stats.
+
+} T Help Body
+
+
+HL1T11 { chaos good evil reputation alignment criminals gods sins laws saints fiends outlaws villains seedy neutrality jail} S 41 Help Topic String
+
+
+HL1B11 {[0m[2J[sLike any respectful city, Silvermere has its laws. Some follow them, some
+don't.[u
+[0mIf you are in the latter category, your stay in the realm may be cut short, in
+more ways than one. There are two main criminal acts in the Realm. Attacking
+"innocents" (The town doesnt care if you slay a hated person), or stealing from
+others. Although the latter is more tolerated of course. People will be
+classified in the following titles, so watch who you trust.
+
+[1;37mLawful   [0;32m-  Attacking a lawful player will give thrice the evil points.
+[1;37mSaint    [0;32m-  A true saint, in society and in heart. A rarity in these times.
+[1;37mGood     [0;32m-  Someone with a noteworthy reputation of lawfulness.
+[36mNeutral  [32m-  An average citizen, you will be treated fairly within the realm.
+[37mSeedy    [32m-  The dregs of society. Bad deeds done to you will be ignored.
+[35mOutlaw   [32m-  Guards will attack you on sight, but will spare your life.
+[1;35mCriminal [0;32m-  Same as Outlaw, except that Guards will SLAY you on sight.
+[31mVillain  [32m-  Same as Criminal, except that the "Gods" may sometimes intervene.
+[1;31mFiend    [0;32m-  The utmost in evil. Don't count on living too long in this state.
+
+[37mCurrently, the only way to become a more "respected" citizen is to wait it off.
+[sIn times like these, your deeds will eventually be forgotten, and it is commonly[u
+[0mknown for an infamous villain to become a well respected townsman after a
+[scertain amount of time. 
+} T Help Body
+
+
+HL1T12 {Tips} S 30 Help Topic String
+
+
+HL1B12 {[0m[2JHere are some helpful "hints" or advice to get you started...
+
+[1;33m1. [0mRead all of the help files, or at least glance through them. This will save
+   you a lot of time and effort overall.
+
+[1;33m2. [0mPick a class that you feel comfortable with. We have tried to make ALL of
+   the classes equal in efficiency, but each one has its own unique features.
+
+[1;33m2. [0mOnce you have your character made, check out all of the stores in Newhaven
+   and equip yourself with weaponry, armour, and spells (if you are a
+   spellcaster). Don't go down into the arena until you are armed and ready.
+
+[1;33m3. [0mTo familiarize yourself with the combat system, go to the Newhaven Arena.
+   Here you will be able to earn experience for your next level, and gold to
+   purchase better weaponry and armour. Once you have enough experience to
+   obtain your next level, go to the guild and train.
+
+[1;33m4. [0mNow that you have completed these steps, you could try adventuring in
+   the dungeon past the north door in the Newhaven Arena. Type "bash north"
+   or "picklock north" (If you have the skill) to open the lock/door.
+
+} T Help Body
+
+
+HL1T13 {Items give wear equipment remove get drop use light ready} S 41 Help Topic String
+
+
+HL1B13 {[0m[2J[1;33mBuy       Sell     Get      Drop    Use        Light      Rob
+Eat       Drink    Search   Hide    Inventory  Keys       Give
+List      Ready    Remove
+
+[37mWear <Item>         [0m- Equips any item that must be readied to use. Ie..
+                      armour, weapons, etc... Optional words are Arm, Wear,
+                      Wield, etc...
+[1mRemove <Item>       [0m- Will remove an equipped item.
+[1mUse <Item>          [0m- If an item has a specific use (Ie... A potion), the most
+                      common command to activate it would be USE. Some items
+                      require you to use a different action word (Ie... LIGHT
+                      torch, or RUB Lamp), so experiment.
+[1mLook <OBJECT>       [0m- Displays the visible info on an object, creature, or
+                      item.
+[1mGet <Item>          [0m- Will pick up a visable item, if you can carry it.
+[1mDrop <Item>         [0m- Will drop an item on the ground.
+[1mGive <Item><Player> [0m- Will give an item to the according user.
+[1mInventory           [0m- Displays what items, money that you own, and if
+                      they are equipped or not.
+[1mBank                [0m- Will display your current bank rating and balance.
+[1mStash/Hide <Item>   [0m- Will hide an item in a room, which can only be found
+                      again if someone successfully searches that room.
+
+} T Help Body
+
+
+HL1T14 {Profile statline page talk fast talk slow statusline} S 41 Help Topic String
+
+
+HL1B14 {[0;1;33mProfile    Statline   Verbose    Quiet     Brief
+Join       Broadcast  Talk       Leave     Scan      Page
+
+[37mProfile              [0m- Will display your current profile settings
+[1mStatline On/Off/Full [0m- Will set your statline Prompt. On will display your
+                       current Hit Points at mana at every prompt, Off will
+                       display your standard BBS prompt, and Full acts the same
+                       as On, except that everytime you hit Enter, the brief
+                       description of your current room will be displayed.
+                       Look for help on CUSTOM for the custom statline.
+                       NOTE: Sneaking players will not show up when you hit
+                       Enter. You must type look.  
+[1mBrief                [0m- Will put on brief room descriptions
+[1mVerbose              [0m- Displays the full room description everytime that you
+                       enter a room.
+[1mTalk Fast            [0m- Turning this mode on will make it so that everything
+                       that you type, BESIDES commands, will show up as if you
+                       had spoken it. There will be no need to type . before
+                       every sentence if you wish to converse with others.
+[1mTalk Slow            [0m- If this option is used, the only way that you will be
+                       able to talk openly is by typing . before your message.
+[1mPage                 [0m- Typing page will toggle on/off the ability for other
+                       users on the system to page you while you are in the
+                       game.
+[1mSet Receive On/Off   [0m- Will toggle on your ability to receive items from other
+                       players when they use the give command. Helpful command  } T Help Body
+
+
+HL1T15 {Banking banks deposit withdraw bankbook} S 41 Help Topic String
+
+
+HL1B15 {[0;1;33m
+
+Deposit  <n> will deposit n copper into your account 
+Withdraw <n> will withdraw n copper from your account
+Bankbook     will display your current bank balance.
+
+} T Help Body
+
+
+HL1T16 {Experience xp exp. exps} S 30 Help Topic String
+
+
+HL1B16 {The following is a table of experience for Your character:
+} T Help Body
+
+
+HL1T17 {Ninjas} S 30 Help Topic String
+
+
+HL1B17 {
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mNINJAS[58C[0;1mEXP: [0m185%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mThe origins of the ninja are basically unknown, save for the fact that    [0;34mบ
+บ [0mthey come from a distant and exotic land. They seem to have an animosity  [0;34mบ
+บ [0magainst mystics, so they probably originate from the same area. Ninjas    [0;34mบ
+บ [0mexcel in the art of stealth and subterfuge. While they can fight fairly   [0;34mบ
+บ [0mwell in hand to hand combat, they prefer to immobilize their opponent[5C[0;34mบ
+บ [0mbefore he would have time to react. After a deadly attack from the[8C[0;34mบ
+บ [0mshadows, they will usually finish off their victim with their mastery of  [0;34mบ
+บ [0mpressure point attacks. The ninjas of Silvermere have been rumoured to be [0;34mบ
+บ [0min league with the thieves guild, and are usually hired by them to do the [0;34mบ
+บ [0mbulk of their dirty work.[49C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-8  [0mMagic: [0;1mNone  [0mCombat: [0;1mAverage   [0mWeapons: [0;1mAny  [0mArmour: [0;1mNinja [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mStealth, Dodge, Enhanced Crits, Traps, Lockpicking, Tracking.  [0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T18 {Stats1 stats 1 stat1 statname} S 30 Help Topic String
+
+
+HL1B18 {[0m[2J
+[0;1;33mPrimary Statistics
+
+[0mEvery character has six basic attributes, which govern the strengths and
+weaknesses of each particular character. The six stats are Strength, Agility,
+Health, Intellect, Willpower and Charm. Each race starts out with a [0;1mbase [0mvalue
+and a [0;1mmaximum [0mvalue in each of the six stats. A character cannot have a stat
+lower than the Base value, and cannot increase a stat beyond the Maximum value.
+For example, Elves are slim but graceful, and for [0;1mAgility [0mhave a base value of
+[0;31m50 [0mand a maximum value of [0;32m120[0m. In the [0;1;33mhelp [0mfiles, the base value in each stat
+is coloured [0;31mred[0m, and the maximum is coloured [0;32mgreen[0m. [0;1mHumans [0mform the "benchmark"
+for all other races, and have a base value of [0;31m40 [0mand a maximum value of [0;32m100 [0min
+every stat. A value of [0;1m50 [0mindicates an average value, giving no bonuses or
+penalties, while values above and below 50 give penalties or bonuses as
+applicable.
+
+Stats can be changed by spending [0;1mCP [0m(character points) in character creation or
+after Training. Since every character receives CP after increasing in level, it
+is generally a wise idea to use these gained CP in a [0;1mTraining Hall[0m, by typing
+'[0;1;33mTRAIN STATS[0m'. This will place you in the character editor (ANSI
+recommended).
+
+Type '[0;1;33mHELP STATS2[0m' for more information on allocating your stats and how to
+use the character editor. There is also a seperate help topic for each stat,
+which will give information on what the stat does and what parts of the
+character it affects. For example, you would type '[0;1;33mHELP STRENGTH[0m' to get info
+on Strength.
+[0m[255D
+
+} T Help Body
+
+
+HL1T18A {Stats2 stats 2 stat2} S 30 Help Topic String
+
+
+HL1B18A {[0m[2J
+[0;1;33mPrimary Statistics, continued
+
+[0mThe cost to increase stats is as follows:
+
+The first 1 to 10 points above your race's base stat:  1 CP each.
+The second 1 to 10 points above your race's base stat: 2 CP each.
+The third 1 to 10 points above your race's base stat:  3 CP each.
+
+... and so on. This means that to increase a stat [0;1m40 [0mpoints above its base
+level, say, [0;1mAgility 40 [0mto [0;1mAgility 80 [0m(a BIG leap!), you would have to spend
+10 CP's for the first 10 Agil, 20 CP's for the second 10 Agil, 30 CP's for the
+third 10 Agil, and 40 CP's for the fourth set of 10 Agility. This adds up to
+a grand total of 10 CP + 20 CP + 30 CP + 40 CP = [0;1m100 CP[0m! Very expensive, as
+you can see, and not very wise: even though your character would be incredibly
+agile, he would be weak, fragile, stupid, etc... and that makes a big
+difference. Having a one-dimensional character may be fun for a while, but
+your character probably would not last very long. In the end a more balanced
+character would be more enjoyable and would survive longer.
+
+Note that 'high' or 'low' stats are stats above or below 50, respectively.
+Each stat has a different use. Type [0;1;33mHELP STATNAME [0mfor details on a particular
+stat and its effects on your character and his abilities.
+
+[0m[255D
+
+} T Help Body
+
+
+HL1T18B {Strength} S 30 Help Topic String
+
+
+HL1B18B {[0m
+[1;33mSTRENGTH (STR)
+
+[0mStrength is a measure not just of your raw muscle mass, but also how well you
+can use that strength. Good Strength adds to how easily you attack something in 
+combat, as well as the damage you do when you hit. Some weapons need a high 
+Strength to use effectively. Conversely, low strength reduces how well you hit
+something, and the damage you do. A Halfling warrior may be extremely quick, 
+but he will do fairly poor damage when compared to a Dwarf! Strength also 
+governs how much weight you can carry without being encumbered. Strength
+is a necessary stat for any fighting class, but is useful for magic-using
+classes as well, because no-one has an unlimited supply of magic! It is used
+when bashing down doors and in some instances for moving heavy objects.
+} T Help Body
+
+HL1T18C {Agility dexterity} S 30 Help Topic String
+
+
+HL1B18C {[0m
+[1;33mAGILITY (AGI)
+
+[0mAgility is basically how quick and accurate you are in your movements. It
+involves not only speed, but total body coordination as well. A character with
+high Agility attacks faster and more accurately, and a high Agility helps
+defend against physical attacks. Low Agility, of course, makes you slower and
+less accurate. An Elf will hit far more often than a Half-Ogre, though a
+Half-Ogre's incredible crushing blows may compensate. Agility is a component
+of most skills, and is extremely useful for a thief. A thief with high agility
+will have very good skills! Again, Agility is a necessary stat for any
+fighting class.
+
+Agility is important for the following character skills: [1mStealth[0m, [1mThievery[0m,
+[1mTraps [0mand [1mPicklocks[0m. It contributes heavily to your [1mAccuracy [0mand [1mCritical Hit
+Chance [0mas well. Characters with above-average Agility will gain a small [1mDodge
+[0mchance, while characters with low Agility will suffer from reduced defense.     } T Help Body
+
+
+HL1T18D {Intellect intelligence perception} S 40 Help Topic String
+
+
+HL1B18D {[0m
+[1;33mINTELLECT (INT)
+
+[0mIntellect is a combination of raw intelligence, creativity, reasoning and
+basic awareness. Intellect is useful for all classes in respect to their
+Perception, which is a skill that helps notice hidden and concealed items
+(and people!). A character with a low Intellect may not notice things very
+often, such as people sneaking around, robbing them, etc. Intellect is a main
+component in many skills, and is useful to a thief, but it is vital to a mage!
+Mages use Intellect as the main stat for their spells. A Mage with low
+Intellect will be at a severe disadvantage with spells when compared to a mage
+with higher Intellect. Druids use both Intellect and Wisdom for their spells,
+so they need to have good levels in both stats. Warrior-types can usually get
+along without much Intellect, and historically many have done so -- but
+Intellect is also a component of Critical Hits, so a canny fighter will do
+heavy blows more often than a dull-witted opponent.
+
+Intellect directly affects the following skills and abilities: [1mStealth[0m,
+[1mThievery[0m, [1mTraps[0m, [1mPicklocks[0m, [1mTracking[0m, [1mPerception[0m, [1mMagic Resistance[0m,
+[1mSpellcasting[0m, and [1mCritical Hit Chance[0m.                                          } T Help Body
+
+
+HL1T18E {Willpower wisdom} S 30 Help Topic String
+
+
+HL1B18E {[0m
+[1;33mWILLPOWER (WIL)
+
+[0mThis stat is a measure of the character's cool-headedness, determination,
+mental focus and strength of faith. It is a must for any Priestly character,
+as this is the stat they use for their spell-casting. Druids use both
+Willpower and Intellect, so they need to have good levels in both stats.
+Willpower is the prime component in Magic Resistance, so anyone needing to
+resist spells had better have a good value in this stat. A Witchunter with
+high WIL would have a formidable MagicRes! As for Intellect, a Warrior-type
+could probably get along with a low Wisdom, but would then be much more
+vulnerable to magic spells.
+
+Willpower directly affects the following skills and abilities: [1mSpellcasting[0m,
+[1mTracking[0m, [1mPerception [0mand [1mMagic Resistance[0m.                                      } T Help Body
+
+
+HL1T18F {Health constitution} S 30 Help Topic String
+
+
+HL1B18F {[0m
+[0;1;33mHEALTH (HEA)
+
+[0mHealth is a character's vitality, toughness, and general physical well-being.
+Health governs how many Hit Points a character starts with, as well as how
+many are gained each time a new Level is reached. Poison is less effective on
+a healthier person, and Health is a component in Magic Resistance. Where
+Willpower is the toughness of the mind, Health is the toughness of the body.
+Health is a prime stat for any fighting classes, but is very useful for all
+characters, as everyone will sustain damage at some point in their perilous
+careers.
+
+Having a high Health increases the rate at which you naturally heal, and the
+rate at which you gain HP through resting. It may also confer an increased
+resistance to some poisons and diseases. Characters with above- or below-
+average Health will notice a change in their Hit Points, which will vary
+depending on your Level and your Health. Health no longer has "stat breaks"
+where you must have a certain level of Health to obtain the increases (in the
+past, you needed to have 65, 80 or 95 Health for the bonuses), and now works as
+a gradual process that increases your HP as both your Health and Level increase.
+Therefore, it is possible that even a one-point increase in Health could 
+increase your total HP.
+
+} T Help Body
+
+
+HL1T18G {Charm} S 30 Help Topic String
+
+
+HL1B18G {[0m
+[1;33mCHARM (CHA)
+
+[0mCharm is a hard stat to pin down -- it is not an actual measure of a person's
+good looks, but people with high charm are quite attractive to others. It
+helps with interpersonal relations, such as buying items from store-owners,
+as a charming person can lower the price of an item substantially. Charm helps
+in combat, because people are more likely to attack an offensive person than
+someone with a disarming smile. Charm is a component in some skills, as Charm
+is not only a measure of a character's charm, but a person with good Charm
+leads a Charmed life, so to speak, and in general is much luckier than other
+characters. Such a one would find himself miraculously dodging out of the way
+of some attacks, where others would have been hit. Charm is the main stat for
+use in Bard spells, and a Bard with low Charm will be a very poor Bard indeed.
+All characters can use a good dose of Charm.
+
+Charm directly affects the following skills and abilities: [1mStealth[0m, [1mTraps[0m,
+[1mTracking[0m, [1mCritical Hit Chance [0mand [1mPerception[0m.                                   } T Help Body
+
+
+HL1T19 {Thief theif thieves theives} S 30 Help Topic String
+
+
+HL1B19 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mTHIEVES[58C[0;1mEXP: [0m80%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mThe Thief class is fairly self-explanatory. Thieves steal, for different  [0;34mบ
+บ [0mreasons, and are very good at it. Not all thieves rob for personal gain:  [0;34mบ
+บ [0mmany are vigilantes, robbing sleazy nobles to help the poor. Others[7C[0;34mบ
+บ [0mrarely use their thieving skills and are basically scouts, creeping ahead [0;34mบ
+บ [0mto survey enemies. Of course most thieves rob for their own benefit, and  [0;34mบ
+บ [0mthus it is usually good to keep an eye on all Thieves in your party, even [0;34mบ
+บ [0mif they have given their word they will not rob you. Thieves have a[7C[0;34mบ
+บ [0mnumber of useful abilites, including Thievery, Stealth, Lockpicking,[6C[0;34mบ
+บ [0mand Traps. They can use any one-handed weapon, and will wear no armour    [0;34mบ
+บ [0mgreater than leather due to their need for stealth. Thieves can[11C[0;34mบ
+บ [0malso Backstab from the shadows when they are hidden, as can any class[5C[0;34mบ
+บ [0mwith Stealth.[61C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-7  [0mMagic: [0;1mNone   [0mCombat: [0;1mFair   [0mWeapons: [0;1m1-H  [0mArmour: [0;1mLeather [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mStealth, Thievery, Traps, Lockpicking.[25C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T20 {Warriors warroirs} S 30 Help Topic String
+
+
+HL1B20 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mWARRIORS[56C[0;1mEXP: [0m100%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mWarriors are the basic front-line fighters in any party. They are able to [0;34mบ
+บ [0muse any weapons and wear any armour, and have good Combat and Hit Points. [0;34mบ
+บ [0mEven though they are a basically simple class, they are quite effective   [0;34mบ
+บ [0mand can be varied: Warriors are guardsmen, mercenaries, infantry, bowmen, [0;34mบ
+บ [0mgladiators, and a multitude of other professions. They have no magical    [0;34mบ
+บ [0mpowers but can use any magical weapon or armour piece they can find, as   [0;34mบ
+บ [0mwell as all the standard potions.[41C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m6-10   [0mMagic: [0;1mNone   [0mCombat: [0;1mGood   [0mWeapons: [0;1mAny    [0mArmour: [0;1mAny [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mNone.[58C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T21 {Paladins Paladines} S 30 Help Topic String
+
+
+HL1B21 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mPALADINS[56C[0;1mEXP: [0m220%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mThese are the holy warriors of the realm. Dedicated to fighting for their [0;34mบ
+บ [0mdeity (which can be good OR evil, take note!), they are serious fighters  [0;34mบ
+บ [0mwith minor priestly powers. They can use any weapon or armour, but prefer [0;34mบ
+บ [0mswords. The Knights of the King are Paladins, as are many of the[10C[0;34mบ
+บ [0mwandering warriors you see patrolling the roads. Most Paladins will[7C[0;34mบ
+บ [0mactively help anyone in need, even risking their own lives to save the    [0;34mบ
+บ [0mones they aid. Evil Paladins, of course, further their deity's will by    [0;34mบ
+บ [0mslaying all people not of their own faith, so be wary when meeting a[6C[0;34mบ
+บ [0mstranger offering help.[51C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m5-9   [0mMagic: [0;1mPriest-1  [0mCombat: [0;1mGood  [0mWeapons: [0;1mAny   [0mArmour: [0;1mAny [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mNone.[58C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T22 {Witchunters witchhunters witch hunters} S 40 Help Topic String
+
+
+HL1B22 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mWITCHUNTERS[53C[0;1mEXP: [0m130%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mWitchunters are a breed of elite warriors who have taken a vow to destroy [0;34mบ
+บ [0mall magical enemies. They will use no magical weapons, armour or items,   [0;34mบ
+บ [0mand will only grudgingly accept beneficial spells being cast on them.[5C[0;34mบ
+บ [0mThey are trained from birth to be ferocious and efficient fighters, and   [0;34mบ
+บ [0mwill give no quarter when faced with an enemy spell-caster. During their  [0;34mบ
+บ [0mtraining to become Witchunters they develop a strong anti-magic aura,[5C[0;34mบ
+บ [0mwhich interferes with spells being cast on them. This is due to their[5C[0;34mบ
+บ [0mnear-fanatical focus and their strong willpower. They will use any non-   [0;34mบ
+บ [0mmagical weapon, but will wear no armour heavier than Scale because they   [0;34mบ
+บ [0mfavour quick, complex attacks that heavy armour will not permit.[10C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m6-10  [0mMagic: [0;1mn/a [0mCombat: [0;1mExcellent  [0mWeapons: [0;1mAny  [0mArmour: [0;1mScale [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: No Magic Items, Anti-Magic.[12C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T23 {Bards} S 30 Help Topic String
+
+
+HL1B23 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mBARDS[59C[0;1mEXP: [0m210%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mBards are the wandering entertainers of the realm, travelling from city   [0;34mบ
+บ [0mto city while playing songs of merriment and bringing information. In[5C[0;34mบ
+บ [0mthat last respect, Bards are very important: few people travel far, and   [0;34mบ
+บ [0mfor some places Bards are the only source of outside information. Thus,   [0;34mบ
+บ [0mthey are often warmly greeted and usually stay free of charge at any[6C[0;34mบ
+บ [0mplace they frequent. Bards are trained in exclusive colleges, where they  [0;34mบ
+บ [0mare taught a multitude of things, from swordplay, to stealth, to magic.   [0;34mบ
+บ [0mBards practise a unique form of magic by using their considerable musical [0;34mบ
+บ [0mtalents to weave spells. These spells usually take the form of charming   [0;34mบ
+บ [0mmagic. They can only use one-handed weapons, as they disdain heavy, slow  [0;34mบ
+บ [0mweapons, and will wear only leather armour.[31C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-7 [0mMagic: [0;1mBardic  [0mCombat: [0;1mAverage [0mWeapons: [0;1m1-H [0mArmour: [0;1mLeather [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mStealth, Traps, Thievery, Lockpicking.[25C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T24 {Gypsy gypsies gyspy} S 30 Help Topic String
+
+
+HL1B24 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mGYPSIES[57C[0;1mEXP: [0m220%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mGypsies, if it is at all possible, travel even more than the Bards. In    [0;34mบ
+บ [0mmany respects, the two classes are quite similar: they both have the same [0;34mบ
+บ [0massortment of weapons, armour and skills. There is a profound difference, [0;34mบ
+บ [0mthough, and that is the fact that Gypsies are not nearly as welcome as    [0;34mบ
+บ [0mBards. This is because when a Gypsy band comes through town, things[7C[0;34mบ
+บ [0malways disappear. They are almost compulsive thieves -- but they are not  [0;34mบ
+บ [0mevil. Gypsies just make their money by 'alternate means', as they say.    [0;34mบ
+บ [0mThey also command respectable magics, and this has saved many a Gypsy[5C[0;34mบ
+บ [0mskin when the authorities have come to get them. Gypsies use the same[5C[0;34mบ
+บ [0mweapons as thieves, for they need stealth to use their abilites, and[6C[0;34mบ
+บ [0mbecause they need freedom in all things they do.[26C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-7  [0mMagic: [0;1mMage-2  [0mCombat: [0;1mFair  [0mWeapons: [0;1m1-H  [0mArmour: [0;1mLeather [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mStealth, Traps, Thievery, Lockpicking.[25C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T25 {Mages} S 30 Help Topic String
+
+
+HL1B25 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mMAGES[59C[0;1mEXP: [0m140%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mThere are as many kinds of Mages as there are other classes: Wizards,[5C[0;34mบ
+บ [0mSorcerors, Necromancers, Summoners, Transmuters, Elementalists, and a[5C[0;34mบ
+บ [0mdozen more. Most of these specialists, though, never venture forth from   [0;34mบ
+บ [0mtheir respective towers as they are not very well suited to adventuring.  [0;34mบ
+บ [0mFor this reason, most magic-users you meet in cities will be general[6C[0;34mบ
+บ [0mMages. These people are quite powerful, and wield a potent magical[8C[0;34mบ
+บ [0marsenal. Mages have at their command mostly combat and defense spells, as [0;34mบ
+บ [0mthey are either adventurers, searching for fortune, or are the emissaries [0;34mบ
+บ [0mof other Wizards, who need them to search out lost artifacts or spell[5C[0;34mบ
+บ [0mcomponents. Either way, they are formidable and unpredictable foes. Mages [0;34mบ
+บ [0muse only staves (including the staff-sling) and daggers in combat, as[5C[0;34mบ
+บ [0mthey need as much mobility as possible. For this reason also, they will   [0;34mบ
+บ [0monly wear robes for protection, and thus rely on their magic for[10C[0;34mบ
+บ [0mprotection.[63C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m3-6  [0mMagic: [0;1mMage-3  [0mCombat: [0;1mPoor  [0mWeapons: [0;1mStaff  [0mArmour: [0;1mRobes [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mNone.[58C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T26 {Warlocks} S 30 Help Topic String
+
+
+HL1B26 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mWARLOCKS[56C[0;1mEXP: [0m185%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mWarlocks are the front-line fighters in any magical conflict. They[8C[0;34mบ
+บ [0mcombine the best abilites of both the Warrior and Mage classes, but as a  [0;34mบ
+บ [0mresult are not quite as effective as either of those 'pure' classes.[6C[0;34mบ
+บ [0mThe Warlock class is quite a powerful one, though, when you think of what [0;34mบ
+บ [0ma good fighter could do with potent magical spells! The King's Battle-    [0;34mบ
+บ [0mMage corps is comprised almost exclusively of Warlocks. They eschew the   [0;34mบ
+บ [0mheavier armour in favour of lighter armour, as speed is a necessity when  [0;34mบ
+บ [0mcasting spells. They need one hand free to direct their ranged spells, so [0;34mบ
+บ [0mthey may only use one-handed weapons.[37C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-8  [0mMagic: [0;1mMage-2 [0mCombat: [0;1mAverage [0mWeapons: [0;1m1-H [0mArmour: [0;1mChain   [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mNone.[58C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T27 {Priests} S 30 Help Topic String
+
+
+HL1B27 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mPRIESTS[57C[0;1mEXP: [0m140%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mPriests embody the virtue of their deities, be they good or evil. They    [0;34mบ
+บ [0mchannel the power of the gods to cast their spells and are notably[8C[0;34mบ
+บ [0mintolerant of Priests of a different faith. Good Priests are welcome in   [0;34mบ
+บ [0mall cities for their invaluable healing services, and for their spiritual [0;34mบ
+บ [0mguidance. Evil Priests are universally shunned, for their magical[9C[0;34mบ
+บ [0mpractices often require human sacrifice. In fact, evil Priest seems to    [0;34mบ
+บ [0menjoy these disgusting rites, which only perpetuates the disgust felt for [0;34mบ
+บ [0mthem. Priests wear only robes and use blunt weapons, for good priests do  [0;34mบ
+บ [0mnot wish to kill needlessly, and evil priests do not want the victims to  [0;34mบ
+บ [0mbleed to death before they can use them.[34C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m3-6  [0mMagic: [0;1mPriest-3 [0mCombat: [0;1mPoor [0mWeapons: [0;1mBlunt  [0mArmour: [0;1mRobes [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mNone.[58C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T28 {Clerics cleriks} S 30 Help Topic String
+
+
+HL1B28 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mCLERICS[57C[0;1mEXP: [0m220%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mClerics are martial Priests. While Priests prefer using spells, Clerics   [0;34mบ
+บ [0mprefer to fight. And they are quite good at it, too. Like Priests, they   [0;34mบ
+บ [0mdo not enjoy bloodshed (although a little maiming is just fine), and will [0;34mบ
+บ [0monly use blunt weapons. They will wear any armour in the fight against    [0;34mบ
+บ [0mtheir foes, and quite a few wear the most armour they can get. Clerics    [0;34mบ
+บ [0mare an effective class, and have a strong survival rate due to their good [0;34mบ
+บ [0marmour and healing spells. They are a valuable addition to any party.[5C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-8  [0mMagic: [0;1mPriest-2 [0mCombat: [0;1mAverage [0mWeapons: [0;1mBlunt [0mArmour: [0;1mAny [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mNone.[58C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T29 {Druids} S 30 Help Topic String
+
+
+HL1B29 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mDRUIDS[58C[0;1mEXP: [0m190%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mDruids are the traditional protectors of the forest. They worship and[5C[0;34mบ
+บ [0mrevere all forms of wildlife and nature. They are usually solitary folk,  [0;34mบ
+บ [0meach keeping watch of a different part of the wilderness, but in times of [0;34mบ
+บ [0mneed they come forth to preserve the balance of nature. Normally they are [0;34mบ
+บ [0mquite pacifistic, and avoid combat, but when the balance of things is in  [0;34mบ
+บ [0mdanger or their wilderness is threatened, they will retaliate with force. [0;34mบ
+บ [0mDruids command substantial magics, and will not hesitate to use them in   [0;34mบ
+บ [0mthe process of cleansing their lands from intruders. Druids use only[6C[0;34mบ
+บ [0mblunt weapons as they find bloodshed distasteful, but if they are caught  [0;34mบ
+บ [0munaware they will use their sickles to defend themselves. They will wear  [0;34mบ
+บ [0monly natural armour. The Druids and the Rangers are very close, and they  [0;34mบ
+บ [0moften consult each other on the ways of the world.[24C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-7 [0mMagic: [0;1mDruid-3 [0mCombat: [0;1mFair  [0mWeapons: [0;1mBlunt [0mArmour: [0;1mLeather [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mNone.[58C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T30 {Rangers} S 30 Help Topic String
+
+
+HL1B30 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mRANGERS[57C[0;1mEXP: [0m250%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mRangers are the hunters and protectors of the wilderness, along with the  [0;34mบ
+บ [0mDruids. They will never wilingly harm an animal, but will fight in self-  [0;34mบ
+บ [0mdefense if necessary. Rangers share the same attitudes as the Druids in   [0;34mบ
+บ [0mrespect to what they believe in, and in fact, Rangers are just more[7C[0;34mบ
+บ [0madventurous and militant Druids. Some unscrupulous Rangers use their[6C[0;34mบ
+บ [0mabilities for man-hunting, at which they excel. All of them practice some [0;34mบ
+บ [0mform of druidic magic, and this combined with their formidable combat[5C[0;34mบ
+บ [0mabilities and their stealth makes them powerful characters. Rangers are   [0;34mบ
+บ [0mexcellent sneakers and can plan an ambush quite well if it is necessary.  [0;34mบ
+บ [0mThey wear only leather armour, for they need stealth and mobility to[6C[0;34mบ
+บ [0memploy their powers, but they will use any weapon. Overall, Rangers are   [0;34mบ
+บ [0ma powerful and expensive class.[43C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m5-9  [0mMagic: [0;1mDruid-1 [0mCombat: [0;1mGood  [0mWeapons: [0;1mAny  [0mArmour: [0;1mLeather [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mTracking, Stealth.[45C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T31 {Mystic mystics} S 30 Help Topic String
+
+
+HL1B31 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mMYSTICS[57C[0;1mEXP: [0m250%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mMystics are a rare and unusual class. They are the students of ancient    [0;34mบ
+บ [0munarmed combat arts, and develop considerable mental powers (called Kai   [0;34mบ
+บ [0mpowers) in the course of their training. The source of these Mystics is   [0;34mบ
+บ [0mnot well known, but it is generally assumed to be an ancient teacher in   [0;34mบ
+บ [0msome secluded cave. Of course, this Mystic teacher could live right in a  [0;34mบ
+บ [0mcity for all that is known. There are fairly advanced disciples in most   [0;34mบ
+บ [0mcities, and they teach these exotic skills to any they deem worthy. They  [0;34mบ
+บ [0mhave yet to divulge the location of their master, however. Mystics'[7C[0;34mบ
+บ [0munarmed combat is effective against weapons and armour due to their[7C[0;34mบ
+บ [0mknowledge of critical points. Usually use no weapons at all, but some[5C[0;34mบ
+บ [0mhave become proficient in the staff. They will wear no armour except for  [0;34mบ
+บ [0mrobes, as speed is the main element of their art.[25C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-8  [0mMagic: [0;1mKai  [0mCombat: [0;1mAverage  [0mWeapons: [0;1mStaff  [0mArmour: [0;1mRobes [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mMartial Arts, Dodge, Stealth, Enhanced Criticals, Kai Powers.  [0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T32 {Missionary} S 30 Help Topic String
+
+
+HL1B32 {[0m
+[40m[2J[0;34mษอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mMISSIONARIES[52C[0;1mEXP: [0m220%% [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mMissionaries are almost a contradictory class -- they essentially are[5C[0;34mบ
+บ [0mThieves with Priestly powers. This may seem an odd combination, but the   [0;34mบ
+บ [0mneed is there -- Missionaries need some stealth when voyaging into[8C[0;34mบ
+บ [0mheathen lands to convert others to their faith. They have good Priest[5C[0;34mบ
+บ [0mmagic and knowledge, and also the trouble-solving thief skills. Overall,  [0;34mบ
+บ [0mthey are more skulkers than fighters, but can fight well when the need    [0;34mบ
+บ [0marises. Often they make good spies, as they already have good stealth[5C[0;34mบ
+บ [0mand evasion skills. Missionaries will use any one-handed weapon, and can  [0;34mบ
+บ [0mwear only leather armour.[49C[0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHP/Level: [0;1m4-7  [0mMagic: [0;1mPriest-2 [0mCombat: [0;1mFair  [0mWeapons: [0;1m1-H [0mArmour: [0;1mLeather [0;34mบ
+ฬอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAbilities: [0;1mStealth, Traps, Lockpicking.[35C[0;34mบ
+ศอออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T34 {Humans} S 30 Help Topic String
+
+
+HL1B34 {
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mHUMANS[59C[0;1mEXP: [0m+0%%  [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mThe origins of humanity are shrouded in obscurity. This may seem a[9C[0;34mบ
+บ [0mludicrous statement, but the fact is there -- humans just mysteriously[5C[0;34mบ
+บ [0mappeared one day. Theories on this event are numerous. Some say the Elves  [0;34mบ
+บ [0mfound humanity's ancestors roaming in the woods, and nurtured them over    [0;34mบ
+บ [0mthe ages until they were mature enough to survive as a sentient species.   [0;34mบ
+บ [0mAnother hypothesis is that humans are from a distant star, and that one    [0;34mบ
+บ [0mday a great sky-craft collided with this land and created the barren[7C[0;34mบ
+บ [0mwasteland to the east. Whatever the solution is, the Elves will not, or    [0;34mบ
+บ [0mcannot say. In any case humans have flourished in the past four hundred    [0;34mบ
+บ [0myears, and now their domain is such that they are the most numerous people [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0min the realm. Human males average[5C[0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mjust under six feet tall, and females [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mabout five and a half. They have no   [0;34mบ
+บ [0mStrength  [0;31m40[0m-[0;32m100 [0;34mบ [0mNone.[11C[0;34mบ [0mextra special abilities or aptitudes  [0;34mบ
+บ [0mAgility   [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0msave for their versatility and drive. [0;34mบ
+บ [0mHealth    [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mThey do equally well in any class,    [0;34mบ
+บ [0mIntellect [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mbut are nicely suited for the Ranger  [0;34mบ
+บ [0mWillpower [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mand Druid classes, which require well [0;34mบ
+บ [0mCharm[5C[0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mdeveloped statistics all around.[6C[0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T35 {Dwarf dwarves} S 30 Help Topic String
+
+
+HL1B35 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mDWARVES[58C[0;1mEXP: [0m+30%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mDwarves are the second oldest race known today. The Elves, of course, are  [0;34mบ
+บ [0mthe first. Dwarves average about four and a half feet in height, and tip   [0;34mบ
+บ [0mthe scales at around two hundred pounds each. They are a solitary folk,    [0;34mบ
+บ [0mand do not easily welcome strange people -- but do not mistake this for    [0;34mบ
+บ [0mhostility. Once you have gained a Dwarf's friendship, that bond will last  [0;34mบ
+บ [0mto the death (or betrayal). They are cautious and slow to anger, but once  [0;34mบ
+บ [0mtheir wrath is roused they are terrible enemies. Dwarves love and craft    [0;34mบ
+บ [0mprecious gems and metals of all sorts, and are great worksmiths. They[6C[0;34mบ
+บ [0mmanufacture worthy and elaborate suits of mail, and craft gleaming axes    [0;34mบ
+บ [0mwith blades of true-silver. These items seldom leave the underground homes [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0mof the Dwarves, but there are stories [0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mof heroes who have done some great    [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mservice and have received such a[6C[0;34mบ
+บ [0mStrength  [0;31m50[0m-[0;32m110 [0;34mบ [0mNight Vision    [0;34mบ [0mgift. Dwarves make excellent Clerics, [0;34mบ
+บ [0mAgility   [0;31m30[0m-[0;32m90  [0;34mบ [0mMagicRes+10[5C[0;34mบ [0mPaladins and Warriors. Their stubborn [0;34mบ
+บ [0mHealth    [0;31m50[0m-[0;32m120 [0;34mบ [0mEncumbrance+20%% [0;34mบ [0mnature and strong willpower give them [0;34mบ
+บ [0mIntellect [0;31m30[0m-[0;32m90  [0;34mบ[17Cบ [0mgood defense against magic. Overall,  [0;34mบ
+บ [0mWillpower [0;31m50[0m-[0;32m120 [0;34mบ[17Cบ [0mDwarves are a resilient folk who[6C[0;34mบ
+บ [0mCharm[5C[0;31m30[0m-[0;32m85  [0;34mบ[17Cบ [0mshould not lightly be trifled with.   [0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T36 {Gnomes} S 30 Help Topic String
+
+
+HL1B36 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mGNOMES[59C[0;1mEXP: [0m+20%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mGnomes are distant cousins of the Dwarves. They are about the same height  [0;34mบ
+บ [0mas Dwarves, but are considerably slimmer. Long ago a tribe of Dwarves made [0;34mบ
+บ [0mits home on the surface, far from the ancient homeland. Over the centuries [0;34mบ
+บ [0mthis tribe changed, becoming less dependent on their muscles and more on   [0;34mบ
+บ [0mtheir wits. As this progressed, the natural technological ability of the   [0;34mบ
+บ [0mDwarves was changed into something more refined than metallurgy or mining: [0;34mบ
+บ [0mmachinery. Where an Elf sees a waterfall and reflects on its natural[7C[0;34mบ
+บ [0mbeauty, and a Dwarf sees only the precious stones being smoothed in its    [0;34mบ
+บ [0mwaters, a Gnome plots water-wheels and dams. Gnomes are cunning and[8C[0;34mบ
+บ [0minventive, always thinking up new plots and trying to devise more and more [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0mefficient ways to do things. They[5C[0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mmake proficient Mages and Thieves,    [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mbecause they have natural cunning and [0;34mบ
+บ [0mStrength  [0;31m35[0m-[0;32m90  [0;34mบ [0mNight Vision    [0;34mบ [0mcuriosity. Gnomes can see well in the [0;34mบ
+บ [0mAgility   [0;31m45[0m-[0;32m110 [0;34mบ [0mMagicRes+5      [0;34mบ [0mdark due to their Dwarven ancestry,   [0;34mบ
+บ [0mHealth    [0;31m40[0m-[0;32m100 [0;34mบ [0mPicklocks(+10)  [0;34mบ [0mas well as having an inborn facility  [0;34mบ
+บ [0mIntellect [0;31m45[0m-[0;32m110 [0;34mบ[17Cบ [0mwith locks and a slightly increased   [0;34mบ
+บ [0mWillpower [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mresistance to hostile magics.[9C[0;34mบ
+บ [0mCharm[5C[0;31m35[0m-[0;32m90  [0;34mบ[17Cบ[39Cบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T37 {Halflings haflings} S 30 Help Topic String
+
+
+HL1B37 {
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mHALFLINGS[56C[0;1mEXP: [0m+25%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mLittle is known about this shy, reclusive folk. Physically, they average   [0;34mบ
+บ [0maround three feet high, about half the height of a human (hence the name)  [0;34mบ
+บ [0mand are therefore quite weak. They are surprisingly tough and incredibly   [0;34mบ
+บ [0magile -- halfling quickness is deceptive, and some adventurers get more    [0;34mบ
+บ [0mthan they bargain for when they tangle with a Halfling. They are fond of   [0;34mบ
+บ [0mgood company and good drink, and are very soft-hearted overall. But when a [0;34mบ
+บ [0mHalfling is cornered, or his home (or food and drink!) is threatened, they [0;34mบ
+บ [0mwill fight with a ferocity that would startle any but the most seasoned of [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0madventurers. Halflings do not take    [0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mtoo well to magic, and seldom is a    [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mHalfling seen who can demonstrate[5C[0;34mบ
+บ [0mStrength  [0;31m20[0m-[0;32m60  [0;34mบ [0mRacial Stealth  [0;34mบ [0mmagical powers of any sort. Show a    [0;34mบ
+บ [0mAgility   [0;31m60[0m-[0;32m150 [0;34mบ [0mDodge+10[8C[0;34mบ [0mHalfling a good beer, a comfortable   [0;34mบ
+บ [0mHealth    [0;31m40[0m-[0;32m100 [0;34mบ [0mHP/Level-1[6C[0;34mบ [0mseat, and pleasant company, and you   [0;34mบ
+บ [0mIntellect [0;31m30[0m-[0;32m90  [0;34mบ[17Cบ [0mwill have a friend for life! They[5C[0;34mบ
+บ [0mWillpower [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mmake incredible Thieves, due to their [0;34mบ
+บ [0mCharm[5C[0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0minnate agility and stealth.[11C[0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T38 {Elf elves} S 30 Help Topic String
+
+
+HL1B38 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [1;33mELVES[60C[37mEXP: [0m+45%% [34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [37mElves are the Elder race. They are as old as the trees and the rivers they [34mบ
+บ [37mlove so dearly. Ever since time has been recorded, the Elves have been[5C[34mบ
+บ [37mthere, singing and tending to the forest animals. Nowadays the Elves are   [34mบ
+บ [37mfew in number, their folk slowly dwindling as the groves they live in are  [34mบ
+บ [37mhewn down. They do not begrudge this, though, but see it as the passing of [34mบ
+บ [37man age, the time of Humans. The Elves seen in cities are the very young,   [34mบ
+บ [37mhigh-spirited and short on experience. They seem almost like children --   [34mบ
+บ [37mexcitable and inquisitive, even though some of them may be older than[6C[34mบ
+บ [37mentire human lineages. Physically, Elves are quite tall, the same height   [34mบ
+บ [37mas humans, but seem much taller due to their slimness. They are extremely  [34mบ
+ฬออออออออออออออออออออออออออออออออออออป [37mmagical creatures, and many are[7C[34mบ
+บ [1;37mStatistics[9CAbilities[7C[0;34mบ [37mpacifistic -- unless there is some    [34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [37mcause for action. In that case, they  [34mบ
+บ [37mStrength  [31m35[37m-[32m90  [34mบ [37mRacial Stealth  [34mบ [37mmake savage fighters, both with spell [34mบ
+บ [37mAgility   [31m50[37m-[32m120 [34mบ [37mNight Vision    [34mบ [37mand sword. Elves make great Mages,    [34mบ
+บ [37mHealth    [31m30[37m-[32m80  [34mบ [37mMana+10[9C[34mบ [37mWarlocks and Gypsies, due to their    [34mบ
+บ [37mIntellect [31m50[37m-[32m120 [34mบ[17Cบ [37mquick wits and grace. They can see    [34mบ
+บ [37mWillpower [31m40[37m-[32m100 [34mบ[17Cบ [37mwell in the dark, and have increased  [34mบ
+บ [37mCharm[5C[31m50[37m-[32m120 [34mบ[17Cบ [37mpower in spellcasting professions.    [34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T39 {Half-elfs halfelfs half elfs} S 30 Help Topic String
+
+
+HL1B39 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [1;33mHALF-ELVES[55C[37mEXP: [0m+15%% [34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [37mHalf-Elves are the offspring of a Human and an Elf. Most are born from[5C[34mบ
+บ [37mHuman raids into Elven lands -- Humans can sometimes be despicable -- but  [34mบ
+บ [37msome are the result of an Elf and Human partnership. This is a rare[8C[34mบ
+บ [37moccasion, for though Elves are very beautiful to Humans, they are aloof,   [34mบ
+บ [37mand rarely mix with others. This dubious background makes many Half-Elves  [34mบ
+บ [37mbitter and so they remain loners, not wanting to be part of any culture    [34mบ
+บ [37m(and in their minds, not welcome). These are usually ferocious and un-[5C[34mบ
+บ [37mtrusting, but make good allies if you can gain their respect. They look    [34mบ
+ฬออออออออออออออออออออออออออออออออออออป [37mmuch like humans, except they are[5C[34mบ
+บ [1;37mStatistics[9CAbilities[7C[0;34mบ [37mslimmer and more attractive, with[5C[34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [37mslightly Elven features. They mix the [34mบ
+บ [37mStrength  [31m40[37m-[32m90  [34mบ [37mMana+10[9C[34mบ [37mgood qualities of both races, and are [34mบ
+บ [37mAgility   [31m45[37m-[32m110 [34mบ[17Cบ [37mquite versatile. Half-Elves have the  [34mบ
+บ [37mHealth    [31m30[37m-[32m100 [34mบ[17Cบ [37msame increased magical power as their [34mบ
+บ [37mIntellect [31m45[37m-[32m110 [34mบ[17Cบ [37mElven cousins, and often choose the   [34mบ
+บ [37mWillpower [31m40[37m-[32m100 [34mบ[17Cบ [37mpath of the Ranger or Druid, due to   [34mบ
+บ [37mCharm[5C[31m50[37m-[32m110 [34mบ[17Cบ [37mtheir preference for solitude.[8C[34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T40 {Dark-elf dark elf darkelf} S 30 Help Topic String
+
+
+HL1B40 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mDARK-ELVES[55C[0;1mEXP: [0m+45%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mDark-Elves are not actually a seperate race, but are in fact a fanatic[5C[0;34mบ
+บ [0msect of Elves who believe that the other races of the realm are destroying [0;34mบ
+บ [0mthe ancient homelands of the Elves, and must be stopped for this. They are [0;34mบ
+บ [0mthe enemy of all other races (save Elves), and will wage war with anyone   [0;34mบ
+บ [0mwho threatens the forests and their homes. Dark-Elves do not accept the    [0;34mบ
+บ [0mtraditional Elven belief that this is the natual course of time, and are   [0;34mบ
+บ [0mdetermined to stop it. Consequently, they are driven from any already-[5C[0;34mบ
+บ [0mpopulated area, and so make their homes far from the wooded groves they    [0;34mบ
+บ [0mlove. Most live in the mountains, or in caves, and thus have a much more   [0;34mบ
+บ [0mpallid complexion than their sylvan brethren. Due to their harsher lives   [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0mthey are tougher and less friendly    [0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mbetween themselves. Any Dark-Elf seen [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0moutside of a stronghold is one who    [0;34mบ
+บ [0mStrength  [0;31m40[0m-[0;32m90  [0;34mบ [0mRacial Stealth  [0;34mบ [0mdoes not agree with the intolerant    [0;34mบ
+บ [0mAgility   [0;31m50[0m-[0;32m120 [0;34mบ [0mNight Vision    [0;34mบ [0mviews of his people -- an outcast.    [0;34mบ
+บ [0mHealth    [0;31m30[0m-[0;32m90  [0;34mบ [0mCritical Hits+1 [0;34mบ [0mDark-Elves are more skilled in combat [0;34mบ
+บ [0mIntellect [0;31m50[0m-[0;32m120 [0;34mบ [0mAccuracy Bonus  [0;34mบ [0mthan the Elves, but are less powerful [0;34mบ
+บ [0mWillpower [0;31m30[0m-[0;32m100 [0;34mบ[17Cบ [0mmagically, making them ideally suited [0;34mบ
+บ [0mCharm[5C[0;31m40[0m-[0;32m110 [0;34mบ[17Cบ [0mto be Warlocks, Gypsies or Ninjas.    [0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T41 {Half-Orcs halforcs half orcs} S 30 Help Topic String
+
+
+HL1B41 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mHALF-ORCS[56C[0;1mEXP: [0m+0%%  [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHalf-Orcs are almost exclusively the result of an Orc raid on a Human[6C[0;34mบ
+บ [0mvillage. They are not terrible-looking, having only the squinty eyes,[6C[0;34mบ
+บ [0mpronounced canines and coarse hair of an orc, but the innate Orcish poor   [0;34mบ
+บ [0mtemper is passed on to these offspring. They are much better behaved than  [0;34mบ
+บ [0mOrcs, and do not have the homicidal hatred for the other races that Orcs   [0;34mบ
+บ [0mdo (unless they have been raised by Orcs, and then you will see them only  [0;34mบ
+บ [0mas your foes). They are somewhat dull-witted, and are not terribly patient [0;34mบ
+บ [0mbut they are tough as nails and are relentless in battle. Having a[9C[0;34mบ
+บ [0mtrustworthy Half-Orc companion is like having your own personal army. They [0;34mบ
+บ [0mexcel in all things martial, especially in the Witchunter class, where[5C[0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0mtheir instinctive fear of magic can   [0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mbe used to advantage. Half-Orcs are   [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0malmost universally mistrusted, which  [0;34mบ
+บ [0mStrength  [0;31m45[0m-[0;32m110 [0;34mบ [0mNone.[11C[0;34mบ [0mis quite unfortunate since they are   [0;34mบ
+บ [0mAgility   [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mnot horrible by nature, and so must   [0;34mบ
+บ [0mHealth    [0;31m50[0m-[0;32m120 [0;34mบ[17Cบ [0mcontinually prove their worth. Many   [0;34mบ
+บ [0mIntellect [0;31m30[0m-[0;32m90  [0;34mบ[17Cบ [0mHalf-Orcs seek mercenary service,[5C[0;34mบ
+บ [0mWillpower [0;31m30[0m-[0;32m95  [0;34mบ[17Cบ [0mwhere no questions are asked and[6C[0;34mบ
+บ [0mCharm[5C[0;31m30[0m-[0;32m80  [0;34mบ[17Cบ [0mwhere their strength is in demand.    [0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T42 {Goblins} S 30 Help Topic String
+
+
+HL1B42 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mGOBLINS[58C[0;1mEXP: [0m+35%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mGoblins have a decidedly mixed reputation. First off, they average about   [0;34mบ
+บ [0mfive feet tall, have pale green or grey skin, and save for the fine,[7C[0;34mบ
+บ [0mluxuriant hair on their heads they have little or no body hair. They are   [0;34mบ
+บ [0malmost always smiling, in that white, sharp-toothed grin of theirs, and    [0;34mบ
+บ [0mmore often than not you cannot tell whether or not they are eyeing you[5C[0;34mบ
+บ [0mlike a side of meat. Despite their unsettling near-savagery they have a    [0;34mบ
+บ [0mdisarming charm which almost offsets their strange appearance. Almost.[5C[0;34mบ
+บ [0mGoblins are thin and wiry, small and compact but very tough for their[6C[0;34mบ
+บ [0msize. They are extremely intelligent, and are exceedingly agile -- they    [0;34mบ
+บ [0mare well-suited for any Mage or Thief class, though are in their element   [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0min the Gypsy class. Goblins are fond  [0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mof bartering, and will sit for hours  [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mto haggle down the price of a loaf of [0;34mบ
+บ [0mStrength  [0;31m30[0m-[0;32m70  [0;34mบ [0mRacial Stealth  [0;34mบ [0mbread by one copper coin. Many[8C[0;34mบ
+บ [0mAgility   [0;31m55[0m-[0;32m125 [0;34mบ [0mNight Vision    [0;34mบ [0mwealthy merchants hire a Goblin to    [0;34mบ
+บ [0mHealth    [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mdeal with others of his kind, and the [0;34mบ
+บ [0mIntellect [0;31m45[0m-[0;32m115 [0;34mบ[17Cบ [0msight of two goblins in a haggling    [0;34mบ
+บ [0mWillpower [0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mcontest is a sight to see! They are   [0;34mบ
+บ [0mCharm[5C[0;31m40[0m-[0;32m100 [0;34mบ[17Cบ [0mstealthy, and have night vision.[6C[0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T43 {Half-Ogres halfogres half ogre} S 30 Help Topic String
+
+
+HL1B43 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mHALF-OGRES[55C[0;1mEXP: [0m+30%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mHalf-Ogres are the offspring of an Orc and an Ogre. No-one really knows,   [0;34mบ
+บ [0mor wants to know how this comes about. They are about seven feet tall,[5C[0;34mบ
+บ [0mand are quite hairless. Their bodies are nearly all muscle, and their[6C[0;34mบ
+บ [0mstrength is unmatched for creatures their size. Unfortunately, they have   [0;34mบ
+บ [0mall the cunning and tact of a six-year-old-human, and the coordination of  [0;34mบ
+บ [0ma drunk. Half-Ogres have a rash temper, but are easily distracted, and so  [0;34mบ
+บ [0mif you are careful it is possible to avoid conflict with one. Many store-  [0;34mบ
+บ [0mowners have Half-Ogre workers, for they can work tirelessly and can lift   [0;34mบ
+บ [0mhundred-pound barrels with ease. They have neither the near-berserk fury   [0;34mบ
+บ [0mof Ogres, nor the animal intelligence of Orcs, but have a simple kind of   [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0mpersonality which is almost pitiable. [0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mThey are not truly evil, but are[6C[0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mfrequently exploited due to their[5C[0;34mบ
+บ [0mStrength  [0;31m70[0m-[0;32m150 [0;34mบ [0mToughness+2[5C[0;34mบ [0mstupidity. Half-Ogres are almost[6C[0;34mบ
+บ [0mAgility   [0;31m20[0m-[0;32m60  [0;34mบ [0mHP/Level+1[6C[0;34mบ [0mexclusively Warriors. Due to their    [0;34mบ
+บ [0mHealth    [0;31m60[0m-[0;32m150 [0;34mบ [0mMagicRes+15[5C[0;34mบ [0mlack of focus, they cannot learn Kai  [0;34mบ
+บ [0mIntellect [0;31m20[0m-[0;32m60  [0;34mบ [0mNo Kai Forms    [0;34mบ [0mskills, but can learn powers. All     [0;34mบ
+บ [0mWillpower [0;31m25[0m-[0;32m70  [0;34mบ[17Cบ [0mare quite resistant to hostile magic. [0;34mบ
+บ [0mCharm[5C[0;31m25[0m-[0;32m60  [0;34mบ[17Cบ [0mA powerful, but extremely slow race.  [0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T44 {Kang} S 30 Help Topic String
+
+
+HL1B44 {[0m
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [1;33mKANG[61C[37mEXP: [0m+35%% [34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [37mImagine a cross between a snake and a lizard, standing on two feet like a  [34mบ
+บ [37mhuman and with predatory intelligence, and what you have is the Kang. They [34mบ
+บ [37mare a mysterious folk that live in the depths of secluded swamps and[7C[34mบ
+บ [37mjungles, and are rarely seen in mannish cities. When they do venture forth [34mบ
+บ [37mit is to see the odd splendour of the outside world, and so the specimens  [34mบ
+บ [37mencountered outside of their homes are usually more intelligent and[8C[34mบ
+บ [37mfriendly than their exotic swamp neighbours. Kang are tall, many nearing   [34mบ
+บ [37mseven feet in height, and are broadly muscled. Their scaly skin is much    [34mบ
+บ [37mthicker than human skin, and is a different colour for each tribe. They    [34mบ
+บ [37mhave a strange loping walk, and are not very flexible, which is odd since  [34mบ
+ฬออออออออออออออออออออออออออออออออออออป [37mthey are snake-like. Kang apparently  [34mบ
+บ [1;37mStatistics[9CAbilities[7C[0;34mบ [37mworship a deity of Peace and Healing, [34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [37mand many of them are Paladins, on[5C[34mบ
+บ [37mStrength  [31m55[37m-[32m120 [34mบ [37mResist Poisons  [34mบ [37msome personal crusade to extinguish   [34mบ
+บ [37mAgility   [31m30[37m-[32m90  [34mบ [37mNatural Armour  [34mบ [37mall evil in the land. They are fierce [34mบ
+บ [37mHealth    [31m50[37m-[32m110 [34mบ[17Cบ [37mfighters, and excel as Clerics,[7C[34mบ
+บ [37mIntellect [31m30[37m-[32m90  [34mบ[17Cบ [37mWarriors and Witchunters. Kang are    [34mบ
+บ [37mWillpower [31m45[37m-[32m110 [34mบ[17Cบ [37mapparently immune to, or at least[5C[34mบ
+บ [37mCharm[5C[31m30[37m-[32m85  [34mบ[17Cบ [37mresistant to, all known poisons.[6C[34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T45 {Misc1 greet ask train stats} S 30 Help Topic String
+
+
+HL1B45 {[0;1;33mSuicide     Reroll    Train     Train Stats    Greet    Ask    Rest
+
+[37mSuicide     [0m- Suicides *1* of your lives. This will have the exact same effects
+              as if you had died normally. Handy command if you are trapped,
+              stuck, or don't want to give another player the pleasure of
+              killing you.
+[1mReroll      [0m- Will reroll your current character, and ALL his lives. This will
+              take you to the MajorMUD main menu, and the next time that you
+              enter the game, you will have to create a new character.
+[1mTrain       [0m- Will train you to the next level, provided that you have enough
+              experience. You must be in an appropriate training hall to do
+              this. Remember, you get 10 or more extra character points (CPs) 
+              every time that you train.  (Max of 20 CP/level after level 20)
+[1mTrain Stats [0m- Will put you into the stat editor, where you can allocate unspent
+              character points, change your physical description, etc... ([1;36mANSI
+              RECOMMENDED[0m)
+[1mGreet/Ask   [0m- Used for communicating with NPCs
+[1mRest        [0m- Puts you in rest mode. You will regenerate hit points at a faster
+              rate. You may only perform certain commands or rest mode will be
+              broken.
+
+} T Help Body
+
+
+HL1T46 {Gangs top gangs guilds groups gruops bands topten gangs} S 41 Help Topic String
+
+
+HL1B46 {[0m
+[1mCreate Gang <gang name>     [0m- Requires [1;36m100000 [0mexperience
+                            [ Max name length of 19 characters ]
+
+[1mInvite Member <user name>   [0m- Only the gang leader can invite members
+
+[1mUninvite Member <user name> [0m- Only the gang leader can invite members
+
+[1mBroadgang _or_ BG [<text>]  [0m- Broadcast will echo to all online gangmembers
+
+[1mTopten Gangs/Top <n> Gangs  [0m- A listing of the most noteworth gangs
+
+[1mDisband Gang                [0m- Only the gang leader can disband the gang
+
+-- [1;31mNote that after a gang is disbanded, the name may not be used
+   until the day after all ex gang members have entered the game
+
+[37mLeave Gang                  [0m- Leave your gang
+
+} T Help Body
+
+
+HL1T47 {Stash hide} S 30 Help Topic String
+
+
+HL1B47 {[0m
+STASH or HIDE are used when you want to hide an item in a room out of
+visible sight.  To recover these items later on, you will have to SEARCH
+for them prior to GETting them.
+
+HIDE is also used to hide in the shadows.  If you are successful at hiding,
+nobody will see you until you do a noticable action, or until they SEARCH
+and find you.
+
+} T Help Body
+
+
+HL1T48 {Set Warnings set maxpages set interrupts set receive warn on evil} S 48 Help Topic
+
+String
+
+
+HL1B48 {[0m
+The [1;33mSET [0mcommand is used to change a number of your profile options:
+
+[1mSet Suicide       [0m- Sets your suicide password in case of an accident
+[1mSet Maxpages [36m<n>  [0m- Limits the number of pages or telegrams you want to
+                    receive in each 3 second period
+[1mSet Interrupt     [0m- On forces the game to cancel all of your input and
+                    output when you are attacked by another user.  Very
+                    useful for low speed lines.
+[1mSet Messages      [0m- [Low/Medium/High] Toggles the extent of messages you will
+                    receive in the game.
+[1mSet Receive       [0m- On will prevent other players from giving you items, etc.
+[1mSet Warning       [0m- On prevents you from performing evil/unlawful actions
+[1mSet Telepath      [0m- [On/Off] To disallow other users from sending you telepaths
+[1mSet Follow        [0m- [Blind/Normal] Blind reduces the ammount of messages you
+                    receive while following in a party.
+[1mSet Entrances     [0m- [On/Off] Leaving this option on will notify you whenever
+                    an adventurer enters or leaves The Realm.
+[1mSet Speech        [0m- [Fast/Slow] Setting this option to slow will require you
+                    to use the appointed character before your message to speak
+                    ("[1;33m.[0m", "[1;33m,[0m", etc...). If you leave this option as "Fast",
+                    anything that you type which is not a command or action
+                    will be said by yourself to everyone in the room.
+} T Help Body
+
+
+HL1T48A {Set2 Set entrances set speech speach set follow} S 41 Help Topic String
+
+
+HL1B48A {
+The SET command is used to change a number of your profile options:
+
+SET FOLLOW (Blind/Normal) -- To reduce the number of messages when following
+
+SET ENTRANCES (On/Off) -- To disable or enable the messages you receive  
+                          whenever someone enters or exits the game
+
+SET SPEECH -- Toggles fast and slow talking on and off
+} T Help Body
+
+
+HL1T48B {Messages Set Messages} S 41 Help Topic String
+
+
+HL1B48B {Use the Set Messages command to control the level of messages 
+which you receive in the game:
+
+SET MESSAGES (Low/Medium/High) 
+
+In general: 
+a Low message setting will only display high priority messages; 
+a Medium message setting will display high and medium priortity messages; 
+a High message setting will disply high, medium, and low priority messages.
+
+The list of messages given at each level is too exhaustive to list here,
+so it is up to you to determine which setting is right for you.  Start at
+a high setting, and if you get too much on your screen then move down to
+a medium setting and then low.
+} T Help Body
+
+
+HL1T49 {Broadcasting broadgang bg} S 30 Help Topic String
+
+
+HL1B49 {
+There are several different ways to broadcast to a group of players.
+
+One is to type JOIN <n> where n is a number between 1 and 127.  This will
+set your broadcast channel.  To broadcast to all members on this channel,
+just type BROADCAST <whatever>.  If you have not already got another 
+global command using the ' symbol, you can type ' <whatever> as well.
+BROADCAST (or BR) by itself will give you a list of all the current people
+on your broadcast channel.
+
+Once you have formed a gang, you may also use the BROADGANG (BG) command
+to broadcast to all members of your gang.  BG by itself will display a list
+of all the people in your gang, telling you which ones are online currently.
+
+} T Help Body
+
+
+HL1T50 {Borrow repay identity donate loan} S 41 Help Topic String
+
+
+HL1B50 {
+This option not implemented.
+} T Help Body
+
+
+HL1T51 {Kai Powers mystic powers} S 30 Help Topic String
+
+
+HL1B51 {
+See help Mystic
+} T Help Body
+
+
+HL1T52 {Keys} S 30 Help Topic String
+
+
+HL1B52 {
+KEYS - This command will display a list of the keys on your keyring
+} T Help Body
+
+
+HL1T53 {Drag} S 30 Help Topic String
+
+
+HL1B53 {
+If another user is unconscious, you may drag them from room to room.
+This can be used to drag them away from attacking monsters and closer to
+healers.
+
+There are two ways to begin dragging someone:
+
+1) Type DRAG USER.  You will go into drag mode for the user.  Each time
+   you move after that, you will be dragging the user.
+2) Type DRAG USER <direction>.  You will drag the user through the exit
+   to <direction>.  You will also go into drag mode after which all moves
+   will drag the user along with you.
+
+Note that you may move slower than normal while dragging someone.
+} T Help Body
+
+
+HL1T54 {Backstab bs} S 30 Help Topic String
+
+
+HL1B54 {
+If you have the ability, BACKSTAB may be used while hiding or sneaking to 
+get a chance at a hit which does a lot more damage than normal.
+} T Help Body
+
+
+HL1T55 {Practice Arena colliseum} S 30 Help Topic String
+
+
+HL1B55 {
+If you are in the practice arena, you may fight with other players with
+no fear of evil points or loss of life.  If you are killed in the arena
+you will revive in the Halls Of The Dead with as many HP as you had the
+last time you entered the arena.
+} T Help Body
+
+
+HL1T56 {Actions} S 30 Help Topic String
+
+
+HL1B56 {
+Type [37mACTION LIST[33m to list the actions available.
+
+Type [37mACTION ON[33m to turn on the use of actions.
+
+Type [37mACTION OFF[33m to turn off the use of actions.
+
+If actions are turned off, you will not be able to do use any action
+commands.
+} T Help Body
+
+
+HL1T57 {Weapons armour class armor class AC DR glance glancing blows} S 40 Help Topic String
+
+
+HL1B57 {
+[0;1;33mWEAPONS AND ARMOUR
+
+[0mThe realm is a dangerous place, and no character will survive long without
+protection. Most character will need a good weapon-- usually the more 
+expensive, the better, but try out many different ones until you find one that
+seems right for you. One factor you must keep in mind is that all weapons have
+a minimum strength, and anyone with a lower strength will suffer from slower
+attacks. When you ready the weapon, if it says "This weapon feels heavy in your
+hands.", then you need more strength to wield it effectively.
+
+Armour is important for everyone. The best armours are the heavier ones, but
+often force your [0;1mencumbrance[0m up to uncomfortable levels. You should never 
+neglect to wear armour, and make sure you are wearing a piece of armour on
+every location you can! Your AC/DR stat is a measure of how protected you are:
+AC stands for Armour Class, and DR stands for Damage Reduction. AC makes you 
+harder to hit, as your armour deflects blows. DR absorbs the damage of
+the attack when you do get hit. If you have high DR, the attack may do no damage at
+all! Note that your AC and DR do not affect the damage you take from spells-- 
+increase your [0;1mMagic Resistance[0m for that!
+} T Help Body
+
+
+HL1T58 {Look read scrolls} S 30 Help Topic String
+
+
+HL1B58 {
+The look command may be used to look at a variety of things.  Just type LOOK
+followed by what you want to look at.  The following are a few of the things
+which you may look at:
+ - Rooms
+ - Users
+ - Monsters
+ - NPCs
+ - Weapons
+ - Armour
+ - Spells
+ - Scrolls
+ - Items
+} T Help Body
+
+
+HL1T59 {Healer temple store monsters healing rope lantern} S 41 Help Topic String
+
+
+HL1B59 {
+You will have to look around and speak to the NPCs to find out more 
+information about this topic.
+} T Help Body
+
+
+HL1T60 {HP Hitpoints Hits} S 30 Help Topic String
+
+
+HL1B61 {
+[0;1;33mHIT POINTS (HP)
+
+[0mHit points are a measure of how much physical punishment you can take. Every
+time you are hit in combat with a weapon or damage spell, your hit points will
+drop. Naturally, you will want to have the most hit points possible! Once you
+reach 0 HP, you will drop to the ground, mortally wounded, and slowly lose
+further as you bleed. Once your HP reaches a certain negative number, usually
+-15, you will die. Another character may [0;1m aid [0myou to prevent further loss of
+blood and allow you to begin to slowly regain HP until you reach 1 HP once 
+more. 
+
+HP may be regained through magical healing, or by natural healing which 
+everyone has to some degree. Using the [0;1m rest [0mcommand will increase your natural
+healing, but only while you remain still and out of combat.
+
+} T Help Body
+
+
+HL1T62 {Follow Mode} S 30 Help Topic String
+
+
+HL1B62 {
+To join a party, first you must be invited by the leader (with the INVITE 
+command).  Once you have been invited, you may type FOLLOW <username> to
+start following that person.  While following you will move where they move
+and will show up in their PARTY command.
+
+To stop following, you may type LEAVE, your leader may type UNINVITE <you>,
+or you may exit the game.
+} T Help Body
+
+
+HL1T63 {Reroll Suicide password die} S 30 Help Topic String
+
+
+HL1B63 {
+When you type REROLL, your current character will die and you will return 
+to the main MMUD menu.
+
+If you have previously set a suicide password (with the SET SUICIDE command)
+then you will have to enter the correct password to perform this command.
+
+The SUICIDE command will kill your current character and you will lose 1
+life.  If this is your last life, then it will be the same as typing REROLL.
+If you type SUICIDE NOW, this will also be the same as typing REROLL.
+} T Help Body
+
+
+HL1T64 {Title} S 30 Help Topic String
+
+
+HL1B64 {
+Your title will depend on a combination of your level and your class.  As
+you progress through the game you will learn the meanings of each title.
+} T Help Body
+
+
+HL1T65 {Follow set follow blind set follow normal} S 41 Help Topic String
+
+
+HL1B65 {
+There are two types of following, BLIND and NORMAL.  If you are following 
+'BLIND', then you will not see any room descriptions as you move with
+your party.  If you are following 'NORMAL', then you will see all the 
+room descriptions normally as you move.
+
+Syntax:
+
+SET FOLLOW BLIND
+SET FOLLOW NORMAL
+} T Help Body
+
+
+HL1T66 {Forgive} S 30 Help Topic String
+
+
+HL1B66 {
+If you are attacked by accident, you may use the forgive command to 
+counter the evil points which they gained when attacking you.  You have
+approximately 5 minutes in which to do this.
+
+Syntax:
+
+FORGIVE <user>
+} T Help Body
+
+
+HL1T67 {Join} S 30 Help Topic String
+
+
+HL1B67A {
+The JOIN command does one of three things:  Join a broadcast group, Join
+a party, or join a gang.  
+
+To join a broadcast group, type JOIN <n> where <n> is a number 
+between 1 and 126.  (You can type JOIN 0 to go back to the default
+broadcast group)
+
+To join a party, wait until you are invited, and type JOIN <username>.
+
+To join a gang, wait until you are invited and type JOIN GANG <gangname>.
+
+} T Help Body
+
+
+HL1T68 {Drink eat} S 30 Help Topic String
+
+
+HL1B68 {
+Some items in the game need to be either eaten or drunk.  To do so, use the
+commands EAT and DRINK.
+} T Help Body
+
+
+HL1T69 {Stealth sneaking sneeking hiding} S 40 Help Topic String
+
+
+HL1B69 {
+[0;1;33mSTEALTH
+
+[0mThe art of stealth manifests itself in many forms, providing additional
+offensive and defensive options the stealthy character. Using the sneak and
+hide commands, a character is able to move unseen throughout the realm. A
+sneaking character will not be seen when entering a room (provided he makes his
+stealth check), but may be seen by anyone actively looking around. It is harder
+to sneak into a well-lit or heavily populated room. A hiding character lurks in
+the shadows, and cannot be seen at all provided a stealth check is passed. Only
+when someone uses the [0;1msearch[0m command will the hider be found. Neither sneak nor
+hide may be used while in combat. These two commands provide effective ways to
+avoid combat, but when used in conjunction with the [0;1mbackstab[0m command, allow
+the stealthy character to attempt devastating surprise attacks. Backstabs may
+be attempted after a successful sneak roll, or while hidden, and if successful
+will do massive damage to the target. Not all weapons may be used to backstab
+with, as some are either too big or heavy, or both. A target with high 
+[0;1mperception[0m or [0;1mAC[0m will prove to be a difficult target.
+} T Help Body
+
+
+HL1T70 {Brief quiet mode verbose silent} S 40 Help Topic String
+
+
+HL1B70 {
+Please see help for PROFILE
+} T Help Body
+
+
+HL1T71 {Rob steal thievery robbing stealing} S 30 Help Topic String
+
+
+HL1B71 {
+[0;1;33mTHIEVERY
+
+[0mCharacters with this ability may attempt to rob other users of their hard-
+earned items and currency. The following commands may be used:
+
+[0;1;33mROB <user>
+ or
+ROB <user> OF <item/currency>
+} T Help Body
+
+
+HL1T72 {Tracking} S 30 Help Topic String
+
+
+HL1B72 {
+[0;1;33mTRACKING
+
+[0mThis useful skill allows you to follow the trail of another character. When 
+used, the tracking skill will tell you whether or not the character has passed
+through the room you are in, and what direction he was headed-- useful if you
+are hunting someone, or to find out where someone has been so you can run in
+the opposite direction!
+} T Help Body
+
+
+HL1T73 {Lives life} S 30 Help Topic String
+
+
+HL1B73 {
+[0;1;33mLIVES
+
+[0mEach player starts the game with 9 lives.  Every time your train to the 
+next level, you will gain additional lives, up to the maximum. Each time you
+die, you will lose one life and be re-incarnated somewhere in the realm.
+
+When you run out of lives, your character will die permanently-- it is a wise
+idea to keep careful track of how many lives you have left!
+} T Help Body
+
+
+HL1T74 {Currency Silver copper gold platinum runic money $ cash mony coins} S 54 Help
+
+Topic String
+
+
+HL1B74 {
+The currency of the realm consists of silver, copper, gold, and platinum
+coins.  Every once in a while you will encounter a runic coin as well.
+
+Go to one of the banks in the land to find the conversion rates between
+each of the currencies.
+} T Help Body
+
+
+HL1T75 {Fire throw} S 30 Help Topic String
+
+
+HL1B75 {
+Ranged combat is not implemented yet.
+} T Help Body
+
+
+HL1T76 {Gossip} S 30 Help Topic String
+
+
+HL1B76 {
+Use the GOSSIP command to send messages to everyone in the game.  You
+can turn off the receipt of GOSSIP messages by either typing 
+
+SET GOSSIP OFF 
+
+or by typing
+
+SET GOSSIP   (to toggle it on/off)   or
+GOSSIP       (by itself, to toggle it on and off)
+
+You may turn on the receipt of gossip messages with
+
+SET GOSSIP ON
+} T Help Body
+
+
+HL1T76A {Auction} S 30 Help Topic String
+
+
+HL1B76A {
+Use the AUCTION command to send messages to everyone in the game.  You
+can turn off the receipt of AUCTION messages by either typing 
+
+SET AUCTION OFF 
+
+or by typing
+
+SET AUCTION  (to toggle it on/off)   or
+AUCTION      (by itself, to toggle it on and off)
+
+You may turn on the receipt of auction messages with
+
+SET AUCTION ON
+} T Help Body
+
+
+HL1T77 {Encumbrance encumberance weight heavy} S 41 Help Topic String
+
+
+HL1B77 {
+[0;1;33mENCUMBRANCE
+
+[0mEvery character has a certain amount of weight that he can carry, based on his
+strength. The number shown on your inventory sheet is the absolute maximum that
+you can carry-- most people will not have this much stuff in their possession!
+There are four levels of encumbrance, each with its own modifiers:
+
+    [0;1mNo Encumbrance: [0mthe character receives a small increase to attack speed.
+ [0;1mLight Encumbrance: [0mthe standard-- no penalties or benefits.
+[0;1mMedium Encumbrance: [0myou receive a penalty to attack speed and accuracy.
+ [0;1mHeavy Encumbrance: [0myou receive a larger penalty to attack speed and accuracy,
+                    and the time to move between rooms is doubled!
+} T Help Body
+
+
+HL1T78 {Doors open close locks picklocks unlock} S 41 Help Topic String
+
+
+HL1B78 {
+[0;1;33mPICKLOCKS
+
+[0mThis useful ability allows you to pick the lock on a door or gate. Though some
+locked doors may be bashed open, picking the lock will always be much easier,
+and some doors may ONLY be picked. Be aware that occasionally locks are trapped
+as well!
+} T Help Body
+
+
+HL1T78A {Train training Levels lvls} S 41 Help Topic String
+
+
+HL1B78A {
+[0;1;33mTRAINING
+
+[0mCharacters may train to increase their levels when they have the appropriate
+amount of experience (by typing Train), or to adjust their primary stats (by
+typing Train Stats), when in a Training Room. Please see [0;1mStats1[0m for more
+information.
+} T Help Body
+
+
+HL1T79 {Dying New fountain potions display wounded names characters spiders forest city moan pray casino necromancers location lord lady} S 41 Help Topic String
+
+
+HL1B79 {
+Not quite sure what help you wanted - please ask your sysop.
+} T Help Body
+
+
+HL1T79A {Text Magician gamble enter notify description curio adventurer lord manhole pickup information stables} S 41 Help Topic String
+
+
+HL1B79A {
+Not quite sure what help you wanted - please ask your sysop.
+} T Help Body
+
+
+HL1T79B {Jewellry Scroll jewelry orc bishops priests goblins tavern please detect magic} S 58 Help Topic String
+
+
+HL1B79B {
+Not quite sure what help you wanted - please ask your sysop.
+} T Help Body
+
+
+HL1T79C {Shrine Toll cure gain smite amulets speed luck sorcerers npcs long clerk dungeon sheriff bishop create} S 41 Help Topic String
+
+
+HL1B79C {
+Not quite sure what help you wanted - please ask your sysop.
+} T Help Body
+
+
+HL1T80 {Street harm bless rules} S 41 Help Topic String
+
+
+HL1B80 {
+No help currently available.
+} T Help Body
+
+
+HL1T81 {Release Notes} S 30 Help Topic String
+
+
+HL1B81 {
+Choose the option 'R' from the main menu for release notes on MajorMUD.
+} T Help Body
+
+
+HL1T82 {Magic Resistance Magicres} S 30 Help Topic String
+
+
+HL1B82 {
+[0;1;33mMAGIC RESISTANCE (MagicRes)
+
+[0mEvery character has a certain level of Magic Resistance. It affects your
+chance of resisting offensive spells, and reduces the damage you take from
+combat spells significantly. Having a low value in this stat will result in
+you getting whomped by spellcasters! Witchunters will find that they resist
+beneficial magic as well as the offensive kind, as they never willingly
+submit to the effects of magic. Having a high Willpower will greatly increase
+this stat, while Intellect will also increase it a little. Though many 
+Warrior-types neglect to increase these stats, they often regret it later.
+} T Help Body
+
+
+HL1T83 {CP Character Points lives/cps cps} S 30 Help Topic String
+
+
+HL1B83 {
+[0;1;33mCHARACTER POINTS (CP)
+
+[0mEach race starts with a certain amount of CPs (character points) which may
+be assigned to your stats.  Use these wisely because they will define the
+way your character performs in the game.
+
+When you train, you will receive additional CPs to assign to your stats. To do
+so, type TRAIN STATS in your training hall. Also see [0;1mStats1[0m and [0;1mStats2[0m in the
+help files for more information on training.
+
+Note that you do not have to assign all of your CPs to create a character.
+If you wish, you may wait until you have entered the game and talked to 
+other people before typing TRAIN STATS in your training hall to allocate
+your CPs.
+} T Help Body
+
+
+HL1T84 {Exit Quit Save} S 30 Help Topic String
+
+
+HL1B84 {
+Typing X will start the process of exitting MajorMUD.  You will have to
+wait for 5 seconds prior to leaving the Realm.
+
+Your character will automatically be saved when you exit.
+} T Help Body
+
+
+HL1T85 {Abilities} S 41 Help Topic String
+
+
+HL1B85 {
+No help available yet.
+} T Help Body
+
+
+HL1T86 {Rest Meditate} S 30 Help Topic String
+
+
+HL1B86 {
+The REST command will increase your rate of HP regeneration.  You must
+remain resting for at least 20 seconds for the increase to take effect.
+
+The MEDITATE command will increase your rate of Mana regeneration.
+You must remain meditating for at least 20 seconds for the increase
+to take effect.
+
+If you move, attack, or are attacked during this period, your restful/
+meditative state will be terminated and you will get no bonus.  
+} T Help Body
+
+
+HL1T87 {Buy healing temple healer chapel} S 40 Help Topic String
+
+
+HL1B87 {
+Type buy healing in the appropriate room to heal all your wounds for a price.
+} T Help Body
+
+
+HL1T88 {Attack interrupts} S 41 Help Topic String
+
+
+HL1B88 {
+Please see help set.
+} T Help Body
+
+
+HL1T89 {Critical hits} S 41 Help Topic String
+
+
+HL1B89 {
+A critical hit is a hit which lands on a vulnerable part of the defender,
+doing up to four times the damage of a normal hit.
+
+Most characters have only a small chance of getting a critical hit,
+although Mystics and Ninjas receive the proper training to increase their 
+chance of getting a critical hit.
+} T Help Body
+
+
+HL1T90 {Quests} S 41 Help Topic String
+
+
+HL1B90 {
+Throughout the land, and over time, there are numerous quests in MajorMUD.
+These include killing evil monsters, finding magical items, finding secret
+doors and exits, and other things.
+} T Help Body
+
+
+HL1T91 {Feedback bug bugs bugreport bugreports} S 41 Help Topic String
+
+
+HL1B91 {
+For bugreports, please email Bugs@MajorMud.com
+For any other feedback, please email info@MajorMud.com
+} T Help Body
+
+
+HL1T92 {Leave} S 41 Help Topic String
+
+
+HL1B92 {
+The leave command does a number of things depending on its use:
+
+You can leave a party which you are following by typing LEAVE.
+
+You can leave your broadcast group and switch to group 0 (no group)
+by typing LEAVE when you are not in a party.
+
+You can leave a gang by typing LEAVE GANG.
+} T Help Body
+
+
+HL1T93 {Ansi} S 41 Help Topic String
+
+
+HL1B93 {
+ANSI is a set of codes which allow your terminal to display colours and
+to move the cursor around on your screen.  Most terminal programs provide
+support for ANSI colours and we recommend that you enable ANSI while
+you are playing MajorMUD
+} T Help Body
+
+
+HL1T94 {Spell Level} S 41 Help Topic String
+
+
+HL1B94 {
+Each spell has a specific level which you must attain before you may cast 
+it.  This is because the spell is too powerful for you to control until
+you reach that level.
+} T Help Body
+
+
+HL1T95 {Apprentice} S 41 Help Topic String
+
+
+HL1B95 {
+An apprentice is a user who is just starting in the world of MajorMUD
+} T Help Body
+
+
+HL1T96 {Aide} S 41 Help Topic String
+
+
+HL1B96 {
+You can aid a fallen player by typing AID <username>
+
+This will stop their bleeding and give them a chance to heal instead
+of bleed to death.
+} T Help Body
+
+
+HL1T97 {Share} S 41 Help Topic String
+
+
+HL1B97 {
+The SHARE command is used to share a certain amount of a currency
+with either the members of your party or everyone in the room.  
+The syntax of the command is:
+
+SHARE <amount> <currency> [WITH <ROOM/PARTY>]
+
+If you do not specify WITH ROOM or WITH PARTY, then PARTY is assumed.
+
+If the amount you are sharing does not divide evenly among the people
+in the room/party, then you will be left with the remainder.  In other
+words, if you SHARE 5 GOLD and there are only 2 people other than yourself
+in your party, each will receive 2 gold and you will be left with 1.
+
+If you attempt to SHARE with anyone who is hidden or has their RECEIVE
+set off, then they will not be included in the receipts of your sharing.
+} T Help Body
+
+
+HL1T98 {Wealth} S 41 Help Topic String
+
+
+HL1B98 {
+WEALTH will display your current monetary situation.  It will also
+display the equivalent value in Copper of all the currency which you
+are carrying.
+} T Help Body
+
+
+HL1T99 {Set Response} S 41 Help Topic String
+
+
+HL1B99 {
+The SET RESPONSE command has the following optional forms:
+
+SET RESPONSE -- Will toggle your talking responses between brief and verbose
+SET RESPONSE BRIEF   -- Will set your talking responses to BRIEF mode
+SET RESPONSE VERBOSE -- Will set your talking responses to VERBOSE mode
+
+Brief mode will only say 'well spoken' when you speak.
+Verbose mode will say 'You said "..."' when you speak.
+} T Help Body
+
+
+HL1T100 {Keep Set Keep} S 41 Help Topic String
+
+
+HL1B100 {
+The SET KEEP command has the following optional forms:
+
+SET KEEP -- Will toggle the keeping of some experience after your final death
+SET KEEP OFF -- Will disable the keeping of some experience after final death
+SET KEEP ON  -- Will enable the keeping of some experience after final death
+
+With KEEP mode 'on', when you reroll or die your final death and create a
+new character, your new character will start with some of the experience
+which you created in your original character.
+} T Help Body
+
+
+HL1T101 {set statline custom statline full custom} S 41 Help Topic String
+
+
+HL1B101A {
+The custom statline is set by typing SET STATLINE CUSTOM xxx or
+SET STATLINE FULL CUSTOM xxx.  If you choose the FULL option then pressing
+Enter will display the same room information as the FULL statline.  
+The xxx can be up to 60 characters long and may include spaces, etc.
+You may include the following variables in xxx:
+      %%h - current hit points
+      %%H - max hit points
+      %%m - current mana
+      %%M - max mana
+      %%c - current wealth on hand
+      %%x - current experience
+      %%X - experience to next level
+      %%r - resting flag " (Resting) " when resting
+      %%fn - set foreground colour (n = 0-7)
+      %%bn - set background colour (n = 0-7)
+      %%B - bold
+      %%N - normal
+      %%U - underline
+      %%L - blink
+      %%R - reverse
+      %%d - use default colours
+      %%n - line-break
+      %%w - warning flag
+} T Help Body
+
+
+HL1T102 {Nekojin cats} S 30 Help Topic String
+
+
+HL1B102 {
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mNEKOJIN[58C[0;1mEXP: [0m+50%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mThe feral folk known as the Nekojin hail from the far east, past the[7C[0;34mบ
+บ [0mDwarven stronghold of Khazarad, where the burning desert wastes lay. They  [0;34mบ
+บ [0mare a cat-like race, with long tufted ears and large oval eyes that[8C[0;34mบ
+บ [0mglitter with a predatory intelligence. Nekojin stand about five feet tall  [0;34mบ
+บ [0mon average, but weigh only slightly more than half a human's weight.[7C[0;34mบ
+บ [0mBlindingly quick, they have a natural charm and speed that often over-[5C[0;34mบ
+บ [0mwhelms all who meet them. Though they are not well-suited for scholarly    [0;34mบ
+บ [0mpursuits, they are natural stalkers and excel in any stealthy profession.  [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0mHailing from the desert, they resist  [0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mheat and fire, but are vulnerable to  [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mcold attacks. Nekojin are ferocious,  [0;34mบ
+บ [0mStrength  [0;31m40[0m-[0;32m100 [0;34mบ [0mRacial Stealth  [0;34mบ [0mproud, extravagant, and extremely[5C[0;34mบ
+บ [0mAgility   [0;31m60[0m-[0;32m130 [0;34mบ [0mNight Vision    [0;34mบ [0mcompetitive. They love to show off    [0;34mบ
+บ [0mHealth    [0;31m30[0m-[0;32m80  [0;34mบ [0mTracking(+10)   [0;34mบ [0mand are quite friendly when the mood  [0;34mบ
+บ [0mIntellect [0;31m40[0m-[0;32m100 [0;34mบ [0mFireRes(+10%%)   [0;34mบ [0msuits them. All Nekojin are very[6C[0;34mบ
+บ [0mWillpower [0;31m30[0m-[0;32m90  [0;34mบ [0mColdRes(-10%%)   [0;34mบ [0mstealthy, can see well in the dark,   [0;34mบ
+บ [0mCharm[5C[0;31m50[0m-[0;32m110 [0;34mบ[17Cบ [0mand have a natural tracking ability.  [0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T103 {Gaunts Gaunt Ones} S 30 Help Topic String
+
+
+HL1B103 {
+[40m[2J[0;34mษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป
+บ [0;1;33mGAUNT ONES[55C[0;1mEXP: [0m+50%% [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออออน
+บ [0mAlso known simply as 'Gaunts', this mysterious and reclusive folk are by   [0;34mบ
+บ [0mfar the least fathomable of the known races. Physically, they are[10C[0;34mบ
+บ [0mimmediately recognizable-- they stand seven feet tall on average, but are  [0;34mบ
+บ [0mincredibly thin. They have long limbs and an elongated face, with large    [0;34mบ
+บ [0meyes that radiate a pale glow. Gaunts dwell in the most remote areas of    [0;34mบ
+บ [0mthe realm, and rarely mix with other folk. When they do, it is most often  [0;34mบ
+บ [0mto hire someone to obtain rare materials, which (it is rumored) they use   [0;34mบ
+บ [0mfor highly magical purposes. As a race they are incredibly brilliant, with [0;34mบ
+บ [0ma masterful grasp of all things arcane and forgotten. They are also quite  [0;34mบ
+บ [0mdevious, and show little emotion -- a combination which makes folk fearful [0;34mบ
+ฬออออออออออออออออออออออออออออออออออออป [0mand suspicious of their motives.[6C[0;34mบ
+บ [0;1mStatistics[9CAbilities[7C[0;34mบ [0mOutsiders never see their concealed   [0;34mบ
+ฬออออออออออออออออออหอออออออออออออออออน [0mhomes. Gaunts' eyes are extremely[5C[0;34mบ
+บ [0mStrength  [0;31m40[0m-[0;32m100 [0;34mบ [0mDark Vision[5C[0;34mบ [0mmagical, allowing them perfect vision [0;34mบ
+บ [0mAgility   [0;31m50[0m-[0;32m110 [0;34mบ [0mPerception+10   [0;34mบ [0min total darkness, as well as a[7C[0;34mบ
+บ [0mHealth    [0;31m30[0m-[0;32m70  [0;34mบ [0mSee Hidden*[5C[0;34mบ [0mheightened perception. Rumours abound [0;34mบ
+บ [0mIntellect [0;31m60[0m-[0;32m140 [0;34mบ[17Cบ [0mabout a secret ritual that allows[5C[0;34mบ
+บ [0mWillpower [0;31m50[0m-[0;32m100 [0;34mบ[17Cบ [0mthem, after attaining a certain level [0;34mบ
+บ [0mCharm[5C[0;31m30[0m-[0;32m80  [0;34mบ [0m*read text[6C[0;34mบ [0mof power, to see hidden people.[7C[0;34mบ
+ศออออออออออออออออออสอออออออออออออออออสอออออออออออออออออออออออออออออออออออออออผ
+} T Help Body
+
+
+HL1T104 {Spellcasting SC} S 41 Help Topic String
+
+
+HL1B104 {
+[0;1;33mSPELLCASTING (SC)
+
+[0m"The" stat to have for all spellcasters, Spellcasting is a measure of your
+knowledge and skill in casting spells. It is affected by the Magery level of
+your class-- Mages will have a better Spellcasting than Warlocks. For Mage-
+types, Intellect is the main stat that increases SC, while Willpower helps
+somewhat. For Priest-types, Willpower is the main stat, with Intellect helping
+a bit. Druid-types use both Intellect and Willpower equally, while Bards use
+only Charm for their spellcasting. Mystics do not use any stat at all-- their
+Kai powers automatically succeed when used.
+} T Help Body
+
+
+HL1T105 {Perception Sight} S 41 Help Topic String
+
+
+HL1B105 {
+[0;1;33mPERCEPTION
+
+[0mThis secondary stat is quite useful, in a variety of ways. Its most common
+function is used while searching for secret doors and traps, and while 
+searching rooms for concealed items. It also affects your chances of surviving
+a backstab attempt-- characters with high Perception have a much greater
+probability of foiling an ambusher's surprise attack.
+} T Help Body
+
+
+HL1T106 {Traps Disarm} S 41 Help Topic String
+
+
+HL1B106 {
+[0;1;33mTRAPS
+
+[0mAlthough many characters do not commonly encounter traps, this skill can be
+very useful, as many traps are simply deadly. Characters with the Traps skill
+can attempt to disarm a trap after it is found with the [0;1msearch[0m command, by
+using [0;1;33mDISARM TRAP [0;1;36m<direction>[0m.
+} T Help Body
+
+
+HL1T107 {Mana} S 41 Help Topic String
+
+
+HL1B107 {
+[0;1;33mMANA
+
+[0mMana is the energy force that exists in all things, and very strongly so in
+living, sentient beings. All living beings have Mana, but only a certain, 
+trained few can tap that power to cast spells. Every spell cast has a Mana
+cost, which is deducted from your current total-- when your Mana reaches 0, 
+you cannot cast any more spells. Fortunately, everyone regenerates it naturally
+over time, though a heavily Mana-depleted Mage may have to wait for some time.
+} T Help Body
+
+
+HL1T108 {gender sex} S 51 Help Topic String
+
+
+HL1B108 {
+To change your gender, use the command SET GENDER <male/female>
+
+Note that you may be charged up to 32000 gold to do this action
+or your sysop may have disabled this command.  If you are not
+willing to spend the 32000 gold then check with your sysop
+before entering this command.
+} T Help Body
+
+
+HL1T109 {Changerace changeclass change} S 51 Help Topic String
+
+
+HL1B109 {
+[0;1;33mCHANGERACE
+
+[0mIf the ChangeRace menu command is enabled on the MajorMUD Main Menu, then you
+have the option of changing your race for a limited time. To do so, simply
+exit the game to the main menu, select [1mCHANGERACE[0m, and follow the instructions.
+You will be prompted to select a new race, and when you have done so, you will
+be back at the main menu. Then enter MajorMUD once more to complete the change
+and to change your stats.
+
+The time you have to change your race wil be displayed on the main menu beside
+the ChangeRace menu command. The amount shown is the time your have, in
+[1mGAME MINUTES[0m, before you no longer have the option of changing your race. You
+may change race any number of times during that period. Note that the time you
+are allowed does not tick down while you are not in the game-- it only gets
+used up while you are in MajorMUD playing, not while you are at the main menu
+or while logged off. A good use of this time is to try out a new race, test it
+to see if you like it, if its EXP chart is too high for you, and if it just
+"feels right". If you don't like it then you can simply change. But keep an eye
+on the time!
+
+Also note that the race have been carefully balanced in terms of power and EXP
+cost. Some races are more suited for certain roles than others, but ALL of them
+are good. Don't overlook a Human Mage just because he doesn't have any natural
+abilities-- he will be a few levels higher than everyone else!
+} T Help Body
+
+
+HL1T110 {Purge} S 51 Help Topic String
+
+
+HL1B110 {
+The purge command is used to remove a spell or power from your spellbook.
+Once you have purged the spell it is gone - the only way to get it back is
+in the same manner in which you originally got it (i.e. purchase it or
+train for it in the case of powers)
+} T Help Body
+
+
+HL1T111 {Stock  Unstock  Markup} S 51 Help Topic String
+
+
+HL1B111 {
+The Stock command is used to stock items in a House Shop, to stock an item
+you must be the owner of that House Shop, by Stocking you add that item
+to the list of available items to buy.
+[0;1;33mStock <item> or[0m
+[0;1;33mStock <item> <currency> or[0m
+[0;1;33mStock <item> <price> or   [0m
+[0;1;33mStock <Item> <Price> <Currency>
+Ex: Stock hatchet 1000 Gold [0m
+
+The Unstock command is used to unstock items from a House Shop, to unstock
+an item you must be the owner of that House Shop, by Unstocking you remove
+that item from the list of available items to buy.
+[0;1;33mUnstock <item>[0m
+Ex: Unstock club
+
+The Markup command is used to increase the percentage of cost that all items
+in the store. To markup the shop you must be the owner of that House Shop.
+[0;1;33mMarkup <percent>[0m
+Ex: Markup 900
+} T Help Body
+
+
+HL1T112 {Promote Demote Lieutenant} S 51 Help Topic String
+
+
+HL1B112 {
+[0;1;33mPromote[0m and [0;1;33mDemote[0m are only usable by the gangleader on their gangmembers.
+Promote is used to promote a member to [0;1;33mLieutenant[0m. A [0;1;33mlieutenant[0m is
+able to invite and uninivte gangmembers when the gangleader is not online to
+do it. This is useful to recruit more members without gangleader supervision,
+or to kick the player that is too rowdy out of the gang.
+Demote is used to demote a [0;1;33mLieutenant[0m to member, this is used if the
+gangleader sees that the [0;1;33mLieutenant[0m isn't doing their job!
+} T Help Body
+
+
+HL1T113 {Metro Metropolis} S 51 Help Topic String
+
+
+HL1B113 {
+[0;1;33m
+Metropolis BBS Inc.
+http://www.majormud.com
+http://www.mudcentral.com
+http://www.metrobbs.com/cgi-bin/dcforum/dcboard.cgi
+[0m
+} T Help Body
+
+
+HL1T114 {ganghouse house guildhouse} S 51 Help Topic String
+
+
+HL1B114 {
+[0;1;33mGanghouses[0m or [0;1;33mGuildhouses[0m are buildings that
+can be purchased by the leader of a gang at the [0;1;33mDeed Shoppe[0m.
+Every sundown [0;1;33mtax[0m is collected on the ganghouse, as is described in the
+[0;1;33mdeed agreement[0m. If the [0;1;33mdeed holder does not contain sufficient funds in
+their [0;1;33mSilvermere bank account[0m, the house is possessed along with any items
+held within. All ganghouses contain guardians charged with keeping non-members
+outside of the house walls. Some ganghouses, depending on the type, have
+shops, healers, and such. All houses have rubbish rooms for sanitary disposal.
+[0m
+} T Help Body
+
+HL1T9999 and HLPB9999 must be the last two items in this file.
+The HLPT9999 topic may NOT be altered.
+
+HL1T9999 {Help ?} S 6 Final Help Topic String
+
+
+HL1B9999 {[0m
+To get general help, type [1;33mHELP[0m.
+
+To get a list of topics available, type [1;33mHELP TOPICS[0m.
+
+To get help on a specific topic, type [1;33mHELP [36m<topic> [0mwhere [1;36m<topic>
+[0mis whatever
+you need help on.  There is a large amount of help available, so try a
+variety of topics here.
+
+If you are in help mode already (chosen from the main MajorMUD menu), then
+you do not need to precede each topic with 'HELP' - merely type the topic
+name in.
+
+For this help message, type [1;33mHELP HELP[0m, or just [1;33mHELP[0m when in
+help mode.
+} T Help Body
+

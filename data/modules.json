@@ -1,0 +1,10 @@
+{
+  "Modules": [
+    {
+      "Identifier": "WCCMMUD",
+      "Path": "/home/klymacks/Code/Repo/Projects/majormud/modules/WCCMMUD/",
+      "MenuOptionKey": "M",
+      "Enabled": 1
+    }
+  ]
+}

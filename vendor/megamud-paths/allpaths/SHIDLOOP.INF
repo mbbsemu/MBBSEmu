@@ -1,0 +1,23 @@
+File name: SHIDLOOP.MP
+Path description: Saracen Fortress, including Zealot area.
+Path starts: Saracen Fortress, Plaster Hallway, Iron Door.
+Path ends: ---
+Area of the game: Module 6
+Level recommendation: 45+
+Type of path: Loop
+File format: New
+Monsters encountered: saracen raider, saracen commander, saracen zealot.
+Additional information:
+
+This loop includes the saracen commander. Being able to cast room spells
+helps. To get to the start of this loop you need a copper amulet.
+
+Before using this loop, you _MUST_ setup a message (in Game Data -> Messages
+as follows:
+
+Name: Pull winch failed.
+Begins with: You heave mightily on the winch, but it does not move.
+Ends with:
+Responce: pull winch^M
+Check-boxes: Last action failed, Ignore, Find anywhere in text.
+

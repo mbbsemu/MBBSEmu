@@ -1,0 +1,13 @@
+File name: SMOKLOOP.INF
+Path description: Smoking Crater, large loop.
+Path starts: Smoking Crater
+Path ends: ---
+Area of the game: Module 4
+Level recommendation: 20-30
+Type of path: Loop
+File format: New
+Monsters encountered: shard creature (unsure).
+Additional information:
+
+This loop doesn't suffer from the regen problems that the default MegaMud
+one does. It doesn't go into the metallic monstrousities room.

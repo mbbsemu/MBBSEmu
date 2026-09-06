@@ -1,0 +1,16 @@
+File name: STONLOO2.MP
+Path description: Stone Elementals, regen fixing loop.
+Path starts: Redstone Tunnel.
+Path ends: ---
+Area of the game: Module 4
+Level recommendation: 25-40
+Type of path: Loop
+File format: New
+Monsters encountered: stone elemental.
+Additional information:
+
+Included in the zip are STONKMIN.MP and KMINSTON.MP which are paths
+to and from the start of this loop.
+
+This loop is designed to fix the regen problems in Stone Elementals. When
+the regen runs out, run this loop and it should help.

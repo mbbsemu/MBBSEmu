@@ -1,0 +1,38 @@
+[][wulfman@acebbs.net]
+[WRDF:Dragon's Teeth Hills:Western Road Fork]
+[JAGH:Dragon's Teeth Hills:Jagged Hills Path]
+B2204041:00541040:34:-1:0:::
+B2204041:0000:north
+D0400104:0000:northeast
+D0404100:0000:northeast
+D0404001:0000:north
+D0400104:0000:northeast
+D0404100:0000:northeast
+D0404100:0000:northeast
+D0404001:0000:north
+D0400104:0000:northeast
+D0404001:0000:north
+D0400005:0000:go trail
+C4F01400:0000:northwest
+C4F01140:0000:northeast
+C4F04001:0000:north
+C4F00404:0000:northwest
+C4F01041:0000:north
+C4F01041:0000:north
+C4F00005:0000:north
+C4F00414:0000:east
+C4F00050:0000:east
+C4F00140:0000:northeast
+C4F00140:0000:north
+C4F00504:0000:northeast
+C4F04100:0000:northeast
+C4F05001:0000:north
+C4F00104:0000:northeast
+C4F14010:0000:up
+00540001:0000:north
+00540001:0000:north
+00500005:0000:north
+00500404:0000:northwest
+00501040:0000:west
+00500050:0000:west
+00500410:0000:northwest

@@ -1,0 +1,219 @@
+
+04-JAN-22 16:53:56 An error was encountered unzipping WCCMMUD.DLL:
+PKUNZIP error number: -1
+
+30-AUG-26 21:45:36 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:46:42 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:47:18 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:49:36 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:50:52 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:52:34 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:56:50 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:57:40 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:58:32 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 21:59:20 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 22:20:04 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 22:20:52 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 22:23:20 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 22:24:44 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 22:28:28 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+30-AUG-26 22:30:46 MESSAGE NUMBER 62 OUT OF RANGE IN WCCMMUD.MCV
+
+01-SEP-26 18:03:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 18:03:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 18:14:34 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 18:14:34 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 19:26:56 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 19:26:58 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 19:50:10 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 19:50:10 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 20:03:08 GETRNO: Error opening GALGSBL.DLL for input.
+
+01-SEP-26 20:03:10 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 16:54:46 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 16:54:48 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 16:55:48 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 16:55:50 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 16:58:04 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 16:58:06 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 17:02:10 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 17:02:10 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 17:18:42 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 17:18:42 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 18:31:48 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 18:31:48 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 18:31:52 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 18:31:52 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 18:31:54 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 18:31:56 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 20:42:46 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 20:42:46 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 23:47:22 GETRNO: Error opening GALGSBL.DLL for input.
+
+02-SEP-26 23:47:22 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 03:10:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 03:10:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 08:26:04 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 08:26:04 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 20:32:06 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 20:32:06 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 20:33:38 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 20:33:38 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 22:18:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+03-SEP-26 22:18:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+04-SEP-26 03:10:04 GETRNO: Error opening GALGSBL.DLL for input.
+
+04-SEP-26 03:10:04 GETRNO: Error opening GALGSBL.DLL for input.
+
+04-SEP-26 20:57:32 GETRNO: Error opening GALGSBL.DLL for input.
+
+04-SEP-26 20:57:32 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 03:10:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 03:10:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 08:03:44 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 08:03:46 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 08:20:00 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 08:20:00 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 09:00:22 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 09:00:22 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 09:16:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 09:16:02 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 09:36:58 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 09:36:58 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 10:06:14 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 10:06:14 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:09:32 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:09:32 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:12:18 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:12:18 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:18:12 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:18:12 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:52:22 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 11:52:22 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 12:47:44 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 12:47:44 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 12:59:56 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 12:59:56 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 13:00:28 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 13:00:28 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 13:18:52 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 13:18:52 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:06:44 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:06:44 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:08:30 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:08:30 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:34:24 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:34:24 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:40:50 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 14:40:50 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 15:21:12 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 15:21:12 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 15:23:58 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 15:24:00 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 20:14:54 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 20:14:54 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 20:21:00 GETRNO: Error opening GALGSBL.DLL for input.
+
+05-SEP-26 20:21:00 GETRNO: Error opening GALGSBL.DLL for input.
+
+06-SEP-26 03:10:04 GETRNO: Error opening GALGSBL.DLL for input.
+
+06-SEP-26 03:10:04 GETRNO: Error opening GALGSBL.DLL for input.

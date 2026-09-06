@@ -1,0 +1,36 @@
+; WCCMMUD.MDF
+
+Module Name: MajorMUD
+
+
+
+Developer: Metropolis Inc.
+
+Unconditional
+
+Requires: GALEML BBSFSD BBSFSE BBSFTF
+Replaces:
+
+Install: WCCMISC
+
+Online user manual: WCCMMUD.DOC
+
+DLLs: WCCMMUD
+MSGs: WCCMMUD WCCMMHLP WCCTEXT
+
+Btrieve page size:    2048
+Btrieve files:        17
+
+Cleanup:
+
+Event-1:
+Event-2:
+Event-3:
+Event-4:
+
+BBS UP: wccmmutl -needed -fast
+
+Add-On Utility: WCCMMUTL (MajorMUD Utilities)
+
+I Need: GALEML BBSFSD BBSFSE BBSFTF
+Needs Me: WCCMMPLS

@@ -1,0 +1,20 @@
+File name: LCSSLOOP.MP
+Path description: Earthen Catacombs Full Loop 
+Path starts: Lost City Spiral Staircase
+Path ends: ---
+Area of the game: Module 7
+Level recommendation: 40+
+Type of path: Loop
+File format: New
+Monsters encountered: flesh ripper, ancestrial guardian, bone warrior,
+                      crane spirit, monkey spirit, gorilla spirit
+Additional information:
+
+Included in the zip are KUELLCSS.MP and LCSSKUEL.MP which are paths
+to and from the start of this loop.
+
+This loop enters every room in the earthen catacombs at least once.
+It uses the teleport rooms to do this so you MUST have a Golden Idol
+or else it will fail.  The only room it doesn't enter is Kuel's room
+so you can loop this partied up.   Kuel's room is West after step
+number 219 should you wish to insert the step to auto give them to Kuel.

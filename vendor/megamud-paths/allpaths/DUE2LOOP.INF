@@ -1,0 +1,27 @@
+File name: DUE2LOOP.MP
+Path description: Duegars, large loop.
+Path starts: Duergar Lord.
+Path ends: ---
+Area of the game: Module 4
+Level recommendation: 45+
+Type of path: Loop
+File format: New
+Monsters encountered: duergar captain, duergar warrior, duergar lord.
+Additional information:
+
+When scripting this area solo, make these changes to MegaMud's monster
+settings (under Game Data -> Monsters):
+
+duergar captain: Friend.
+duergar warrior: Enemy, non-hostile, normal priority.
+duergar lord: Either 1) Friend (if you don't want to kill him), or
+                     2) Enemy, last priority.
+
+This way, when you attack a warrior, the captain in the room will take the
+hits, and once your get past the captain, you will simply attack the warriors
+as normal.
+
+If you want to party script this area, see the Info section of MegaMud Online
+for more information.
+
+Cure poison is very useful for this area :)

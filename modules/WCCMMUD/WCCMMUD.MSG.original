@@ -1,0 +1,582 @@
+LEVEL0 {MajorMUD}
+
+FILE01 {WCCMMUD.MSG}
+
+
+LEVEL3 {MajorMUD}
+
+ Enter the activation code which Metropolis gave you when
+ you purchased this package.
+
+ If you have not done so yet, PLEASE read the sysop
+ release notes to find out HOW TO APPLY a database
+ update.  This is EXTREMELY important because if there
+ are database updates which you have not applied then
+ your game will not function properly.
+
+ACTIVATE {DEMO} S 30 Enter your activation code
+
+ This is the number of normal credits which will be 
+ consumed while in the game.  Exempt users are not 
+ charged this amount.  Note that this is NOT a surcharge.
+ This replaces your basic board billing.  The minimum 
+ value for this follows general bbs minimum rules (ie.
+ if it is less than 4, I believe that 0 credits will be
+ charged)
+
+GAMCRD {Credits per minute consumed while in the game 0} N 0 32767
+
+ This is the number of credits which will be charged to all
+ users in addition to the normal amounts.  Note that even 
+ exempt users will be charged this amount.  Note also that 
+ this amount will not be charged until the user has spent 
+ FREEMIN minutes in the game.  If not 0, this must be at 
+ least 2 - a value of 1 will charge 0 credits.
+
+REALCRD {Credits consumed per minute by ALL users (even Exempt) 0} N 0 32767
+
+ This sets the number of minutes a user may be in the game
+ per day before the REALCRD credits start getting charged.
+
+FREEMIN {Minutes of free time for exempt users 0} N 0 1440
+
+ Owners of this key may execute all of the sysop functions
+ in MajorMUD.
+
+SYSOPKEY {wccsysop} S 15 Key Required to issue SYSOP commands
+
+ Owners of this key may only execute a subset of the
+ sysop functions in MajorMUD.  (The exact commands
+ available are documented in the sysop release notes.)
+
+GAMOPKEY {wccgameop} S 15 Key Required to issue GAMEOP commands
+
+ Loans must ALWAYS be guaranteed with real credits 
+ (i.e. EXEMPT users must still have credits), but you may 
+ restrict access even further with this key.
+
+ NOTE THAT THIS OPTION IS CURRENTLY DISABLED IN THE GAME!
+
+LOANKEY {master} S 15 Key Required to get loans from the banks
+
+ Pretty Self-Explanatory.  This key is required for
+ a user to enter and play MajorMUD.
+
+PLAYKEY {USER} S 15 Key Required to play the game
+
+ If the user has this key, then they may not play the game
+ with one exeption: If they also have the SYSOPKEY, then
+ they may still play.  Do NOT leave this option blank.
+
+NOPLAYKY {idiot} S 15 Key used to ban a user from the game
+
+ Only players with this key will have their MMUD characters 
+ saved.  This should be the same as the PLAYKEY on most 
+ systems, but can be used to provide demo access to play
+ the game if desired. (i.e. Give paying users both the
+ PLAYKEY and the SAVEKEY, but give guests only the PLAYKEY.
+ Do NOT leave this option blank.
+
+SAVEKEY {USER} S 15 Key required to save a player's character
+
+ To progress beyond the level as you have specified in 
+ DEMOLVL, the user must have this key.  If they do not 
+ have this key, they may continue playing, but they
+ will not be able to train.
+
+NODMOKEY {USER} S 15 Key required to pass level DEMOLVL
+
+ If you have paying classes for which you don't mind if they
+ run out of credits while playing MajorMUD, you can give
+ them this key.  If a user with this key runs out of credits
+ while playing MajorMUD, they will not be kicked out of the
+ game.  If they do not have this key and run out of credits
+ they will be automatically kicked out of the game.
+
+NOKICKEY {noboot} S 15 Key required to avoid low credit exits
+
+ If a user has this key then they will not be able to use
+ the gossip channel.  (SYSOPKEY and GAMEOPKEY holders are
+ exempted from this)
+
+GOSSKEY {gidiot} S 15 Key which will disable gossip ability
+
+ If a user has this key then they will not be able to use
+ the auction channel.  (SYSOPKEY and GAMEOPKEY holders are
+ exempted from this)
+
+AUCTKEY {aidiot} S 15 Key which will disable auction ability
+
+ If a user has the NOPAYKEY they will not be charged credits
+ while in MajorMUD.
+
+NOPAYKEY {nopaykey} S 15 Key to avoid credit charges in MajorMUD
+
+LEVEL4 {MajorMUD}
+
+ The game will automatically save BUFTOSAV active players 
+ at this interval.  It is usually a good idea to keep this 
+ relatively low so that the players characters will be 
+ saved at a decent rate, but if you have a slow hard disk,
+ increase this parameter and let the users suffer if the
+ system crashes.
+
+SECOTH {Seconds between saving Player data? 160} N 1 20000
+
+ This specifies the frequency at which the game checks to 
+ save any modified data.  If this time is too large then 
+ the chance of data loss due to a system crash (power 
+ failure, etc.) increases.
+
+SECBUFF {Seconds between saving Buffer data? 1200} N 1 20000
+
+ To reduce a burst of overhead, only a specific number of 
+ users will be saved on each cycle.  If you have hardware
+ disk caching, then this parameter can be increased.  On 
+ the other hand, if you have a slower hard disk, then you 
+ might want to reduce this parameter.  In other words,
+ leave this at 1 (one) unless you have a VERY GOOD hard 
+ disk cache.
+
+BUFTOSAV {Number of buffers to save/set? 1} N 1 32767
+
+ In addition to 2034 bytes per user channel, the game uses
+ a set of in-memory buffers to improve performance.  The 
+ help on each of the following parameters will help you 
+ determine the appropriate value for your system.
+ If you set the values too high, you will get a PLTILE 
+ catastro error upon system startup.  In this case, you 
+ must decrease the values until your system starts 
+ correctly. Each room buffered in memory will take up at 
+ LEAST 1498 bytes.  Default: 2000
+ Minimum Recommended: 10 times number of users playing
+
+ROOMBUF {Number of rooms to buffer in memory? 2000} N 10 32767
+
+ Each item buffered in memory will take up at 
+ LEAST 1021 bytes.
+
+ Default: 450
+ Minimum Recommended: 300
+
+ITEMBUF {Number of items to buffer in memory? 450} N 10 32767
+
+ Each active monster buffered in memory will take up at 
+ LEAST 226 bytes.
+
+ Default: 300
+ Minimum Recommended: 10 times number of users playing
+
+MONSBUF {Number of active monsters to buffer? 300} N 10 32767
+
+ Each known monster buffered in memory will take up at 
+ LEAST 506 bytes.
+
+ Default: 200
+ Minimum Recommended: 100
+
+KMONSBUF {Number of known monsters to buffer? 200} N 10 32767
+
+ Each spell buffered in memory will take up at 
+ LEAST 253 bytes.
+
+ Default: 200
+ Minimum Recommended: 77
+
+SPELBUF {Number of spells to buffer in memory? 200} N 10 32767
+
+ Each race buffered in memory will take up at 
+ LEAST 126 bytes.
+
+ Default: 12
+ Minimum Recommended: 12
+
+RACEBUF {Number of races to buffer in memory? 12} N 5 32767
+
+ Each class buffered in memory will take up at 
+ LEAST 153 bytes.
+
+ Default: 16
+ Minimum Recommended: 16
+
+CLASSBUF {Number of classes to buffer in memory? 16} N 5 32767
+
+ Each bankbook buffered in memory will take up at 
+ LEAST 72 bytes.
+
+ Default: 25
+ Recommend: Number of users playing
+
+BANKBUF {Number of bankbooks to buffer in memory? 25} N 5 32767
+
+ Each message buffered in memory will take up at 
+ LEAST 253 bytes.
+
+ Default: 300
+ Recommend: 300
+
+MESSBUF {Number of messages to buffer in memory? 300} N 5 32767
+
+ Each shop buffered in memory will take up at 
+ LEAST 253 bytes.
+
+ Default: 49
+ Minimum Recommended: 15
+
+SHOPBUF {Number of shops to buffer in memory? 49} N 5 32767
+
+ Each gang buffered in memory will take up at 
+ LEAST 253 bytes.
+
+ Default: 35
+ Minimum Recommended: 4
+
+GANGBUF {Number of gangs to buffer in memory? 35} N 3 32767
+
+ When the user's profile is set to SLOW talking, they must 
+ precede each line with this character if they want it 
+ treated as speaking.
+
+TALKCHAR {.} C
+
+ This character starts off any line which the 
+ user wants to yell.
+
+YELLCHAR {"} C
+
+ To provide a board-to-board variety, you may name your
+ own currency for the maximum valued currency in the game.
+
+USRCURNM {runic coins} S 28 Name for user defined currency
+
+ The user will not die until their HP reach this point. 
+ Between 0 hp and this number, they will be 'unconscious'.
+
+DEATHHP {Number of hit points at which the user dies? -200} N -20000 0
+
+ This determines how many levels of experience the user is 
+ allowed to attain before training.  Any further experience
+ earned will not be added to the user's experience.
+
+XTRALVL {Extra Levels of Experience before Training? 2} N 0 16
+
+What level of punishment do you want to give your users
+if they drop carrier while in the game?
+
+  HIGH   = Always punish
+  MEDIUM = Only punish if attacking/being attacked
+  LOW    = Only punish if in PVP combat (attacking
+           or being attacked)
+  NONE   = Never punish 
+
+PUNHUP {Level of punishment for hanging up? NONE} E HIGH MEDIUM LOW NONE
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO1 {;x} S 8 First Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO2 {;-} S 8 Second Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO3 {;re} S 8 Third Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO4 {} S 8 Fourth Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO5 {} S 8 Fifth Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO6 {} S 8 Sixth Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO7 {} S 8 Seventh Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO8 {} S 8 Eighth Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO9 {} S 8 Ninth Global to disallow
+
+ If you want to restrict the use of certain globals in the
+ game, then enter them in these options.  You may disable
+ up to 10 different global commands.
+
+INVGLO10 {} S 8 Tenth Global to disallow
+
+ This option will limit the number of users or gangs which
+ the user may request in the TOP n and TOP n GANGS commands.
+
+MAXTOP {Maximum number of TOPTEN users/gangs lists? 10} N 10 3000
+
+ When the user dies their last life or rerolls, their 
+ character will keep this percentage of their evil points
+ in the next character they create.
+
+EVILKEEP {Percentage of evil points to keep? 0} N 0 100
+
+ MajorMUD will send email such as internal logic errors,
+ feedback from users, and unavailable help requests via
+ Mailink (If present on the system) to Lance@WCC.  If you
+ wish to receive a copy of this mail, specify the user
+ account to receive the mail here.
+
+MAILUSER {Sysop} S 29 User to receive internal mail
+
+ This limits the amount of profanity allowed in the
+ Game when talking to each other.  It does not affect
+ gang broadcasts or telepaths.  
+
+PROFCHEK {Profanity checking? NO} B
+
+ This specifies the rate at which you want MajorMUD to
+ perform initialization.  With a lower rate, your board
+ will run faster during the initialization period, but
+ will take longer to initialize.  If this is less than
+ 200 then it will be divided by 4 during recovery mode.
+ This was put in for a board which was dialing out to
+ a voice mail system and needed to be running immediately.
+ If you don't need this, set the option to 20000, if
+ you do, 80 isn't a bad value but trial and error will tell.
+
+INITRATE {Rate to perform initialization? 195} N 10 20000
+
+ The polling rate is used as a counter between saving
+ game buffers during the polling routine.  The value
+ for this number is dependant upon both your number of
+ users who are normally in MajorMUD, your normal system 
+ loading, and your CPU speed.  If you have a fast cpu, a
+ low normal load rate, and a lot of users in MMUD, then 
+ raise this number.  If you seem to get a high system 
+ loading with a lot of disk access whenever the buffers 
+ start saving, then RAISE this parameter.
+
+POLLRATE {Relative polling counter? 275} N 10 2000
+
+ If you want to allow users to play the game to a certain
+ level and then force them to switch to another BBS class, 
+ etc. to progress, you can specify the maximum level using 
+ this option.  The key required to pass this level is set 
+ in the option NODMOKEY.  
+
+DEMOLVL {Maximum level attainable without NODMOKEY? 100} N 1 100
+
+ If you feel that displaying the experience of the players
+ in the topten command is too technical or gives too much 
+ away, you can disable it with this option.
+
+EXPINTEN {Include experience in topten command? YES} B
+
+ If you want to restrict your higher level players
+ from attacking lower level players, you can configure
+ the maximum difference between the levels using this
+ option.  If a player with more than this many levels
+ between themselves and their target attempts an attack
+ it will be treated as though they were in a protected
+ room.  Set this option to -1 to disable PVP completely.
+ Note that FIENDS will not get this restriction
+ when they are on the losing side (ie lower level)
+
+LVLDIFF {Maximum level difference for PVP? 9} N -1 100
+
+ If you have hangup penalties enabled, this is the
+ minimum percentage of their maximum HP which they will
+ lose.
+
+MINHUPHP {Minimum percentage to lose on hangup? 0} N 0 100
+
+ If you have hangup penalties enabled, this is the
+ maximum percentage of their maximum HP which they will
+ lose.
+
+MAXHUPHP {Maximum percentage to lose on hangup? 0} N 0 100
+
+ If you have hangup penalties enabled, this is the
+ maximum number of items which they can lose.
+
+MAXHUPIT {Maximum items to lose on hangup? 0} N 0 100
+
+ If a user does not enter any commands for this many 
+ seconds, then they will be hung up upon.  It will 
+ be treated as though they exitted normally (not a 
+ hangup penalty)
+
+INACTIVE {Number of seconds of inactivity allowed? 900} N 60 32000
+
+ If you wish to move the location of your databases from
+ the default BBS directory, you may specify the location 
+ here with either a relative path from the bbs directory
+ (ie. "muddats\") or an absolute path (ie. "d:\muddats\").
+
+ Note that this does NOT apply to the update databases.
+ If you place those in a directory other than the bbs
+ directory, you must enter the full path to them when
+ asked for the filename.
+
+ Also, NEVER use a Ram Drive for this location.
+
+DATADIR {} S 37 Location of databases
+
+ If the KEEPEXP option is set to YES, then users will
+ keep some of their experience to start a new character
+ with after they either die or reroll.  If set to NO
+ then they will always start at 0.
+
+KEEPEXP {Keep some experience after final death? NO} B
+
+ If you give out sysop powers in MajorMUD to people
+ who are only co-sysops, you may wish to restrict 
+ the SYSOP LIGHTNING command so that it only works
+ against users who would normally receive lightning.
+
+LIGHTEVY {Allow SYSOP LIGHTNING on all players? YES} B
+
+ If you want to let your users change their gender in
+ the game, you may charge them this much gold to 
+ do so.  If you set it to -1 then they will not be
+ allowed to change gender.  0 will let them do it 
+ for free.
+
+GENDERGO {Gold to charge to change gender? 0} N -1 32000
+
+ Enter the amount of accumulated gang experience
+ required before a gang leader may purchase a ganghouse.
+ This figure is multiplied by a thousand. So a value of
+ 320 would result in 320,000 experience being required
+ to purchase a ganghouse while a value of 31450 would
+ result in 31,450,000 experience.
+
+GANGEXP {Exp (x1000) required for Gang House? 0} N 0 32767
+
+ If you wish to be able to delete a BBS user without
+ actually deleting the MajorMUD user then set this
+ option to NO. Note that when set to NO, if a BBS user
+ is deleted and a new user creates the same account
+ name then they will inherit the old MajorMUD character.
+
+DELUSER {Delete MajorMUD user with BBS User? YES} B
+
+ Maximum number of evil points to forgive per day. This
+ option is used to control the rate at which your evil
+ players return to neutral.  If you set this too high
+ then you will increase the chance of corrupt users
+ taking advantage and killing everyone in sight.  Too
+ low and users may stop playing if they get too evil.
+ Refer to the sysop release notes (wccmmud.rln) for
+ more information BEFORE CHANGING.
+
+MAXEPDAY {Max EPs to forgive per day? 12} N 4 100
+
+ A portion of the evil points forgiven each day depend
+ on the amount of time spent playing MajorMUD without
+ performing any evil actions.  This option controls
+ the granularity of the required online time.  Refer
+ to the sysop release notes (wccmmud.rln) for more
+ information BEFORE CHANGING.
+
+EPCYCLE {Minutes per Evil Point Cycle? 60} N 15 360
+
+ For each full evil point cycle that the user spends
+ in MajorMUD, this option controls the number of
+ evil points that they will receive at the end of the
+ day (cleanup).  Refer to the sysop release notes
+ (wccmmud.rln) for more information BEFORE CHANGING.
+
+EPAMOUNT {EPs to forgive per cycle? 1} N 1 100
+
+ If you do not wish to take advantage of the features
+ of the 'lawful' character style then set this
+ option to NO.
+
+ENABLAWF {Enable the choice of Lawful? YES} B
+
+ This option sets the max coin type that will be swept up
+ with the Coin Sweep option of the offline utilites.
+
+COINSWP {Sweep coins of this and lower? GOLD} E USER_DEFINED PLATINUM GOLD SILVER COPPER NONE
+
+ Set this option to yes if you want to sweep ganghouses
+ with Coin Sweep
+
+GCOINSW {Sweep coins from gang houses? NO} B
+
+
+
+LEVEL6 {MajorMUD}
+
+ This is what the user will see when they login to the 
+ board.
+
+USRLOGIN {
+[1mFantasy awaits you in [33mMajorMUD v%s!
+
+} T Text shown when user logs into the system
+
+ Users with the PLAYKEY will receive this text 
+ message when they logoff your BBS.  This has
+ been disabled and will be removed in a future
+ version.
+
+USRLOGOF {[0m
+} T Text shown when user logs off the system
+
+ This will be displayed when the user enters the realm.
+
+USRFOLED {[0m[2J
+[1;33mMajorMUD - ROL
+
+[0m[1;30m=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
+} T Text shown when user tries to play!
+
+ This is the last thing each user sees when they 
+ Exit the Realm
+
+USREXIT {[0m
+Your character has been saved. If you have any comments or suggestions, please
+leave them in E-mail to Sysop. Thanks.
+} T Text shown when user exits
+
+ This text block will be displayed when the user types X 
+ from the MajorMUD menu.  This is specifically for those
+ boards who are running MajorMUD on a sub-board and 
+ require the ability to send specific characters to
+ disconnect from the sub-board.
+
+LEAVEMNU { 
+} T Text shown when user leaves Menu
+
+ If a user has been inactive for too long then they
+ will receive this message when they are hung up on.
+
+INACHUP {[0m
+You have been inactive for too long.   Bye!
+
+} T Text shown when user exits

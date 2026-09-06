@@ -1,0 +1,523 @@
+
+LEVEL0 {MajorMUD Plus - Entertainment Edition}
+
+
+FILE01 {WCCMMPLS.MSG}
+
+
+LEVEL3 {MajorMUD Plus - Entertainment Edition}
+
+ Enter the activation code which Metropolis gave you
+ when you purchased this package.
+
+ACTIVATE {DEMO} S 30 Enter your activation code
+
+ Every time a user wants to use MajorMUD Plus to change
+ their description they will be charged this many
+ credits.  Enter 0 to disable the charge.
+
+DESCCHRG {Credits to change description? 3600} L 0 1000000
+
+ Every time a user wants to use MajorMUD Plus to change
+ their description they will be charged this many
+ copper pieces.  Enter 0 to disable the charge.
+
+DESCCOPP {Copper to change description? 0} L 0 1000000
+
+ Every time a user wants to use MajorMUD Plus to change
+ their description they will have this many days
+ deducted from their membership.
+ Enter 0 to disable the charge.
+
+DESCDAYS {Days to change description? 0} L 0 1000000
+
+ Every time a user wants to buy a life in MajorMUD Plus
+ they will be charged this many credits.  Enter -1 to
+ disable this option.
+
+BUYLIFE {Credits to buy a life? 28800} L -1 90000000
+
+ In addition to credits, you may also charge users
+ game currency (in copper units) to buy a life.  Note
+ that this option is disabled if BUYLIFE is set to -1.
+
+COPPLIFE {Copper to buy a life? 10000} L 0 99999999
+
+ In addition to credits and copper, you may also charge
+ users membership days to buy a life.
+ Note that this option is disabled if BUYLIFE is set
+ to -1.
+
+DAYSLIFE {Days to buy a life? 0} L 0 60
+
+ Users with this key will be able to perform sysop options
+ within MajorMUD Plus.
+
+SYSOPKEY {WCCSYSOP} S 15 Key required to perform sysop options?
+
+
+LEVEL4 {MajorMUD Plus - Entertainment Edition}
+
+ The MajorMUD Plus Registry will display an age for the
+ user when looked up.  This age is calculated based upon
+ the number of minutes of playtime the user has.  You may
+ adjust the ages of your users by adjusting this value.
+
+MINYEAR {Minutes of playtime per year of age? 1000} N 1 32767
+
+ When using a defaulted age, the age will start at
+ STARTAGE and then add years based on game time and
+ MINYEAR.
+
+STARTAGE {Starting default age? 17} N 0 500
+
+ Use this option if you wish to limit the number of lines
+ allowed in the personalized description.  It may be set
+ for between 1 and 10 lines.  If you reduce this value
+ after users have longer descriptions then they will
+ continue to have long descriptions until they attempt to
+ change them.
+
+DESCLEN {Number of lines allowed in description? 6} N 1 10
+
+ If you wish to validate all user descriptions before they
+ are used in the game, set this option to Yes
+
+NEEDAPPR {Require approval of new descriptions? YES} B
+
+ User to receive email notifications of descriptions that
+ require approval.  Leave this blank to not generate any
+ email.
+
+APPRUSER {Sysop} (NEEDAPPR=YES) S 18 Userid to receive new description email?
+
+ This is the ANSI colour sequence which will be used
+ to display the user-specified custom registry values.
+
+REGCOLR {[0;36;40m} S 18 ANSI colour sequence for registry values
+
+ This is the global registry lookup command to lookup 
+ MajorMUD Plus registry entries.
+
+REGGLOB {/mudreg} S 20 Global MajorMUD registry command
+
+LEVEL6 {MajorMUD Plus - Entertainment Edition}
+
+ This is the menu which the user gets before changing their
+ description.
+
+CHARDESC {[0m[2J
+[35mCharacter Descriptions
+
+[36mCurrent Description
+[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=
+[0;32m%s
+
+[1;30m[[37mD[30m] . [0mChange your Character Description
+[1;30m[[37mA[30m] . [0mAbout Character Descriptions
+[1;30m[[37mX[30m] . [0mExit to Entertainment Utilities
+
+} T text shown
+
+ This text will be shown as a result of the about box
+ on the character descriptions menu.
+
+ABOUDESC {[0m[2J
+[35mCharacter Descriptions
+
+[32mCharacter Descriptions are user definable, allowing you to give a touch of
+personality to your character's appearance. The description that you create
+will appear below the stock one that is based on your attributes.
+
+NOTE: Your description must be approved by the Sysop, so please keep things
+      reasonable and clean.
+} T text shown for about description
+
+ This is the main menu which users will see when they
+ enter MajorMUD Plus from the MajorMUD main menu.
+
+MAINMENU {[0m[2J
+ [1mM A J O R  M U D  P l u s [33mv%s
+   [0m{Realm Of Legends~}
+[32m*Entertainment Edition*
+
+[1;30m[[37mD[30m] . [0mCharacter Descriptions
+[1;30m[[37mR[30m] . [0mCharacter Registries
+[1;30m[[37mI[30m] . [0mInformation
+[1;30m[[37mX[30m] . [0mMajorMUD Main Menu
+
+} T main menu
+
+ This is an additional menu which users will see
+ if the BUYLIFE option is set to anything other
+ than -1.
+
+LIFEOPT {[0;1;30m[[37mL[30m] . [0mPurchase an additional Life
+
+} T buy life option
+
+ This is an additional menu which users with the
+ sysop key will see at the main MajorMUD Plus
+ menu.
+
+SYSMENU {[0;1;30m[[37mS[30m] . [0mView/Delete Character Descriptions
+
+} T sysop main menu
+
+ This is the prompt to confirm the purchase of
+ a life.
+
+CONFLIFE {[0mThis will cost you [1;33m%s [0mcredits, [1;33m%s [0mcopper, and [1;33m%s [0mdays from your membership.
+
+[32mAre you sure that you wish to continue? } T confirm life purchase
+
+ This is the text block which will be displayed
+ when the user chooses the information option on
+ the main MajorMUD Plus menu.
+
+INFOTEXT {[0m[2J
+MajorMUD Plus Entertainment Edition
+
+[37mIf you require any information or have any suggestions, please contact us via
+e-mail at [32msupport@majormud.com [37m(Internet).
+
+[32mCopyright [1;31m(c) [0;32m1996-1999 Metropolis, Inc.
+} T text shown for about description
+
+ This is the sysop menu for viewing and deleting
+ character descriptions.
+
+SYSMMENU {[0m[2J
+ [1mM A J O R  M U D   P l u s
+[0m{Realm Of Legends~}
+[32m*Entertainment Edition - Sysop Menu*
+
+[1;30m[[37mV[30m] . [0mView a Description
+[1;30m[[37mD[30m] . [0mDelete a Description
+[1;30m[[37mL[30m] . [0mList Descriptions awaiting approval
+[1;30m[[37mA[30m] . [0mApprove a user's Description
+[1;30m[[37mX[30m] . [0mExit to Entertainment Utilities
+
+} T sysop menu
+
+ This is the MajorMUD Plus menu prompt.
+
+MENUPMPT {[0m
+[1;30m[[0mMUDENT[1;30m][0m: } T Main Menu text
+
+ REGDISP is the first half of the registry printout.  This
+ information is based upon their in-game statistics.
+
+REGDISP {[0m[2J
+
+        [32mName: [36m%s %s
+        [32mRace: [36m%-15.15s              [32mTitle: [36m%s
+         [32mSex: [36m%-15.15s                [32mAge: [36m%d
+
+ [32mHair Colour: [36m%-15.15s         [32mReputation: [36m%s
+ [32mHair Length: [36m%-15.15s               [32mGang: [36m%s
+  [32mEye Colour: [36m%-15.15s
+
+} T Primary Registry Display
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP0 {[0m  [32mBirthplace: } T First Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP1 {[0m  [32mAssociates: } T Second Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP2 {[0m     [32mEnemies: } T Third Custom Entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP3 {[0m [32mFav Hangout: } T Fourth Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP4 {[0;32m  Fav Weapon: } T Fifth Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP5 {[0m    [32mDemeanor: } T Sixth Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP6 {[0m    [32mDislikes: } T Seventh Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP7 {[0m    [32mComments: } T Eighth Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP8 {[0m            [32m: } T Ninth Custom entry
+
+ REGDISP0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting the
+ user for entry as well as for displaying the information.
+ Note that you must make sure that each of these line up as
+ you want them to and that they are no longer than 20
+ characters on the screen.
+
+REGDISP9 {[0m  [32mLast Words: } T Tenth Custom entry
+
+ This is the description field for the age override
+ in the registry.
+
+REGAGE {[0m         [32mAge: } T Age prompt in registry entry
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT0 {[0m
+[32mYour character's birthplace: } T First Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT1 {[0m
+[32mAssociates or friends in the Realm: } T Second Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT2 {[0m
+     [32mEnemies: } T Third Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT3 {[0m
+[32mFavorite Hangout: } T Fourth Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT4 {[0m
+[32mYour weapon of choice: } T Fifth Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT5 {[0m
+[32mYour demeanor or behaviour: } T Sixth Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT6 {[0m
+[32mDislikes: } T Seventh Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT7 {[0m
+[32mComments line one: } T Eighth Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT8 {[0m
+[32mComments line two: } T Ninth Custom prompt
+
+ REGPMPT0-9 are the 10 customizable registry entries.
+ Whatever you put here will be used both for prompting
+ the user for entry of the value for the associated
+ REGDISP value
+
+REGPMPT9 {[0m
+[32mClosing Statement: } T Tenth Custom prompt
+
+ This is the prompt for the age override in the registry.
+
+REGAGEP {[0m
+    Setting an age of [1;33m0 [0mwill default your age
+    based on the amount of time you have been playing.
+
+[32mAge: } T Age prompt in registry entry
+
+ This prompt will be displayed while in the process of
+ editing your registry information
+
+REGEDPMT {[0m
+Enter a line number to change, [1;33mX [0mto save and exit, or
+[1;33mQ [0mto exit without saving.
+
+[32mChoice:} T Registry edit prompt
+
+ This is the prompt which will be displayed at the registry
+ menu.
+
+REGPMPT {[0m
+[1;30m[[0mMUDREG[1;30m][0m:} T Registry Prompt
+
+ This is the registry menu which will be displayed
+ when the character registries option is chosen from
+ the main MajorMUD Plus menu.
+
+REGMENU {[0m[2J
+[32mMajorMUD Registry
+[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m=[0m-[1;30m==
+
+[[37mE[30m] . [0mCreate/Edit your Registry entry
+[1;30m[[37mS[30m] . [0mSearch for Registry entries
+[1;30m[[37mL[30m] . [0mLook up another user's entry
+[1;30m[[37mX[30m] . [0mExit to Entertainment Utilities
+
+} T Registry Menu
+
+ This is the sysop menu which will be displayed
+ to users with the sysop key.
+
+REGSMENU {[0;1;30m[[37mR[30m] . [0mRemove a Registry entry
+} T sysop registry menu
+
+ This is the prompt given when the user is asked for
+ a registry name to lookup.
+
+REGUNAME {[0m
+Lookup which user? } T Lookup a user registry
+
+ This is the prompt given when the sysop is asked for
+ a registry name to remove.
+
+REMUNAME {[0m
+Remove which user? } T Remove a user registry
+
+ This is displayed when a record for the given
+ MajorMUD user can not be found.
+
+USRNOTFD {User not found!
+} T User not found
+
+ This is displayed when an invalid menu choice is
+ made.
+
+INVENTRY {[0m
+Invalid Entry!
+} T Invalid Entry text
+
+ This is displayed to a user on the description
+ menu when they have an unapproved description.
+
+NOTAPPRV {[0;1;33mThis description has not been approved yet.
+
+} T Description not approved
+
+ This message is displayed when a user tries to
+ change their description without enough credits
+ in their account.
+
+DSCNOCRD {[0m
+You do not have enough credits to change your description.
+} T No credits for description
+
+ This message is displayed when a user tries to
+ buy a life without enough credits in their account.
+
+LIFNOCRD {[0m
+You cannot afford to purchase a life right now!
+} T No credits for life
+
+ This message is displayed when a user tries to
+ buy a life when they don't have a MajorMUD character
+
+LIFNOCHR {[0m
+You don't appear to have a MajorMUD character!
+} T No character in mud
+
+ This message is displayed when a user tries to
+ buy a life when they already have 9 lives left.
+
+LIFNOLIF {[0m
+You may not purchase any more lives.
+} T No lives to buy
+
+ This message is displayed when a user successfully
+ purchases a life.
+
+LIFSUCES {[0m
+You have purchased an additional life for your character.
+} T Buy life success
+
+ This message will be given when a user searches for
+ registry entries and none are found.
+
+NOREGFND {[0mNo registry entries found!
+
+} T No registry entries found
+
+ This is the summary line of the number of registry
+ entries found as a result of a search.
+
+REGFOUND {[0m%d registry entries found.
+
+} T Summary count of registries
+

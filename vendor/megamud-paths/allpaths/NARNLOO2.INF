@@ -1,0 +1,15 @@
+File name: NARNLOOP.MP
+Path description: Newhaven Arena loop (with Healing)
+Path starts: Newhaven Arena
+Path ends: ---
+Area of the game: OG
+Level recommendation: 1-5
+Type of path: Loop
+File format: New
+Monsters encountered: lashworm, carrion beast, giant rat, filthbug,
+                      acid slime, kobold thief.
+Additional information:
+
+This loop buys healing at the temple healer, which is gets you a higher
+exp rate, but costs money. To set MegaMud up to do this, set your rest HPs
+at 0, run HPs at a reasonable level, and make sure you have lots of cash.

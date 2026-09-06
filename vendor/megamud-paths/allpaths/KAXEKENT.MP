@@ -1,0 +1,9 @@
+[][MrBlack]
+[KAXE:Khazarad:Axe of Fury Weapon Store]
+[KENT:Khazarad:Entry Arch]
+F1E00004:A6E00055:5:-1:0:::
+F1E00004:0000:s
+3B900055:0000:w
+3B900055:0000:w
+3B900050:0000:w
+3B900055:0000:w

@@ -1,0 +1,601 @@
+There are a number of online sysop functions available.  They can be 
+divided into two main areas: From the menus, and In the game.  
+
+SYSOP FUNCTIONS FROM THE MAJORMUD MENU:
+
+To activate the sysop menu from the MajorMUD main menu, type the word
+SYSOP at the menu prompt.  Game-ops may NOT enter this menu.
+You will then be at the sysop menu which is as follows:
+
+C - Clear all saved evil points
+CP- Clear all saved profiles (for resetting only)
+U - Apply an update
+R - Reindex the Limited Items (RF = Full reindex)
+D - Check for defunct MUD users, etc.
+H - Check for item hoarders, etc.
+I - Sysop Instructions (wccmmud.rln)
+N - Sysop Release notes (wccmmsys.rel)
+S - Online Sysop Command Help (wccmmsys.not)
+B - Edit the sysop bulletin file
+E - Edit the wccmmud.ini file (only if it is small)
+L - Change the limits for defunct user checking
+A - Addon module activation codes
+X - Exit to Main Menu
+
+C - Clear all saved evil points
+Clear all saved evil points is a function primarily for any of the existing
+boards who wish to reset their game.  As MajorMUD does not store evil points
+saved between characters in the WCCUSERS.DAT database, merely overwriting
+this database will not remove all of the saved evil points.  
+See Appendix A - Resetting your game for more information.
+
+CP - Clear all saved profiles (for resetting only)
+This is another function primarily for those sysops who wish to reset their
+game.  This will delete all of the saved profile information so that the
+game can be fully reset.  Note that this is required to delete all of
+the saved experience from any rerolls which users may have done as well
+as just their profile information.
+See Appendix A - Resetting your game for more information.
+
+U - Apply an update
+There will be several different kind of updates which we will be providing
+for MajorMUD.  Essentially, an update will either be a DLL update, a 
+database update, or both.  If it is either a DLL update or a 'both' update
+then you will have to bring your BBS down and run the standard installation
+program to receive the update.  If it is only a database update then you
+can update your BBS without shutting it down.  For these cases you will
+receive a file usually called WCCUPDAT.DAT.  This file will contain all of
+the necessary information for upgrading your databases online.  To apply 
+these updates, ensure that this file is accessable in your bbsv6 directory
+and choose this option (U) from the MajorMUD sysop menu.  You will be
+asked for the name of a file at which point you type in the name of the
+update database (wccupdat.dat).  MajorMUD will now apply all of the updates
+from this database to your running system.  You will notice an increase in
+load during this process as there is a large amount of disk access required,
+although your board should still be very much usable.
+
+  Summary of 'how' to apply an update:
+
+  1)  You will download a file from Dreamscape BBS with a name similar to
+      WCCUPD3.ZIP.  Basically it will be a .zip file.
+  2)  Unzip this file into your BBS directory.  It will display the name
+      of the file which is being unzipped and you should write this name
+      down.  Most of the time, this file will be called WCCUPDAT.DAT.  If
+      the file is called something else, not only will you see the name 
+      when you unzip it, but the name will also be included in the File-
+      Library file information which you MUST read prior to downloading
+      any files pertaining to MajorMUD.
+  3)  Run your BBS
+  4)  Go to the MajorMUD Menu and type SYSOP (and press enter).  You will
+      see the sysop menu.
+  5)  At the sysop menu, choose the option 'U' which is labelled as 
+      "U - Apply an update"
+  6)  When asked for the name of the database, enter the name which you
+      wrote down in step 2.
+  7)  Wait until the spinning dial stops and it tells you that the update
+      is complete.
+  8)  The update is now complete.  Over the next while, the data will all 
+      be written out to disk as the buffers are saved.  If your system
+      crashes for any reason within a few hours of applying an update you
+      should re-apply the update after the system comes online.  It is 
+      safe to re-apply an update.
+
+
+R - Reindex the Limited Items
+This option has been obsoleted.  If you want to reindex your limited items
+then you must run an offline database recovery.  This text has been left
+here for historical and explanatory purposes.
+-
+MajorMUD has a number of items which have a limited quantity within the 
+game.  Although we have tried to catch all of the possible locations in
+which an item could get 'lost' we may have missed one or two.  This function
+will check through all of the items in your database and confirm that
+each item is actually where it thinks it is and that there are as many 
+items actually present in the game as the game thinks there are.  This 
+function will be automatically run as part of the Upgrade procedure 
+described above.  Although theoretically not required, We would recommend 
+that you run this procedure at routine intervals (every few days) to ensure 
+that your database remains consistent.
+
+By default this routine will do a 'quick' check to make sure that 
+everything is in good order.  If you think there may be a larger problem, 
+you can type in 'RF' at the menu instead of just 'R'.  This will force
+it to check each and every room/monster/person for each and every limited
+item.  This _will_ take a very long time (on the order of several HOURS) 
+but it should not impact the performance of the BBS (It will render your 
+current account unusable while it is doing this though)
+-
+
+D - Check for defunct MUD users, etc.
+During the BETA testing period, one of the features which got left until
+the end was the deleting of MajorMUD users when the actual BBS account
+was deleted.  This utility will walk through all of the MajorMUD characters
+and confirm that the BBS account still exists.  If it doesn't exist, you
+will be prompted to delete it (at which point, X will take you out of
+the checking).  Note that if you choose to not delete the MajorMUD 
+character, the next user to login and create an account as that userid 
+will 'inherit' the MajorMUD character for that userid.
+This option has been expanded to include the option to delete MUD players
+who have not played for a while, or who do not appear to be really 'playing'
+the game.  For these users, you will be prompted to see if you want to 
+delete the player and you will be shown a bit of information regarding the
+amount of time they have spent, experience earned, etc.  If a user has not
+played since before either version x or y (I forget which), then you
+will see the following in the user description under this option:
+
+Total time played: 0 minutes
+Last played on 00-000-80 (5664 days ago)
+
+This is not a bug, it merely indicates that the game does NOT know the
+last time they played, nor how long they have played - you will have 
+to evaluate each of these users yourself to determine if they should 
+be deleted (ie. ask yourself when the last time they logged in, if they 
+play mmud, etc.).
+
+*** NOTE *** 
+If you choose to delete a user, THEY ARE DELETED.  There is no undo.
+
+Note also that if the user creates a new character they may or may not
+receive starting experience based on the last time they left the game
+normally - in other words, if you let them keep exp after a reroll,
+deletion of their character will essentially be like rerolling them.
+
+H - Check for item hoarders
+This option will go through all of your users and display all those users
+who have limited items in their possession.  If they have any, the user
+will be displayed, along with time and experience statistics.  You are
+then given the option to remove ALL the limited items from this user.  If
+you choose to do so, there is NO UNDO and the items will regenerate at
+the next appropriate moment in their original generation location.
+For those who care, the number in () refers to the total number of that
+item which are allowed in the game.
+Note that this will not remove limited items from users that are currently
+in the game.
+Note that only ONE sysop may be doing this at any given point in time.
+Failure to comply with this may remove items from the wrong user.
+
+B - Edit the sysop bulletin file
+If the file WCCSYSOP.BUL is present in the BBS directory, it will be
+displayed to the user as they enter the game.  You may use this option
+to edit this file online (It may only be approx. 24 lines of text).  If
+you want to not display anything, either delete the file WCCSYSOP.BUL or
+use this option to delete the contents of the file (including the topic).
+This is a simple way to announce online events without have to change 
+your CNF text blocks.
+
+If you want to completely eliminate the bulletin from your system after
+having created one (and don't even want any blank lines showing up) then
+just delete the file WCCSYSOP.BUL from your bbs directory.
+
+Note that if you want to put colours or other special effects in this file
+then you can use the WorldGroup drawing program (the one you use to create
+fancy menus) and edit it that way (the program is called wgsdraw in WorldGroup
+1, 1.01, 2.0 and bbsdraw in MBBS 6.25).  You have to save it as an ANSI file
+if you do this method.
+
+E - Edit the wccmmud.ini file (only if it is small)
+This option will let you edit the wccmmud.ini file while online.  You still
+have to enter the game and do a sys reload after editing to make the changes
+take effect right away.  Note that if you use this option to edit the file
+you will not be able to put lots of comments in the file as the buffer size is
+limited.
+
+L - Change the limits for defunct user checking
+Use this option to change the filter which is used when listing potentially
+defunct users.  You may adjust the number of minutes of play time, the 
+number of days since they last played, and the level of experience to check.
+All users who have played less than <number of minutes set> minutes in the
+game, OR who have not played in <number of days set> days, OR who have less
+than <experience value set> experience points will be listed.
+
+A - Addon module activation codes
+Use this option to view the current database addon module activation codes
+which you have installed and to add new activation codes.  To add a new
+activation code you will first be prompted for the addon to add a code for.
+This is a numeric identifier which you will be given when you purchase an
+addon.  You will then be asked for an activation code.  This is the code
+which you were given when you purchased the addon
+
+
+
+SYSOP FUNCTIONS FROM THE WITHIN THE GAME:
+
+As a sysop, there a few special functions which you can activate while
+you are playing MajorMUD.  All of the sysop functions in the game
+begin with the word SYSOP.  If you type SYSOP alone you will receive
+online help as to which options are available.  These commands are:
+
+SYSOP BUFFERS     (Game-ops may use this as well)
+SYSOP STATUS      (Game-ops may use this as well)
+SYSOP MAP         (Game-ops may use this as well)
+SYSOP GOD         (Game-ops may use this as well)
+SYSOP LIST        (Game-ops may use this as well)
+SYSOP REPORT      (Game-ops may use this as well)
+SYSOP LIGHTNING   (Game-ops may use this as well)
+SYSOP DISBAND
+SYSOP DISABLE
+SYSOP ENABLE
+SYSOP GANGSIZE
+SYSOP UNWRAP
+SYSOP GOTO        (Game-ops may use this as well)
+SYSOP INITIALIZE
+SYSOP CONFIGURE
+SYSOP RESET
+SYSOP RELOAD      (Game-ops may use this as well)
+SYSOP SPEAK       (Game-ops may use this as well)
+SYSOP ARENA
+
+Refer to section 3.1 in wccmmud.rln for information on keying access
+to some of the gameop commands so that you can further restrict the
+access a gameop has.
+
+The BUFFERS command has three variations:
+SYSOP BUFFERS
+    Displays the current status of MajorMUD's in-memory buffers.  For each
+    of the memory buffers, the following values will be displayed:
+     Size - This is the number of records in this buffer.  This will 
+            reflect the value you set in the CNF options
+     Used - This is the number of records which actually contain data.
+     Hits - This is the number of times which MajorMUD has been able to
+            access data in memory instead of having to read it from disk.
+            This is constantly increasing from the time MajorMUD starts 
+            although you can reset it to 0 with the SYSOP BUFFER CLEAR
+            command.
+     Miss - This is the number of times which MajorMUD has had to go to
+            the disk to read the data instead of getting it from memory.
+            This is constantly increasing from the time MajorMUD starts 
+            although you can reset it to 0 with the SYSOP BUFFER CLEAR
+            command.
+     Mod  - This is the number of buffers in memory which have been 
+            modified since the last time MajorMUD saved them.  This is an
+            indication as to how many buffers will have to be saved the
+            next time MajorMUD saves buffers.
+SYSOP BUFFERS CLEAR
+    Clears any of the hits and misses counts for the buffers.
+SYSOP BUFFERS SAVE
+    This will save all of the modified buffers in MajorMUD.  Note that
+    this function should not normally be used for two reasons: 1) MajorMUD
+    automatically saves all the modified buffers at routine intervals and
+    2) This function will effectively FREEZE your board for all other 
+    users until it has completed.
+
+The STATUS command has two variations:
+SYSOP STATUS
+    Displays debugging information about the room you are currently in.
+    If you are having problems with monsters not regenerating, or monsters
+    that never seem to stop regenerating, then you may be asked by 
+    Technical Support (Lance) to provide the results of this command for
+    the affected rooms.  (Please run a recovery mode operation prior to
+    asking for help if you think that monsters are not regenerating 
+    properly.  If I don't receive a SYS STATUS result and a LOOK result
+    in an email asking about monster regeneration, all I will say is to
+    run the recovery mode)
+SYSOP STATUS <character-id>
+    This command allows you to view the status of the requested user 
+    if they are currently playing MajorMUD.
+SYSOP STATUS ROOM <room> <optional map#>
+    This command will display the same debugging information as the STATUS
+    command (alone) will, except it will do it for any room on any map.  
+    This is used mostly for debugging purposes if you ever find that 
+    monsters stop appearing.  The room number will either be given to you
+    by WCC, or you may find it by using the SYS LIST USERS command to 
+    figure out the room in which a user is.
+
+The MAP command will display a generated map of your current area.  Note
+that as you move from room to room this map may change dramatically - it
+is only there as a quick check to give you a rough idea as to what the
+current area looks like.  Note also that as this function is a recursive
+function, it has caused a stack overflow on one or two occasions.  I have
+since modified this routine to only recurse a few times (and have not had
+any problems with this command here) but I would still like to warn you
+of the potential problem with the use of this command.
+    
+The GOD command has the following variations.  Note that instead of 
+using the <character-id>, you can use the line number instead.  If the
+user has a name of a number (ie 3), then you will have to use their
+line number to access their character instead of their name.  Note also
+that the user MUST BE IN THE GAME for you to issue any of the sysop god
+commands on them.
+
+SYSOP GOD <character-id> INVENTORY
+    This command will allow you to view the Inventory of the given user
+SYSOP GOD <character-id> PROFILE
+    This command will allow you to view the profile of the given user
+SYSOP GOD <character-id> POWERS
+    This command will allow you to view the powers of the given user
+SYSOP GOD <character-id> SPELLS
+    This command will allow you to view the spells of the given user
+SYSOP GOD <character-id> STATUS
+    This command is the same as the SYSOP STATUS <user> command but
+    is keyed based on the user information key.
+SYSOP GOD <character-id> INFO
+    This command will allow you to view the following information 
+    for a user (typically required when sending information to 
+    WCC to help diagnose a problem):
+    - status
+    - inventory
+    - bank balance
+    - spells
+    - powers
+    - profile
+    - abilities
+SYSOP GOD <character-id> ADD LIFE
+    This command will allow you to add a single life to the given user.
+    This can be used if you feel a user was killed unjustly.  Note that
+    this will not allow the number of lives remaining to exceed 9.
+SYSOP GOD <character-id> ADD EVIL <amount>
+    Using this command you can either make a user more or less evil.  A
+    positive amount will make them more evil, a negative amount will make
+    them less evil.  You can use the SYSOP LIST USERS command to view
+    their current number of evil points.
+SYSOP GOD <character-id> GOOD
+    This command will switch the user's reputation to 'good'.  This can
+    be used as a simpler way to edit their evil points.
+SYSOP GOD <character-id> SAINT
+    This command will switch the user's reputation to 'saint'.  This can
+    be used as a simpler way to edit their evil points.
+SYSOP GOD <character-id> NEUTRAL
+    This command will switch the user's reputation to 'neutral'.  This can
+    be used as a simpler way to edit their evil points.
+SYSOP GOD <character-id> LAWFUL
+    This command can be used to turn a user into a lawful user.  (Refer
+    to section 7.1 in wccmmud.rln)
+SYSOP GOD <character-id> UNLAWFUL
+    This command can be used to turn off a user's lawful status.  It will
+    remove the lawful flag and set the user as an outlaw at 40 evil points
+    (Refer to section 7.1 in wccmmud.rln)
+SYSOP GOD <character-id> CLEAR SUICIDE
+    If a user forgets their suicide password, you can clear it using this
+    command.  Obviously, you wouldn't want to clear their suicide password
+    until you confirm that it is indeed the actual user who is asking and
+    not someone who has hacked into their account (or a not-so-friend who
+    is borrowing the account)
+SYSOP GOD <character-id> SPEAK <message>
+    This command will send a message to the target user in the style of
+    The gods tell you: <message>
+    Note that this will speak to the user regardless of their paging,
+    telepath, gossip, or auction flags.
+SYSOP GOD <character-id> CHANGE NAME <new-character-id>
+    If a user has chosen a name which you find offensive, or which conflicts
+    with another user (by being 'similar') then you may use this command
+    to change their name to something else.  Be very careful when using
+    this command - see the following notes:
+    NOTE that this command will only change their FIRST name, not their
+     last name.
+    NOTE that using this command WILL cause a system pause ranging from
+     1 second to MANY seconds.  Use with care.
+    NOTE If you change the name of a Gang Leader they will no longer
+     be the gang LEADER.   Do not change the name of a gang leader.  (The 
+     game will not stop you so it is up to you to make sure you don't do
+     this)
+SYSOP GOD <character-id> CHANGE SEX
+    This command will toggle the sex of the given character (M->F, F->M)
+SYSOP GOD <character-id> DISABLE TOPTEN
+    This command will set a flag on the given character (which must be in 
+    the game at the time) which will stop them from being displayed on the
+    topten command.
+SYSOP GOD <character-id> ENABLE TOPTEN
+    This command will reverse the effects of the DISABLE TOPTEN command so
+    that the user will again be displayed in the topten.
+SYSOP GOD <character-id> RETRAIN
+    This command will force the user to re-apply their character-points
+    the next time they enter the game.  Typically you should only do this
+    if the game itself forced a reset and the user made a mistake when
+    they re-assigned their stats the first time.  Note that this command
+    has the following side effects in addition to forcing the retrain:
+    - removes all spells cast on the user
+    - returns the user to their reincarnation room (ie. halls of dead for 
+      non-evil people)
+    This command should NOT be given to mere mudops due to the potential
+    for abuse.  It should be limited to sysops only. (refer to wccmmud.rln
+    section 3.1 for how to setup a key for this and other commands)
+SYSOP GOD <character-id> ABILITIES
+    This command will display any custom abilities the user has on them.
+    Note that the information displayed will only be useful to WCC staff
+    who may require this to track down reported potential problems.
+SYSOP GOD <character-id> VERIFY ABILITIES
+    This command will verify the user's abilities based on the quests
+    which they have completed.  If a problem occurs with the user you
+    may be requested by WCC to run this command against them.
+SYSOP GOD <character-id> JAIL
+    This command will send a user to jail in the same manner as a guard 
+    could send the user to jail.  The duration of their stay depends on
+    their evil standing (fiend, outlaw, etc.).  There is no way to let a 
+    user out of jail before their time has elapsed.
+
+The LIST command has the following variations:
+SYSOP LIST USERS
+    This command will give you a list of all of the users currently in
+    the game and will provide information such as their userid and their
+    current room number.  If a user is reporting problems in a given room,
+    then you may be asked to use this command to provide us with the
+    exact room number in which the problem is occurring.
+    This will also give you a count of the number of users in the game.
+SYSOP LIST EVIL
+    This command is very similar to the list users command but will also
+    include information related to any evil activities which have been
+    performed recently.
+SYSOP LIST GANG <gangname>
+    This command will let you view a list of all of the members of any
+    gang on your board.  You must type in the full name of the gang.
+SYSOP LIST LIMITED
+    This command will walk through the limited items in the game and give
+    you an indication as to where they are in the game (either Room/User/
+    or Monster).  It will not tell you exactly where they are, but will
+    tell you that they ARE in the game.
+
+The REPORT command is used to produce reports of various pieces of game
+information.  Currently, the following options are available:
+SYSOP REPORT USERS [mask]
+    This will give a list of all of the users in the game.  It will 
+    include their first and last MMUD names as well as their BBS Userid.
+    You can include an optional mask (up to 19 characters) which will
+    filter out and display only the users whose userid, first name, or
+    last name contain the mask you give.
+SYSOP REPORT NOTOPTEN
+    This is a list of all of the users which will not show up in a 
+    topten listing.
+
+The LIGHTNING command can be used to simulate a lightning attack on a 
+user of your choice (SYSOP LIGHTNING <character-id>).  This lightning
+will look exactly like the lightning that is generated against FIENDS
+at random intervals.
+
+
+The DISBAND command can be used to disband any gangs which have offensive
+names.  Using this command will remove the gang from the TOPTEN list (if
+it was there) and will inform each user that their gang has been disbanded
+as they login.  Usage: SYSOP DISBAND <gangname>
+
+
+The DISABLE command can be used to remove a gang from the topten list without 
+actually disbanding it.  Usage: SYSOP DISABLE <gangname>
+
+
+The ENABLE command can be used to let a gang appear on the topten list after
+you have disabled it.  Usage: SYSOP ENABLE <gangname>
+
+
+The GANGSIZE command can be used to change the theoretical size of a gang.
+Some systems have had some database problems where the gang only thinks there
+are a few users in it but the users know there are more.  In these cases, use
+this command to adjust the size of the gang so that a BG command will show
+all the users.  Note that if you set it too high you will slow down the BG
+command even more.
+Usage: SYSOP GANGSIZE <newsize> <gangname>
+
+
+The UNWRAP command is used to fixup gangs which were affected by the 1.1w
+bug which made it look like they had exceeded 4 billion exp.  Just run this
+command to switch the gang back to normal.  NOTE: There is no undo so do
+not run this on a gang which legitimately has over 4 billion exp or they
+will get very upset with you!
+Usage: SYSOP UNWRAP <gangname>
+
+
+The GOTO command will allow you to teleport to specific named locations
+in the game.  These will be limited to rooms we designate as 'hot-spots'
+which you, as a sysop, could need to teleport to.  The following targets
+are currently supported by the GOTO command:
+
+NewHaven   -- This will take you directly to the arena in NewHaven
+SilverMere -- This will take you to the default reincarnation room in
+              Silvermere
+Rhudaur    -- This will take you to Rhudaur (if you have addon 1)
+Khazarad   -- This will take you to Khazarad (if you have addon 4)
+Support    -- This will take you to a room which will sell items to you
+              (for free) which will let you assist your users if they
+              have made some bad decisions in the game.
+
+The predicted usage for this command will be to help new users, so please
+do not abuse it.  NOTE that if you use the teleport spell while underwater
+or while in any area in which you are only allowed in for a restricted time
+then you *will* die as a result of jumping out of the area abnormally
+because the game will not be given a chance to adjust your character
+appropriately.
+
+
+The INITIALIZE command is used to reperform game initialization while
+the board is up and running.  Note that you will experience quite a high
+system loading during an initialization and possibly more during a 
+recovery cycle and therefore should not perform this command during peak
+usage periods.  It has the following variations:
+SYSOP INITIALIZE
+    This command will start a new initialization cycle with your default
+    CNF parameters for initialization rate (INITRATE)
+SYSOP INITIALIZE -1
+    This will display the current status of any initialization or recovery
+    processes.  It will look something like this:
+      Last Cycle:  Map 1, Room 2513, Monster 1, Known 1/1
+      Active Monsters: 777, Known Monsters: 201
+      State: 2 (Rooms)  (Rate 140)
+    The most important line on this is the State.  It will indicate a
+    state of Finished when the initialization (or recovery) has completed.
+    Until then, it is in-progress.  The rest of the information may be
+    required if there is a problem which you are reporting to support.
+SYSOP INITIALIZE <rate>
+    This will start an initialization cycle with the given number as the
+    initialization rate overriding your default CNF settings.
+SYSOP INITIALIZE <rate> RECOVER
+    This will start a recovery cycle with the given number as the 
+    initialization/recovery rate instead of 1/4 of your CNF setting.  NOTE
+    that if you have your CNF option set to less than 200, then the 
+    recovery rate is normally divided by 4.  Keep this in mind when choosing
+    a recovery rate (ie. If your default INITRATE is 80, then your recovery
+    rate for this command should only be 20)
+
+The CONFIGURE command is used to modify some runtime parameters.  Currently
+there are two variations for this command:
+SYSOP CONFIGURE SHOW
+    This will show the values of any current configuration settings.
+SYSOP CONFIGURE MAXUSERS <n>
+    This command can be used to limit the number of simultaneous users
+    allowed in MajorMUD.  This can be used if you wanted to keep a few
+    lines free for non-MMUD users.  Note that you may not use this
+    command to increase the maximum number of users beyond your licensed
+    amount.  WARNING: Do not attempt to play with this command to
+    set the maximum users to wierd and wonderful numbers.  If you manage
+    to set your maximum users to 0 and then exit the game prior to
+    changing it back, the ONLY way to reset it and allow users in the 
+    game again is to bring your BBS down and restart it.
+
+The RESET command can be used to temporarily reset a given room or area
+with respect to monster generation.  This command will force the game into
+thinking that there are no monsters in either the room or the area.  The
+result of this is that it will begin to generate monsters againt.  This 
+command should only be used in extreme circumstances when, for some reason,
+monsters have stopped generating due to incorrect room or area monster 
+counts.  Whenever this command is used, you should always ensure that a
+database recovery procedure is completed in the near future.  As a result
+of this command, all complaints regarding anything to do with monster
+regeneration will result in a 'run the recovery mode' response combined
+with a 'get the high level players to kill the monsters' response when
+appropriate.  Never use this command during recovery mode.
+SYSOP RESET
+    This will reset the current room.
+SYSOP RESET ROOM
+    This will also reset the current room.
+SYSOP RESET AREA
+    This will reset the current area.
+SYSOP RESET ROOM r
+    This will reset the room number 'r'.
+SYSOP RESET ROOM r m
+    This will reset the room number 'r' on map number 'm'.
+
+
+The RELOAD command will reload the settings from your wccmmud.ini file.
+Note that this is a harmless command for your gameops to have as they
+can *only* make any changes to the game if they can change the .ini file.
+The only ways to do that are by (a) using the sysop menu [which requires
+the sysop key] or (b) uploading the ini file to your WorldGroup directory
+[which requires that you trust them]
+(see section 3.1 in wccmmud.rln for details on this file).
+
+
+The SPEAK command will let you send a message to everyone in the realm.
+Exactly what you type (after SYSOP SPEAK) will be sent to everyone currently
+playing MajorMUD.  Usage: SYSOP SPEAK <text to speak>
+Note that this will speak to each user regardless of their paging,
+telepath, gossip, or auction flags.
+
+
+NOTE that the SYSOP ARENA command is only temporarily included as a normal
+command.  In the future this command may be removed into a separate addon
+which may take advantage of this ability.  Do not count on this being a 
+permanent command.
+The ARENA command will let you temporarily toggle the operating mode for 
+the various PvP arenas in the game.  There are three options to this 
+command: status/normal/combat.
+SYSOP ARENA STATUS
+  This command will show you the status of the arenas in the game.
+SYSOP ARENA NORMAL
+  This command will set the arenas to be in normal mode.
+SYSOP ARENA COMBAT
+  This command will set the arenas to be in combat mode.
+Under normal mode, a death in a arena does not count as a death in the game.  
+This is default mode of operation.
+Under combat mode an arena is no longer considered a safe haven and a death
+in an arena is the same as a death anywhere else in the realm.
+NOTE that this is just a temporary change.  After cleanup the status of 
+arenas will always revert back to Normal.
+

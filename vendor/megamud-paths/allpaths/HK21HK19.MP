@@ -1,0 +1,10 @@
+[][Wulfman]
+[HK21:Hidden Keep:Forest Keep, Wall Edge]
+[HK19:Hidden Keep:Forest Keep, Wall Edge]
+4E980011:4E980014:6:-1:0:::
+4E980011:0000:n
+4E900005:0000:n
+4E900005:0000:n
+4E900005:0000:n
+4E900005:0000:n
+4E900005:0000:n

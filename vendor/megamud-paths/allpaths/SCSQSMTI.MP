@@ -1,0 +1,42 @@
+[][wulfman@acebbs.net]
+[SCSQ:Scorching Desert:Sandstone Quarry]
+[SMTI:Scorching Desert:Sandstone Mine Tunnel, Iron Door]
+68A00504:A7700420:38:-1:0:::
+68A00504:0000:south
+68A04011:0000:southwest
+70E04100:0000:southwest
+70E40100:0000:down
+70E11400:0000:northwest
+70E05000:0000:southwest
+70E00500:0000:northwest
+70E05001:0000:southwest
+70E04100:0000:southwest
+70E05100:0000:southwest
+70E04100:0000:southwest
+70E40100:0000:down
+70E10000:0000:ne[search ne]
+70E01000:0000:southeast
+70E00500:0000:northeast
+70E04100:0000:northeast
+70E04400:0000:northwest
+70E01400:0000:northwest
+70E01001:0000:north
+70E00404:0000:northwest
+70E05001:0000:north
+70E00104:0000:northeast
+70E14000:0000:up
+70E40040:0000:west
+70E00410:0000:northwest
+70E01400:0000:northwest
+70E05100:0000:northeast
+70E04400:0000:northwest
+70E01001:0000:north
+70E00404:0000:northwest
+70E01100:0000:northeast
+70E44000:0000:down
+70E10400:0000:northwest
+70E05001:0000:north
+70E00404:0000:northwest
+70E01100:0000:northeast
+70E05000:0000:east
+70E05000:0000:southeast

@@ -1,0 +1,19 @@
+File name: RHUDLOOP.MP
+Path description: Rhudaur (excluding alleys)
+Path starts: Rhudaur, Town Centre
+Path ends: ---
+Area of the game: Module 1
+Level recommendation: 15-25
+Type of path: Loop
+File format: New
+Monsters encountred: dark monk.
+Additional information:
+
+To roam this area properly you need to be criminal or worse (villain,
+fiend). Also, you need to go to Game Data -> Monsters, and set dark monks
+as 'Enemy' (if they aren't already), and check the box 'Non-hostile'. Then
+go to Settings -> Combat, and check the option 'Attack all monsters' if it
+isn't already checked. These things will enable MegaMud to rest while
+there are still monsters in the room (because when you are criminal or
+worse dark monks are neutral to you), thus increasing your rate alot.
+ 

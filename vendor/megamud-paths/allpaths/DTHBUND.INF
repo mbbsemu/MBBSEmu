@@ -1,0 +1,22 @@
+File name: <36 paths and 4 loops>
+Path description: Dragon's Teeth Hills and Black Orc area bundle.
+Path starts: N/A
+Path ends: N/A
+Area of the game: Module 1 and 5.
+Level recommendation: N/A
+Type of path: Both
+File format: New
+Monsters encountered: unsure.
+Additional information:
+
+This bundle of paths covers the crumbling tunnels, black orc area, and
+a small area of the dragon's teeth hills. It has paths to the room
+containing roots for the module 5 quest, to the dragon's teeth hills via
+the crumbling tunnels (ie no skiff or rusty iron key required) and paths
+to navigate the areas mention above. It is *highly* recommended that if
+you want to use some of the paths in this bundle, you add ALL of them to
+MegaMud, because adding only some paths will result in orphaned rooms
+(ie custom rooms with no paths going to or from them).
+
+Also included are loops for the northern section of the Dragon's Teeth
+Hills, crumbling tunnels and black orc area.

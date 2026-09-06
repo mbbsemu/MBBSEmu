@@ -1,0 +1,25 @@
+A kobold thief sneaks into the room from nowhere.                               
+[HP=22]:break                                                                   
+[HP=22]:sn                                                                      
+You may not sneak right now!                                                    
+[HP=22]:u                                                                       
+Newhaven, Narrow Road                                                           
+    This narrow road is quite plain save for the various lanterns hanging from  
+the trees around, and a large stone stairwell leading downwards. You hear the   
+clash of steel below you, and cries of pain and triumph accompanying it. Stone  
+buildings lie to your north and west.                                           
+Obvious exits: north, east, west, down                                          
+[HP=22]:rest                                                                    
+You are now resting.                                                            
+[HP=22 (Resting) ]:health                                                       
+Health:    22/22    [100%]                                                      
+[HP=22 (Resting) ]:i                                                            
+You are carrying 4 silver nobles, 5 copper farthings, padded gloves (Hands),    
+padded boots (Feet), padded pants (Legs), padded vest (Torso), padded helm      
+(Head), club (Weapon Hand), torch                                               
+You have no keys.                                                               
+Wealth: 45 copper farthings                                                     
+Encumbrance: 592/1920 - Light [30%]                                             
+[HP=22 (Resting) ]:exp                                                          
+Exp: 182 Level: 1 Exp needed for next level: 2118 (2300) [7%]                   
+[HP=22 (Resting) ]:                                                             

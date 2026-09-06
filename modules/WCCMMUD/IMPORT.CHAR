@@ -1,0 +1,8 @@
+[Character]
+Name=TestUser
+Password=test
+Race=Human
+Class=Warrior
+Level=1
+Exp=0
+
