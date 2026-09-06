@@ -14,7 +14,10 @@ LOOPBACK_HOSTS = frozenset(
     }
 )
 
-_REFUSE = "local telnet only (127.0.0.1 / localhost / ::1) — not a public BBS"
+_REFUSE = "local telnet only (loopback or this box's KVM LAN) — not a public BBS"
+
+# libvirt default NAT. The Win11 Worldgroup guest lives here (FINN).
+_KVM_LAN = ipaddress.ip_network("192.168.122.0/24")
 
 
 class LocalOnly(OSError):
@@ -46,6 +49,17 @@ def is_loopback_addr(addr: object) -> bool:
     if addr is None:
         return False
     return is_loopback_host(str(addr))
+
+
+def is_local_play_host(host: str) -> bool:
+    """Loopback, or the default libvirt NAT (Worldgroup VM). Not the internet."""
+    if is_loopback_host(host):
+        return True
+    name = _strip_host(host)
+    try:
+        return ipaddress.ip_address(name) in _KVM_LAN
+    except ValueError:
+        return False
 
 
 def require_loopback_host(host: str) -> str:

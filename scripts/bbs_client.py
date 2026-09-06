@@ -48,7 +48,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from client.brain import Brain
-from client.localnet import LOOPBACK_HOSTS, is_loopback_host
+from client.localnet import LOOPBACK_HOSTS, is_local_play_host, is_loopback_host
 from client.parse import events_from_payload, harvest_screen, parse_events
 from client.paths import attack_line, is_unlatch_step
 from client.pvp import clear_lock, is_locked
@@ -1002,11 +1002,13 @@ class Autopilot:
             return
         if self.phase == "play" or self.phase == "blocked":
             return
-        if self.phase == "user" and "Username:" in text:
+        if self.phase == "user" and (
+            "Username:" in text or "user-id:" in low or "user id:" in low
+        ):
             pacer.push_text(self.username, wipe=False)
             self.phase = "pass"
             return
-        if self.phase == "pass" and "Password:" in text:
+        if self.phase == "pass" and "password:" in low:
             pacer.push_text(self.password, wipe=False)
             self.phase = "bbs"
             return
@@ -2257,7 +2259,84 @@ def read_key(stdin: int, pending: bytearray) -> bytes | None:
     return b""
 
 
-def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
+def run_plain(host: str, port: int) -> int:
+    """Loopback pipe: scrolling text, no ice splash, no 1.11p footer."""
+    sock = socket.create_connection((host, port), timeout=8)
+    sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+    telnet = Telnet(sock)
+    stdin = sys.stdin.fileno()
+    old = termios.tcgetattr(stdin)
+    pending = bytearray()
+    typed = ""
+    sys.stdout.buffer.write(b"\x1b[2J\x1b[H")
+    sys.stdout.buffer.flush()
+    try:
+        tty.setraw(stdin)
+        sock.setblocking(False)
+        while True:
+            readable, _, _ = select.select([stdin, sock], [], [], 0.05)
+            if stdin in readable:
+                while True:
+                    key = read_key(stdin, pending)
+                    if key is None:
+                        break
+                    if key == b"":
+                        continue
+                    if key in (b"\x03", b"\x1d"):
+                        return 0
+                    if key == b"\x7f":
+                        key = b"\x08"
+                    if key in (b"\n", b"\r"):
+                        cmd = typed.strip()
+                        typed = ""
+                        sys.stdout.buffer.write(b"\r\n")
+                        sys.stdout.buffer.flush()
+                        if cmd:
+                            telnet.send(cmd.encode("ascii", "replace") + b"\r")
+                        continue
+                    if key == b"\x08":
+                        if typed:
+                            typed = typed[:-1]
+                            sys.stdout.buffer.write(b"\b \b")
+                            sys.stdout.buffer.flush()
+                        continue
+                    if len(key) == 1 and 32 <= key[0] < 127:
+                        typed += chr(key[0])
+                        sys.stdout.buffer.write(key)
+                        sys.stdout.buffer.flush()
+            if sock in readable:
+                try:
+                    chunk = sock.recv(4096)
+                except BlockingIOError:
+                    chunk = b""
+                if not chunk:
+                    sys.stdout.write("\r\n[disconnected]\r\n")
+                    return 0
+                payload = telnet.feed(chunk)
+                if payload:
+                    if typed:
+                        sys.stdout.buffer.write(b"\r\n")
+                    sys.stdout.buffer.write(payload.replace(b"\n", b"\r\n"))
+                    if typed:
+                        sys.stdout.buffer.write(typed.encode("ascii", "replace"))
+                    sys.stdout.buffer.flush()
+    except (ConnectionResetError, BrokenPipeError):
+        sys.stdout.write("\r\n[disconnected]\r\n")
+        return 0
+    finally:
+        termios.tcsetattr(stdin, termios.TCSADRAIN, old)
+        sock.close()
+    return 0
+
+
+def run(
+    host: str,
+    port: int,
+    player: dict[str, object],
+    auto: bool,
+    *,
+    plain: bool = False,
+) -> int:
     wm_title = window_title(player)
     cols, rows = shutil.get_terminal_size(fallback=(80, 24))
     if cols < 80 or rows < 24:
@@ -2280,7 +2359,7 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
     transcript = Transcript()
     state = WorldState()
     brain = Brain(
-        allowed=is_loopback_host(host),
+        allowed=is_local_play_host(host),
         pvp=bool(player.get("pvp")),
         me=" ".join(
             str(player.get(key) or "")
@@ -2813,17 +2892,26 @@ def run(host: str, port: int, player: dict[str, object], auto: bool) -> int:
 
 
 def main() -> int:
-    player = load_player(ROOT / "config" / "player.json")
     parser = argparse.ArgumentParser(
-        description="Local telnet client for Finn's Realm (loopback only)"
+        description="Local telnet client for Finn's Realm (loopback / KVM LAN)"
     )
     parser.add_argument("host", nargs="?", default="127.0.0.1")
     parser.add_argument("port", nargs="?", type=int, default=2323)
-    parser.add_argument("--user", default=str(player["username"]))
-    parser.add_argument("--password", default=str(player["password"]))
+    parser.add_argument(
+        "--config",
+        default="",
+        help="player json (default config/player.json)",
+    )
+    parser.add_argument("--user", default="")
+    parser.add_argument("--password", default="")
     parser.add_argument("--sysop", action="store_true", help="log in as sysop / sysop")
     parser.add_argument("--matt", action="store_true", help="log in as matt / matt")
     parser.add_argument("--no-auto", action="store_true", help="type everything yourself")
+    parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="scrolling text, no BBS splash/footer (Finn's Mud pipe)",
+    )
     args = parser.parse_args()
     if args.matt:
         player = load_player(ROOT / "config" / "matt.json")
@@ -2835,13 +2923,20 @@ def main() -> int:
         player["username"] = "sysop"
         player["password"] = "sysop"
     else:
-        player["username"] = args.user
-        player["password"] = args.password
+        cfg = Path(args.config) if args.config else ROOT / "config" / "player.json"
+        player = load_player(cfg)
+        if args.user:
+            player["username"] = args.user
+        if args.password:
+            player["password"] = args.password
     auto = bool(player.get("auto_login", True)) and not args.no_auto
-    if not is_loopback_host(args.host):
+    plain = bool(args.plain) or args.port == 4000
+    if plain:
+        auto = False
+    if not is_local_play_host(args.host):
         print(
             "This client only opens local telnet "
-            "(127.0.0.1 / localhost / ::1). Not a public BBS.",
+            "(127.0.0.1 / localhost / ::1 / 192.168.122.x). Not a public BBS.",
             file=sys.stderr,
         )
         return 2
@@ -2849,12 +2944,14 @@ def main() -> int:
         print("Need a real terminal.", file=sys.stderr)
         return 1
     try:
+        if plain:
+            return run_plain(args.host, args.port)
         return run(args.host, args.port, player, auto)
     except (ConnectionRefusedError, TimeoutError, socket.timeout):
         print(
-            f"Finn's Realm is not running on {args.host}:{args.port}. "
-            "The board process died or never bound telnet — not a client bug. "
-            "Use Reboot Finn's Realm (not reset-game).",
+            f"Nothing is listening on {args.host}:{args.port}. "
+            "For DOS Finn's Realm that is MBBSEmu on 2323; "
+            "for Worldgroup that is the VM telnet port (often 23).",
             file=sys.stderr,
         )
         _hold_error()

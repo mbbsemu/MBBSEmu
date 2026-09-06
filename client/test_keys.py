@@ -1240,6 +1240,23 @@ def test_autopilot_stops_when_already_logged_in() -> None:
     assert "already logged in" in pilot.hint()
 
 
+def test_autopilot_worldgroup_userid_prompt() -> None:
+    pacer = _CLIENT.KeyPacer()
+    pilot = _CLIENT.Autopilot(
+        {"username": "klymacks", "password": "Sysop Urm0m!"}, play=False
+    )
+    pilot.tick("Please enter your user-ID:\n", pacer)
+    assert pilot.phase == "pass"
+    now = 10.0
+    assert pacer.take(now) == b"klymacks\r"
+    now += _CLIENT.KEY_GAP
+    pacer.clear()
+    # drain cooldown by ticking after _until — use a large monotonic via pause skip
+    pilot._until = 0.0
+    pilot.tick("Please enter your password:\n", pacer)
+    assert pacer.take(now) == b"Sysop Urm0m!\r"
+
+
 def test_autopilot_queues_m_during_password_cooldown() -> None:
     """BBS menu often arrives while KEY_GAP is still cooling. Do not skip M."""
     pacer = _CLIENT.KeyPacer()
@@ -2460,6 +2477,7 @@ if __name__ == "__main__":
     test_name_taken_is_creation()
     test_autopilot_starts_bbs_signup_when_unknown()
     test_autopilot_stops_when_already_logged_in()
+    test_autopilot_worldgroup_userid_prompt()
     test_autopilot_queues_m_during_password_cooldown()
     test_autopilot_does_not_type_m_at_majormud_prompt()
     test_autopilot_sends_board_m_once()
