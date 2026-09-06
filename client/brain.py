@@ -340,6 +340,19 @@ class Brain:
     def _hunt_goal(self) -> str:
         return self.hunt_run.approach if self.hunt_run else "farm"
 
+    def _pit_grind(self) -> bool:
+        """Newhaven arena hunt: stay in the pit. Never the healer or GY."""
+        return bool(self.hunt_run) and self.hunt_run.loop == "pit"
+
+    def _farm_nav(self, state: WorldState) -> tuple[int | None, bool]:
+        """Level/gate for farm steps. Arena hunt stays local even at 4+."""
+        if self._pit_grind():
+            level = state.level
+            if level is None or level >= 4:
+                level = 3
+            return level, False
+        return state.level, state.arena_gated
+
     def _nav_goal(self) -> str:
         if self._torch_shopping:
             return "store"
@@ -1984,7 +1997,7 @@ class Brain:
         return False
 
     def _healed(self, state: WorldState) -> bool:
-        if state.hp is None or not state.max_hp:
+        if state.hp is None or state.hp < 1 or not state.max_hp:
             return False
         return state.hp >= state.max_hp
 
@@ -2156,6 +2169,10 @@ class Brain:
     def _sit(self, send, state: WorldState) -> bool:
         if not self._may_sit(state):
             return False
+        if self._sitting or state.resting:
+            self._sitting = True
+            self.next_action = "healing"
+            return True
         self._cmd(send, "rest", state)
         self._sitting = True
         return True
@@ -2208,8 +2225,6 @@ class Brain:
         if off:
             # *Combat Off* ends the swing — even in the pit. Ghost aim
             # (`acid slime` after the fight) must not fire on the next spawn.
-            # A fight spends sneak. Look before the next `bs` — leftover
-            # mobs make `bs` fail and retry-loop.
             fighting = bool(self._attacking or self._pit_fight)
             self._attacking = ""
             if fighting:
@@ -2218,12 +2233,18 @@ class Brain:
                 self._sneak_armed = False
                 self._sneak_wait = False
                 self._sneak_block = False
+                # Game still has you swinging until `break`. `sn`/`look` first
+                # is the rest/look storm after a pit kill.
+                self._need_break = True
             if not self._lops_here(state):
-                self._want_look = True
-                # combat_off stripped leftover farm names — Also here is stale.
-                state.scanned = False
-                state.saw_here = False
-                state.look_scan = False
+                if fighting and self._stealth_moves() and self._in_pit(state):
+                    self._want_look = False
+                    state.scanned = True
+                else:
+                    self._want_look = True
+                    state.scanned = False
+                    state.saw_here = False
+                    state.look_scan = False
         if not off or self._in_pit(state):
             self._evaded = False
             return
@@ -2244,9 +2265,12 @@ class Brain:
             return False
         if not self._need_break:
             return False
-        if self._with_leader(state) and not self._sneak_block:
-            self._need_break = False
+        if self._needs_heal(state) or state.mortal or state.bleeding:
             return False
+        if self._with_leader(state) and not self._sneak_block:
+            if not self._stealth_moves():
+                self._need_break = False
+                return False
         if self._in_pit(state) and self._lops_here(state) and self._opens_swing(state):
             self._need_break = False
             return False
@@ -2334,14 +2358,15 @@ class Brain:
         self.world.observe(title, state.exits, via, prev)
 
     def _farm_step(self, state: WorldState) -> str:
+        level, gated = self._farm_nav(state)
         return (
             self.world.step(
                 self._hunt_goal(),
                 state.room,
                 state.exits,
                 last_step=self._last_step,
-                level=state.level,
-                gated=state.arena_gated,
+                level=level,
+                gated=gated,
                 closed=state.closed_exits,
                 klass=self.klass,
             )
@@ -2435,7 +2460,8 @@ class Brain:
         if self._needs_heal(state):
             return False
         if self._stealthed():
-            return False
+            self.next_action = "ambush"
+            return True
         if self._setup_sneak(send, state):
             return True
         if self._sneak_armed or self._sneak_wait:
@@ -2754,13 +2780,14 @@ class Brain:
             and not self._sewer_stocked
         ):
             return False
+        level, gated = self._farm_nav(state)
         step = self.world.step(
             self._hunt_goal(),
             state.room,
             state.exits,
             last_step=self._last_step,
-            level=state.level,
-            gated=state.arena_gated,
+            level=level,
+            gated=gated,
             closed=state.closed_exits,
             klass=self.klass,
         )
@@ -2825,15 +2852,13 @@ class Brain:
         if self._try_heal(state, send):
             return
         if self._in_pit(state):
-            if state.mortal or state.bleeding:
-                if self._sitting:
-                    self.next_action = "healing"
-                    return
-                if self._sit(send, state):
-                    return
-                self.next_action = "looking" if state.look_scan else "waiting"
-                return
-            if self._in_party(state):
+            stay = (
+                state.mortal
+                or state.bleeding
+                or self._in_party(state)
+                or self._pit_grind()
+            )
+            if stay:
                 if self._sitting:
                     self.next_action = "healing"
                     return
@@ -4232,10 +4257,10 @@ class Brain:
                 return
             if (
                 self._ninja()
-                and self._own_ambush(state)
+                and self._stealth_moves()
                 and not self._lops_here(state)
             ):
-                if self._down(state):
+                if self._down(state) and self._ready_to_hunt(state):
                     self._sitting = False
                     self._cmd(send, "break", state)
                     return
@@ -4244,9 +4269,14 @@ class Brain:
                     return
                 if self._setup_sneak(send, state):
                     return
-                if self._can_sneak_here(state):
+                if self._can_sneak_here(state) or self._ready_to_hunt(state):
+                    self.next_action = "ambush"
                     return
                 # Guards / busy-fail: do not idle on sn. Fall through and walk.
+            # Full HP: wait for the next lop. Do not rest-camp or walk the healer.
+            if self._healed(state) and self._ready_to_hunt(state):
+                self.next_action = "waiting"
+                return
             if not self._sitting:
                 if not self._sit(send, state):
                     self.next_action = "looking" if state.look_scan else "waiting"

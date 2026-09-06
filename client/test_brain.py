@@ -540,13 +540,14 @@ def test_matt_skips_bless_when_already_lucky() -> None:
     state.apply({"kind": "buff", "name": "bless", "on": True})
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
     assert "cast bless" not in sent
     state.prompt_seq += 1
     b._cast_at = time.monotonic() - 9
     b._last_cast = ""
     b.tick(state, sent.append, pending=False)
-    assert sent[-1] == "rest"
+    assert sent == []
     assert sent.count("cast bless") == 0
 
 
@@ -602,7 +603,8 @@ def test_matt_skips_bless_at_level_1() -> None:
     b.tick(state, sent.append, pending=False)
     assert "cast bless" not in sent
     assert "bless" in b._spells
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
 
 
 def test_matt_skips_bless_until_level_known() -> None:
@@ -5819,7 +5821,8 @@ def test_rest_after_fight_when_room_empty() -> None:
     state.scanned = True
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
     follower = Brain(
         allowed=True,
         me="klymacks Klymacks",
@@ -5835,7 +5838,8 @@ def test_rest_after_fight_when_room_empty() -> None:
     state.prompt_seq += 1
     sent = []
     follower.tick(state, sent.append, pending=False)
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
 
 
 def test_ninja_sneaks_then_backstabs() -> None:
@@ -5901,6 +5905,24 @@ def test_ninja_sitting_hidden_backstabs() -> None:
     assert sent == ["bs lashworm"]
     assert "break" not in sent
     assert "sn" not in sent
+
+
+def test_following_empty_pit_full_hp_sneaks_not_rest() -> None:
+    """klymacks following Matt: full HP Newhaven pit is sn, not rest spam."""
+    b, state = _following_klymacks()
+    b.mode = "hunt"
+    b._asked_health = True
+    state.hp = 36
+    state.max_hp = 36
+    state.max_hp_known = True
+    state.mobs = ["Matt"]
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["sn"]
+    state.prompt_seq += 1
+    b.tick(state, sent.append, pending=False)
+    assert sent.count("rest") == 0
+    assert "rest" not in sent
 
 
 def test_ninja_empty_pit_full_hp_sneaks() -> None:
@@ -5977,7 +5999,7 @@ def test_ninja_empty_pit_wounded_rests_then_break_sneak() -> None:
     assert "rest" not in sent
 
 
-def test_paladin_empty_pit_full_hp_still_rests() -> None:
+def test_paladin_empty_pit_full_hp_does_not_rest() -> None:
     b = Brain(allowed=True, klass="paladin", me="sysop Matt")
     b.gear_done = True
     b.mode = "hunt"
@@ -5992,8 +6014,11 @@ def test_paladin_empty_pit_full_hp_still_rests() -> None:
     state.scanned = True
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
     assert "sn" not in sent
+    assert "u" not in sent
+    assert "w" not in sent
 
 
 def test_ninja_attacks_if_already_in_combat() -> None:
@@ -6144,6 +6169,48 @@ def test_ninja_inout_no_sneaking_line_leaves() -> None:
     assert "bs " not in sent[-1]
 
 
+def test_arena_hunt_road_goes_down_not_healer() -> None:
+    b = Brain(allowed=True, klass="paladin", me="klymacks", hunt="arena")
+    b.gear_done = True
+    b.mode = "hunt"
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 22
+    state.max_hp = 22
+    state.max_hp_known = True
+    state.level = 1
+    state.prompt_seq = 500
+    state.room = "Newhaven, Narrow Road"
+    state.exits = ["n", "e", "w", "d"]
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert "w" not in sent
+    assert "buy healing" not in " ".join(sent)
+    assert sent[-1] == "d"
+
+
+def test_arena_hunt_wounded_rests_in_pit() -> None:
+    b = Brain(allowed=True, klass="ninja", me="klymacks", hunt="arena")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 10
+    state.max_hp = 35
+    state.max_hp_known = True
+    state.prompt_seq = 501
+    state.room = "Newhaven, Arena"
+    state.scanned = True
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["rest"]
+    assert b.mode == "rest"
+    assert "u" not in sent
+    assert "w" not in sent
+
+
 def test_flee_rest_goes_up_not_sit_in_pit() -> None:
     b = Brain(allowed=True)
     b.gear_done = True
@@ -6282,7 +6349,8 @@ def test_camp_chills_then_returns() -> None:
     state.apply({"kind": "exits", "exits": ["u"]})
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
-    assert sent[-1] == "rest"
+    assert sent[-1] == "look"
+    assert "rest" not in sent
     state.apply({"kind": "arrive", "name": "a filthbug"})
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
@@ -6372,7 +6440,8 @@ def test_arena_kill_gets_coins() -> None:
     assert sent[-1] == "get silver"
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
-    assert sent[-1] == "rest"
+    assert "rest" not in sent
+    assert sent[-1] == "get silver"
     assert "get gold" not in sent
     assert "get all" not in sent
 
@@ -6570,8 +6639,44 @@ def test_party_hidden_then_rat_backstabs() -> None:
     assert "sn" not in sent
 
 
+def test_pit_kill_combat_off_breaks_then_sn() -> None:
+    """Live paste: empty Arena after carrion kill — `break` then `sn`, not look."""
+    b = Brain(allowed=True, klass="ninja", me="klymacks")
+    b.gear_done = True
+    b.mode = "hunt"
+    b._in_camp = True
+    b._attacking = "carrion beast"
+    b._pit_fight = True
+    state = WorldState()
+    state.in_realm = True
+    state.hp = 30
+    state.max_hp = 30
+    state.max_hp_known = True
+    state.prompt_seq = 80
+    state.room = "Newhaven, Arena"
+    state.exits = ["n", "u"]
+    state.scanned = True
+    state.in_combat = True
+    state.mobs = ["carrion beast"]
+    state.apply({"kind": "killed", "name": "carrion beast"})
+    state.apply({"kind": "combat_off"})
+    state.mobs = []
+    sent: list[str] = []
+    b.tick(state, sent.append, pending=False)
+    assert sent == ["break"]
+    assert "look" not in sent
+    assert "rest" not in sent
+    assert "sn" not in sent
+    state.prompt_seq += 1
+    state.in_combat = False
+    b.tick(state, sent.append, pending=False)
+    assert sent[-1] == "sn"
+    assert "look" not in sent
+    assert "rest" not in sent
+
+
 def test_ninja_combat_off_looks_then_attacks_not_bs_loop() -> None:
-    """*Combat Off* + leftover mobs: look, then attack. Do not loop bs."""
+    """*Combat Off* + leftover mobs: break, sn if empty, then attack. No bs loop."""
     b, state = _following_klymacks()
     b.mode = "hunt"
     b._attacking = "filthbug"
@@ -6583,9 +6688,13 @@ def test_ninja_combat_off_looks_then_attacks_not_bs_loop() -> None:
     assert lop_in(state.mobs) is None
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["look"]
+    assert sent == ["break"]
     assert "bs " not in " ".join(sent)
-    assert "sn" not in sent
+    state.prompt_seq += 1
+    state.in_combat = False
+    b.tick(state, sent.append, pending=False)
+    assert sent[-1] == "sn"
+    assert "look" not in sent
     state.apply({"kind": "also_here", "mobs": ["Matt", "giant rat"]})
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
@@ -6827,7 +6936,8 @@ def test_no_second_look_when_already_scanned() -> None:
     state.scanned = True
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
 
 
 def test_creep_breaks_look_wait() -> None:
@@ -6866,7 +6976,8 @@ def test_empty_look_waits_then_creep() -> None:
     state.mobs = []
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
     state.mobs = ["giant rat"]
     state.prompt_seq += 1
     b.tick(state, sent.append, pending=False)
@@ -6890,7 +7001,8 @@ def test_say_attack_does_not_retry() -> None:
     state.whiff = True
     sent: list[str] = []
     b.tick(state, sent.append, pending=False)
-    assert sent == ["rest"]
+    assert sent == []
+    assert "rest" not in sent
     assert b._attacking == ""
     state.mobs = ["giant rat"]
     state.prompt_seq += 1
@@ -9214,16 +9326,19 @@ if __name__ == "__main__":
     test_ninja_sneaks_then_backstabs()
     test_ninja_breaks_then_sneaks()
     test_ninja_sitting_hidden_backstabs()
+    test_following_empty_pit_full_hp_sneaks_not_rest()
     test_ninja_empty_pit_full_hp_sneaks()
     test_ninja_empty_pit_full_hp_sitting_breaks_then_sneaks()
     test_ninja_empty_pit_wounded_rests_then_break_sneak()
-    test_paladin_empty_pit_full_hp_still_rests()
+    test_paladin_empty_pit_full_hp_does_not_rest()
     test_ninja_attacks_if_already_in_combat()
     test_ninja_attacks_when_sneak_fails()
     test_ninja_sound_on_enter_attacks()
     test_ninja_bs_after_sneaking_line()
     test_ninja_inout_sneaks_down_then_leaves()
     test_ninja_inout_no_sneaking_line_leaves()
+    test_arena_hunt_road_goes_down_not_healer()
+    test_arena_hunt_wounded_rests_in_pit()
     test_flee_rest_goes_up_not_sit_in_pit()
     test_two_arrives_stays_then_switches_after_kill()
     test_ninja_two_mobs_in_combat_stays_on_first()
@@ -9240,6 +9355,7 @@ if __name__ == "__main__":
     test_may_not_sneak_breaks_then_walks()
     test_party_may_not_sneak_paste_then_rat_attacks()
     test_party_hidden_then_rat_backstabs()
+    test_pit_kill_combat_off_breaks_then_sn()
     test_ninja_combat_off_looks_then_attacks_not_bs_loop()
     test_klymacks_at_17_asks_heal_me()
     test_klymacks_gy_asks_heal_me_before_sneak()

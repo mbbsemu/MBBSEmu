@@ -216,6 +216,15 @@ def test_mid_guild_street_walks_north_not_into_shops() -> None:
     )
 
 
+def test_narrow_road_farm_is_down_not_healer() -> None:
+    world = Map()
+    exits = ["n", "e", "w", "d"]
+    assert world.step("farm", "Newhaven, Narrow Road", exits, level=1) == "d"
+    assert world.step("farm", "Newhaven, Narrow Road", exits, level=4) == "e"
+    assert world.step("healer", "Newhaven, Narrow Road", exits) == "w"
+    assert world.step("farm", "Newhaven, Arena", ["u"], level=1) is None
+
+
 def test_square_to_store_and_farm() -> None:
     world = Map()
     exits = ["n", "s", "e", "w"]
@@ -252,6 +261,7 @@ if __name__ == "__main__":
     test_helfgrim_leaves_east_unless_buying_blades()
     test_guild_southern_end_never_takes_shop_doors_on_farm()
     test_mid_guild_street_walks_north_not_into_shops()
+    test_narrow_road_farm_is_down_not_healer()
     test_square_to_store_and_farm()
     test_goto_graveyard_leaves_sewers()
     test_secret_passage_walks_live_exits()

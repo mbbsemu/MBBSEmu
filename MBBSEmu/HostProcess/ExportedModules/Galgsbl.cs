@@ -721,7 +721,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"Setting ECHO to: {mode} for channel {channelNumber}");
 #endif
+            // mode 0 = echo off (transparent). Any other mode is echo on.
+            // Plus (and other modules) call btuech to leave a password field.
+            // That must also end echsec('*') or every later keystroke stays '*'.
             channel.TransparentMode = mode == 0;
+            if (mode != 0)
+                channel.EchoSecureEnabled = false;
             Registers.AX = 0;
         }
 

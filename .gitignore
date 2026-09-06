@@ -363,8 +363,10 @@ docker/docker-compose.test.yml
 # Finn's Realm packaged deployment (local module files + self-contained emu)
 /dist/
 
-# Worldgroup VM login (local guest only — do not commit)
+# Worldgroup VM logins (local guest only — do not commit)
 /config/wg-local.json
+/config/wg-matt.json
+/config/wg-new.json
 
 # Live license snapshot (rewritten by preflight from MSG / appsettings)
 /data/activation-later.txt

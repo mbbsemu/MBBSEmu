@@ -931,6 +931,11 @@ namespace MBBSEmu.HostProcess
                         if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
                             session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
 
+                        // echsec lasts for one line. The CYCLE path above already
+                        // clears it; the normal STTROU path was leaving '*' on forever
+                        // (MajorMUD SET SUICIDE / Plus) until logout.
+                        session.EchoSecureEnabled = false;
+
                         break;
                     }
 

@@ -33,12 +33,18 @@ from pathlib import Path
 IAC, DONT, DO, WONT, WILL = 255, 254, 253, 252, 251
 SB, SE = 250, 240
 ECHO, SGA, TTYPE, NAWS = 1, 3, 24, 31
+TTYPE_IS, TTYPE_SEND = 0, 1
+# Match system telnet (xterm), not a bare "ANSI" IS WG may ignore.
+TTYPE_NAME = b"xterm-256color"
 
 COLS, ROWS = 80, 25
 CHROME = 5
 # MajorMUD scolds under ~2s ("slow down for a few seconds"). Combat can
-# stay snappier; walks and looks use WALK_GAP. A flood pauses longer.
+# Combat can stay snappier; walks and looks use WALK_GAP. Human typing
+# (creation fields, WG menus) is TYPE_GAP — KEY_GAP on every letter
+# feels like one key every few seconds. A flood pauses longer.
 KEY_GAP = 0.55
+TYPE_GAP = 0.07
 WALK_GAP = 2.0
 FLOOD_PAUSE = 5.0
 # After first [HP=], sit still — creation can last minutes after Autopilot's E.
@@ -222,6 +228,7 @@ class Telnet:
                 if end < 0:
                     self._iac.extend(buf[i:])
                     break
+                self._subneg(buf[i + 2 : end])
                 i = end + 2
                 continue
             i += 2
@@ -240,7 +247,7 @@ class Telnet:
             self._send(bytes((IAC, WILL, SGA)))
         elif cmd == DO and opt == TTYPE:
             self._send(bytes((IAC, WILL, TTYPE)))
-            self._send(bytes((IAC, SB, TTYPE, 0)) + b"ANSI" + bytes((IAC, SE)))
+            self._send_ttype()
         elif cmd == DO and opt == NAWS:
             self._send(bytes((IAC, WILL, NAWS)))
             self._send(bytes((IAC, SB, NAWS, 0, 80, 0, 25, IAC, SE)))
@@ -249,12 +256,19 @@ class Telnet:
         elif cmd == WILL:
             self._send(bytes((IAC, DONT, opt)))
 
+    def _send_ttype(self) -> None:
+        self._send(bytes((IAC, SB, TTYPE, TTYPE_IS)) + TTYPE_NAME + bytes((IAC, SE)))
+
+    def _subneg(self, payload: bytes) -> None:
+        if len(payload) >= 2 and payload[0] == TTYPE and payload[1] == TTYPE_SEND:
+            self._send_ttype()
+
     def send(self, data: bytes) -> None:
         self._send(data)
 
 
 class Cell:
-    __slots__ = ("ch", "fg", "bg", "bold", "rev")
+    __slots__ = ("ch", "fg", "bg", "bold", "rev", "bright_bg")
 
     def __init__(self) -> None:
         self.ch = " "
@@ -262,9 +276,10 @@ class Cell:
         self.bg = 0
         self.bold = False
         self.rev = False
+        self.bright_bg = False
 
-    def style_key(self) -> tuple[int, int, bool, bool]:
-        return (self.fg, self.bg, self.bold, self.rev)
+    def style_key(self) -> tuple[int, int, bool, bool, bool]:
+        return (self.fg, self.bg, self.bold, self.rev, self.bright_bg)
 
 
 def _blank() -> Cell:
@@ -285,8 +300,10 @@ class AnsiScreen:
         self.bg = 0
         self.bold = False
         self.rev = False
+        self.bright_bg = False
         self._esc = bytearray()
         self.generation = 0
+        self.replies: list[bytes] = []
 
     def feed(self, data: bytes) -> None:
         if not data:
@@ -305,6 +322,10 @@ class AnsiScreen:
             b = data[i]
             if b == 0x1B:
                 self._esc.append(b)
+                i += 1
+                continue
+            if b == 0x9B:
+                self._esc.extend(b"\x1b[")
                 i += 1
                 continue
             i = self._put_from(data, i)
@@ -338,6 +359,7 @@ class AnsiScreen:
         params = []
         if body:
             for part in body.split(b";"):
+                part = part.strip()
                 if part.isdigit():
                     params.append(int(part))
                 elif part == b"":
@@ -348,6 +370,8 @@ class AnsiScreen:
 
     def _csi(self, priv: bool, params: list[int], final: int) -> None:
         if priv:
+            if final == ord("n"):
+                self._dsr(params)
             return
 
         def p(idx: int, default: int) -> int:
@@ -397,8 +421,21 @@ class AnsiScreen:
             else:
                 self._erase(0, self.cy, self.cols, self.cy)
             return
+        if final == ord("n"):
+            self._dsr(params)
+            return
         if final == ord("m"):
             self._sgr(params or [0])
+
+    def _dsr(self, params: list[int]) -> None:
+        """Worldgroup auto-sense sends CSI 6n; xterm answers or the BBS stays ASCII."""
+        mode = params[0] if params else 0
+        if mode == 6:
+            self.replies.append(
+                f"\x1b[{self.cy + 1};{self.cx + 1}R".encode("ascii")
+            )
+        elif mode == 5:
+            self.replies.append(b"\x1b[0n")
 
     def _erase(self, x0: int, y: int, x1: int, _y1: int) -> None:
         row = self.buf[y]
@@ -408,11 +445,22 @@ class AnsiScreen:
     def _sgr(self, params: list[int]) -> None:
         if not params:
             params = [0]
-        for n in params:
+        i = 0
+        while i < len(params):
+            n = params[i]
             if n == 0:
-                self.fg, self.bg, self.bold, self.rev = 7, 0, False, False
+                self.fg, self.bg, self.bold, self.rev, self.bright_bg = (
+                    7,
+                    0,
+                    False,
+                    False,
+                    False,
+                )
             elif n == 1:
                 self.bold = True
+            elif n == 5:
+                # VGA/iCE: blink bit is bright background (░▒▓ dither).
+                self.bright_bg = True
             elif n == 7:
                 self.rev = True
             elif n == 22:
@@ -428,6 +476,15 @@ class AnsiScreen:
                 self.bold = True
             elif 100 <= n <= 107:
                 self.bg = n - 100
+            elif n == 38 and i + 2 < len(params) and params[i + 1] == 5:
+                self.fg = params[i + 2] & 7
+                if params[i + 2] >= 8:
+                    self.bold = True
+                i += 2
+            elif n == 48 and i + 2 < len(params) and params[i + 1] == 5:
+                self.bg = params[i + 2] & 7
+                i += 2
+            i += 1
 
     def _put_from(self, data: bytes, i: int) -> int:
         b = data[i]
@@ -461,6 +518,7 @@ class AnsiScreen:
         cell.bg = self.bg
         cell.bold = self.bold
         cell.rev = self.rev
+        cell.bright_bg = self.bright_bg
         self.buf[self.cy][self.cx] = cell
         if self.cx < self.cols - 1:
             self.cx += 1
@@ -515,13 +573,19 @@ class AnsiScreen:
 
     def leave_form(self) -> None:
         """Drop leftover FSD field style — same defaults as a new screen."""
-        self.fg, self.bg, self.bold, self.rev = 7, 0, False, False
+        self.fg, self.bg, self.bold, self.rev, self.bright_bg = (
+            7,
+            0,
+            False,
+            False,
+            False,
+        )
         self._esc.clear()
         self.generation += 1
 
     def render(self) -> bytes:
         out = bytearray(b"\x1b[?25l")
-        prev: tuple[int, int, bool, bool] | None = None
+        prev: tuple[int, int, bool, bool, bool] | None = None
         for y in range(self.rows):
             out += f"\x1b[{y + 1};1H".encode()
             for cell in self.buf[y]:
@@ -529,7 +593,12 @@ class AnsiScreen:
                 if key != prev:
                     out += _sgr_bytes(cell)
                     prev = key
-                ch = cell.ch if cell.ch.isprintable() or cell.ch == " " else " "
+                # Keep CP437 shade/box glyphs (░▒▓). isprintable() drops nbsp.
+                ch = cell.ch
+                if ch == "\xa0":
+                    ch = " "
+                elif not ch.isprintable() and ch != " ":
+                    ch = " "
                 out += ch.encode("utf-8", "replace")
         out += _sgr_bytes(Cell())
         out += f"\x1b[{self.cy + 1};{self.cx + 1}H".encode()
@@ -545,7 +614,10 @@ def _sgr_bytes(cell: Cell) -> bytes:
     if cell.bold:
         parts.append("1")
     parts.append(str(30 + fg))
-    parts.append(str(40 + bg))
+    if cell.bright_bg:
+        parts.append(str(100 + bg))
+    else:
+        parts.append(str(40 + bg))
     return f"\x1b[{';'.join(parts)}m".encode()
 
 
@@ -662,6 +734,10 @@ class KeyPacer:
         return key
 
     def _gap(self, key: bytes) -> float:
+        # Whole commands (hunt / login lines) keep KEY_GAP. One keystroke
+        # on the sheet or a WG prompt must not wait half a second.
+        if not key.endswith(b"\r") or len(key) <= 1:
+            return TYPE_GAP
         line = key.decode("ascii", "replace").strip().lower()
         verb = line.split()[0] if line else ""
         if verb in _WALK_VERBS:
@@ -1894,7 +1970,9 @@ def _compose_stats(
         clusters.append(exp)
     if state.hp is not None:
         tone = hp_chrome_sgr(state) or ICE_CYAN_SGR
-        clusters.append(f"{tone}HP {ice_meter(state.hp_ratio(), hp_w)}{CHROME_BODY_SGR}")
+        clusters.append(
+            f"{tone}HP {ice_meter(state.hp_meter_ratio(), hp_w)}{CHROME_BODY_SGR}"
+        )
     if state.ma is not None:
         clusters.append(
             f"{ICE_CYAN_SGR}MA {ice_meter(state.ma_ratio(), ma_w)}{CHROME_BODY_SGR}"
@@ -2546,6 +2624,9 @@ def run(
                     was_sheet = screen.looks_like_creation()
                     hold = sheet_lock or was_sheet
                     paint_mud(screen, payload, hold=hold, filt=form_filter)
+                    for reply in screen.replies:
+                        telnet.send(reply)
+                    screen.replies.clear()
                     try:
                         apply_payload(payload)
                     except Exception:

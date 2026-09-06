@@ -1257,6 +1257,13 @@ def test_autopilot_worldgroup_userid_prompt() -> None:
     assert pacer.take(now) == b"Sysop Urm0m!\r"
 
 
+def test_ansi_dsr_6n_replies_cursor() -> None:
+    screen = _CLIENT.AnsiScreen()
+    screen.cx, screen.cy = 3, 5
+    screen.feed(b"\x1b[6n")
+    assert screen.replies == [b"\x1b[6;4R"]
+
+
 def test_autopilot_queues_m_during_password_cooldown() -> None:
     """BBS menu often arrives while KEY_GAP is still cooling. Do not skip M."""
     pacer = _CLIENT.KeyPacer()
@@ -1316,6 +1323,7 @@ def test_autopilot_sends_board_m_once() -> None:
 
 def test_key_gap_is_slow_enough_for_majormud() -> None:
     assert 0.4 <= _CLIENT.KEY_GAP <= 0.8
+    assert 0.04 <= _CLIENT.TYPE_GAP <= 0.15
     assert 1.5 <= _CLIENT.WALK_GAP <= 3.0
     assert _CLIENT.FLOOD_PAUSE >= 4.0
     assert _CLIENT.REALM_SETTLE >= 5.0
@@ -1326,6 +1334,9 @@ def test_key_gap_is_slow_enough_for_majormud() -> None:
     pacer.push_text("att rat")
     assert pacer.take(10.0 + _CLIENT.WALK_GAP) == b"att rat\r"
     assert pacer._ready_at == 10.0 + _CLIENT.WALK_GAP + _CLIENT.KEY_GAP
+    pacer.push(b"K")
+    assert pacer.take(20.0) == b"K"
+    assert pacer._ready_at == 20.0 + _CLIENT.TYPE_GAP
 
 
 def test_realm_gate_holds_auto_play_after_first_prompt() -> None:
@@ -1630,6 +1641,24 @@ def test_chrome_hp_tone() -> None:
     zero.max_hp = 28
     zero.max_hp_known = True
     assert _CLIENT.hp_chrome_sgr(zero) == _CLIENT.HP_YELLOW_SGR
+
+
+def test_chrome_hp_bar_uses_hits_not_health_stat() -> None:
+    """Rolled Health 30 must not shrink a 22/22 Hits bar."""
+    stale = WorldState()
+    stale.in_realm = True
+    stale.apply({"kind": "prompt", "hp": 22, "max_hp": None})
+    stale.apply({"kind": "prompt", "hp": 30, "max_hp": None})
+    stale.hp = 22
+    assert not stale.max_hp_known
+    assert stale.hp_meter_ratio() == 1.0
+    stale.apply({"kind": "hits", "hp": 22, "max_hp": 22})
+    assert stale.max_hp == 22
+    assert stale.max_hp_known
+    assert stale.hp_ratio() == 1.0
+    assert stale.hp_meter_ratio() == 1.0
+    full = _plain_bar(_chrome_for(stale))
+    assert "▓▓▓▓▓▓▓▓" in full
 
 
 def test_handle_client_line_train() -> None:
@@ -2478,6 +2507,7 @@ if __name__ == "__main__":
     test_autopilot_starts_bbs_signup_when_unknown()
     test_autopilot_stops_when_already_logged_in()
     test_autopilot_worldgroup_userid_prompt()
+    test_ansi_dsr_6n_replies_cursor()
     test_autopilot_queues_m_during_password_cooldown()
     test_autopilot_does_not_type_m_at_majormud_prompt()
     test_autopilot_sends_board_m_once()
@@ -2495,6 +2525,7 @@ if __name__ == "__main__":
     test_chrome_tips_fit()
     test_play_paused_is_train_hold_not_copy()
     test_chrome_hp_tone()
+    test_chrome_hp_bar_uses_hits_not_health_stat()
     test_handle_client_line_train()
     test_handle_client_line_spell_yn()
     test_handle_client_line_gear_yn()

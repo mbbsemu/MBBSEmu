@@ -823,19 +823,31 @@ def parse_line(line: str) -> dict[str, object] | None:
     if lvl_m:
         return {"kind": "level", "level": int(lvl_m.group(1))}
 
-    fields = STAT_FIELD_RE.findall(raw)
-    if fields:
-        stats: dict[str, object] = {"kind": "stats"}
-        for name, value in fields:
-            key = _STAT_KEYS.get(name.lower())
-            if key:
-                stats[key] = int(value)
-        if len(stats) > 1:
-            return stats
+    stats = _stats_event(raw)
+    if stats:
+        return stats
 
     if _looks_like_room_title(raw):
         return {"kind": "room", "title": raw}
 
+    return None
+
+
+def _stats_event(raw: str, *, skip_health: bool = False) -> dict[str, object] | None:
+    """`stat` fields. Health: 50 is the attribute, not Hits."""
+    fields = STAT_FIELD_RE.findall(raw)
+    if not fields:
+        return None
+    stats: dict[str, object] = {"kind": "stats"}
+    for name, value in fields:
+        key = _STAT_KEYS.get(name.lower())
+        if not key:
+            continue
+        if skip_health and key == "health_stat":
+            continue
+        stats[key] = int(value)
+    if len(stats) > 1:
+        return stats
     return None
 
 
@@ -1077,6 +1089,10 @@ def parse_events(text: str) -> list[dict[str, object]]:
         ev = parse_line(piece)
         if ev:
             events.append(ev)
+            if ev.get("kind") == "hits":
+                extra = _stats_event(piece, skip_health=True)
+                if extra:
+                    events.append(extra)
     return events
 
 

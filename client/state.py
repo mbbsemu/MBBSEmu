@@ -833,10 +833,18 @@ class WorldState:
         self.exp_gained = True
 
     def _note_max(self, mx: object) -> None:
+        """Hits: cur/max from `health`/`stat` is this toon's pool.
+
+        Prompt [HP=n] is current only. Do not keep a high-water from
+        creation Health or another roll — starting HP follows the sheet.
+        """
         if isinstance(mx, int) and mx > 0:
-            self.max_hp = max(self.max_hp or 0, mx)
+            self.max_hp = mx
             self.max_hp_known = True
-        elif self.hp is not None:
+            return
+        if self.max_hp_known:
+            return
+        if self.hp is not None:
             self.max_hp = max(self.max_hp or 0, self.hp)
 
     def _note_ma(self, ma: object, mx: object) -> None:
@@ -846,7 +854,7 @@ class WorldState:
             if self.max_ma is not None and ma > self.max_ma:
                 self.max_ma = ma
         if isinstance(mx, int) and mx > 0:
-            self.max_ma = max(self.max_ma or 0, mx)
+            self.max_ma = mx
 
     def note_dealt(self, dmg: int, now: float | None = None) -> None:
         """Count outgoing damage for the hunt-loop DPS aggregate."""
@@ -964,7 +972,19 @@ class WorldState:
     def hp_ratio(self) -> float | None:
         if self.hp is None or not self.max_hp:
             return None
-        return self.hp / self.max_hp
+        if self.hp < 0:
+            return 0.0
+        return max(0.0, min(1.0, self.hp / self.max_hp))
+
+    def hp_meter_ratio(self) -> float | None:
+        """Footer bar. Until `health`/`stat` Hits, don't use prompt high-water."""
+        if self.hp is None:
+            return None
+        if self.hp < 0:
+            return 0.0
+        if not self.max_hp_known:
+            return 1.0 if self.hp > 0 else 0.0
+        return self.hp_ratio()
 
     def ma_ratio(self) -> float | None:
         if self.ma is None or not self.max_ma:

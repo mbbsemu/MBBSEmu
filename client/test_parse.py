@@ -759,7 +759,8 @@ def test_mortal_aid_drag() -> None:
     assert self_hp.hp_ratio() is None
     self_hp.max_hp = 28
     self_hp.max_hp_known = True
-    assert self_hp.hp_ratio() == -90 / 28
+    assert self_hp.hp_ratio() == 0.0
+    assert self_hp.hp_meter_ratio() == 0.0
     assert self_hp.hp_label() == "HP -90/28"
     glued = parse_events("Matt is mortally wounded.You have aided Matt, Matt's wounds are now healing.")
     assert [ev["kind"] for ev in glued] == ["mortal", "aided"]
@@ -1245,17 +1246,29 @@ def test_stat_dump_parses_attack_and_ac() -> None:
         b"Strength: 70         Intellect: 50\r\n"
         b"Willpower: 50        Agility: 80\r\n"
         b"Charm: 50            Health: 50\r\n"
+        b"Hits: 22/22                   Armour Class: 4\r\n"
         b"Attack: 32           AC: 14\r\n"
     )
     kinds = [e["kind"] for e in events_from_payload(blob)]
     assert kinds.count("stats") >= 4
+    assert "hits" in kinds
     s = WorldState()
-    s.hp = 28
+    s.apply({"kind": "prompt", "hp": 22, "max_hp": None})
+    assert s.max_hp == 22
+    assert not s.max_hp_known
+    s.apply({"kind": "prompt", "hp": 30, "max_hp": None})
+    assert s.max_hp == 30
+    assert not s.max_hp_known
+    assert s.hp_meter_ratio() == 1.0
     for ev in events_from_payload(blob):
         s.apply(ev)
     assert s.strength == 70 and s.agility == 80
     assert s.attack == 32 and s.ac == 14
-    assert s.hp == 28
+    assert s.hp == 22
+    assert s.max_hp == 22
+    assert s.max_hp_known
+    assert s.hp_ratio() == 1.0
+    assert s.hp_meter_ratio() == 1.0
     assert s.stat_known
     assert not s.needs_stat()
     s.level = 1
