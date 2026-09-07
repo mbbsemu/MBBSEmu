@@ -3867,7 +3867,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void sscanf()
         {
-            var inputString = GetParameterString(0, stripNull: true);
+            // Decoded via Latin1 (not ASCII) so each byte maps 1:1 to a char (0-255)
+            // instead of collapsing anything >= 0x80 to '?' before scanf() parses it.
+            var inputString = Encoding.Latin1.GetString(GetParameterStringSpan(0, stripNull: true));
             var formatString = GetParameterString(2, stripNull: true);
             scanf(inputString.GetEnumerator(), formatString, 4);
         }
@@ -4013,7 +4015,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         });
 
                         var destinationPtr = GetParameterPointer(startingParameterOrdinal);
-                        Module.Memory.SetArray(destinationPtr, Encoding.ASCII.GetBytes(stringValue));
+                        // Latin1 maps each char (0-255) straight back to its original byte,
+                        // unlike ASCII which would collapse anything >= 0x80 to '?'.
+                        Module.Memory.SetArray(destinationPtr, Encoding.Latin1.GetBytes(stringValue));
 
                         if (stringValue.Length > 0)
                             ++matches;
@@ -4629,8 +4633,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void strstr()
         {
             var stringToSearchPointer = GetParameterPointer(0);
-            var stringToSearch = GetParameterString(0, true);
-            var stringToFind = GetParameterString(2, true);
+            var stringToSearch = GetParameterStringSpan(0, true);
+            var stringToFind = GetParameterStringSpan(2, true);
 
             var offset = stringToSearch.IndexOf(stringToFind);
             if (offset >= 0)
@@ -4748,8 +4752,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strcmp()
         {
-            var string1 = GetParameterString(0, stripNull: true);
-            var string2 = GetParameterString(2, stripNull: true);
+            // Latin1 (not ASCII) so bytes >= 0x80 decode 1:1 instead of collapsing to '?'
+            var string1 = Encoding.Latin1.GetString(GetParameterStringSpan(0, stripNull: true));
+            var string2 = Encoding.Latin1.GetString(GetParameterStringSpan(2, stripNull: true));
 
             Registers.AX = (ushort)string.Compare(string1, string2);
         }
@@ -5268,10 +5273,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var workPointer = Module.Memory.GetPointer(workPointerPointer);
             var endOffset = Module.Memory.GetWord(lengthPointer);
 
-            var stringDelimiter = Encoding.ASCII.GetString(Module.Memory.GetString(stringDelimitersPointer, stripNull: true));
+            var stringDelimiter = Module.Memory.GetString(stringDelimitersPointer, stripNull: true);
 
             // skip starting delimiters
-            while (workPointer.Offset < endOffset && stringDelimiter.Contains((char)Module.Memory.GetByte(workPointer)))
+            while (workPointer.Offset < endOffset && stringDelimiter.Contains(Module.Memory.GetByte(workPointer)))
             {
                 Module.Memory.SetByte(workPointer++, 0x0);
             }
@@ -5288,7 +5293,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SetPointer(workPointer);
 
             // scan until we find the next delimiter and then null it out for the return
-            while (workPointer.Offset < endOffset && !stringDelimiter.Contains((char)Module.Memory.GetByte(workPointer)))
+            while (workPointer.Offset < endOffset && !stringDelimiter.Contains(Module.Memory.GetByte(workPointer)))
             {
                 workPointer++;
             }
@@ -5426,10 +5431,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void stricmp()
         {
-            var string1 = GetParameterPointer(0) == FarPtr.Empty ? string.Empty : GetParameterString(0, stripNull: true);
-            var string2 = GetParameterPointer(2) == FarPtr.Empty ? string.Empty : GetParameterString(2, stripNull: true);
+            var string1 = GetParameterPointer(0) == FarPtr.Empty ? ReadOnlySpan<byte>.Empty : GetParameterStringSpan(0, stripNull: true);
+            var string2 = GetParameterPointer(2) == FarPtr.Empty ? ReadOnlySpan<byte>.Empty : GetParameterStringSpan(2, stripNull: true);
 
-            Registers.AX = (ushort)string.Compare(string1, string2, ignoreCase: true);
+            Registers.AX = (ushort)Math.Sign(CompareBytesIgnoreCase(string1, string2));
         }
 
         /// <summary>
@@ -6646,11 +6651,34 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strnicmp()
         {
-            var string1 = GetParameterString(0, stripNull: true);
-            var string2 = GetParameterString(2, stripNull: true);
+            var string1 = GetParameterStringSpan(0, stripNull: true);
+            var string2 = GetParameterStringSpan(2, stripNull: true);
             var maxLength = GetParameter(4);
 
-            Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength, true);
+            string1 = string1.Slice(0, Math.Min(string1.Length, maxLength));
+            string2 = string2.Slice(0, Math.Min(string2.Length, maxLength));
+
+            Registers.AX = (ushort)Math.Sign(CompareBytesIgnoreCase(string1, string2));
+        }
+
+        /// <summary>
+        ///     Compares two byte spans case-insensitively (ASCII letters only), mirroring the
+        ///     semantics of C's stricmp/strnicmp without corrupting bytes >= 0x80 the way a
+        ///     string.Compare(ignoreCase: true) over an ASCII-decoded string would.
+        /// </summary>
+        private static int CompareBytesIgnoreCase(ReadOnlySpan<byte> string1, ReadOnlySpan<byte> string2)
+        {
+            var minLength = Math.Min(string1.Length, string2.Length);
+            for (var i = 0; i < minLength; i++)
+            {
+                var diff = ToLowerAscii(string1[i]) - ToLowerAscii(string2[i]);
+                if (diff != 0)
+                    return diff;
+            }
+
+            return string1.Length - string2.Length;
+
+            static byte ToLowerAscii(byte b) => b is >= (byte)'A' and <= (byte)'Z' ? (byte)(b + 0x20) : b;
         }
 
         /// <summary>
@@ -6673,8 +6701,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void strncmp()
         {
-            var string1 = GetParameterString(0, stripNull: true);
-            var string2 = GetParameterString(2, stripNull: true);
+            // Latin1 (not ASCII) so bytes >= 0x80 decode 1:1 instead of collapsing to '?'
+            var string1 = Encoding.Latin1.GetString(GetParameterStringSpan(0, stripNull: true));
+            var string2 = Encoding.Latin1.GetString(GetParameterStringSpan(2, stripNull: true));
             var maxLength = GetParameter(4);
 
             Registers.AX = (ushort)string.Compare(string1, 0, string2, 0, maxLength);

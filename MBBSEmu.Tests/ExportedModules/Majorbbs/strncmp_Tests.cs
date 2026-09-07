@@ -44,5 +44,60 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }
+
+        [Fact]
+        public void strncmp_DistinguishesDifferentNonAsciiBytes()
+        {
+            //Reset State
+            Reset();
+
+            // 0x81 and 0xA5 are both invalid single-byte UTF-8 sequences, and both get
+            // replaced with '?' if decoded via Encoding.ASCII/UTF8 -- they must still
+            // compare as different strings.
+            var str1Pointer = mbbsEmuMemoryCore.AllocateVariable("STR1", 2);
+            mbbsEmuMemoryCore.SetArray(str1Pointer, new byte[] { 0x81, 0x0 });
+
+            var str2Pointer = mbbsEmuMemoryCore.AllocateVariable("STR2", 2);
+            mbbsEmuMemoryCore.SetArray(str2Pointer, new byte[] { 0xA5, 0x0 });
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNCMP_ORDINAL,
+                new List<ushort>
+                {
+                    str1Pointer.Offset,
+                    str1Pointer.Segment,
+                    str2Pointer.Offset,
+                    str2Pointer.Segment,
+                    1
+                });
+
+            Assert.NotEqual(0, mbbsEmuCpuRegisters.AX);
+        }
+
+        [Fact]
+        public void strncmp_EqualNonAsciiBytesCompareEqual()
+        {
+            //Reset State
+            Reset();
+
+            var str1Pointer = mbbsEmuMemoryCore.AllocateVariable("STR1", 2);
+            mbbsEmuMemoryCore.SetArray(str1Pointer, new byte[] { 0xAD, 0x0 });
+
+            var str2Pointer = mbbsEmuMemoryCore.AllocateVariable("STR2", 2);
+            mbbsEmuMemoryCore.SetArray(str2Pointer, new byte[] { 0xAD, 0x0 });
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNCMP_ORDINAL,
+                new List<ushort>
+                {
+                    str1Pointer.Offset,
+                    str1Pointer.Segment,
+                    str2Pointer.Offset,
+                    str2Pointer.Segment,
+                    1
+                });
+
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+        }
     }
 }

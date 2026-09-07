@@ -42,5 +42,25 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(0, mbbsEmuCpuRegisters.DX);
             Assert.Equal(0, mbbsEmuCpuRegisters.AX);
         }
+
+        [Fact]
+        public void strtok_NonAsciiDelimiter()
+        {
+            //Reset State
+            Reset();
+
+            //Set Argument Values to be Passed In
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("STR", 6);
+            mbbsEmuMemoryCore.SetArray("STR", new byte[] { (byte)'a', (byte)'b', 0x80, (byte)'c', (byte)'d', 0x0 });
+
+            var delimPointer = mbbsEmuMemoryCore.AllocateVariable("DELIM", 2);
+            mbbsEmuMemoryCore.SetArray("DELIM", new byte[] { 0x80, 0x0 });
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { stringPointer, delimPointer });
+            Assert.Equal("ab", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX, true)));
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRTOK_ORDINAL, new List<FarPtr> { FarPtr.Empty, delimPointer });
+            Assert.Equal("cd", Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString(mbbsEmuCpuRegisters.DX, mbbsEmuCpuRegisters.AX, true)));
+        }
     }
 }
