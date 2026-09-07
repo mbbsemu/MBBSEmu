@@ -16,8 +16,6 @@ namespace MBBSEmu.Session.Telnet
     /// </summary>
     public class TelnetSession : SocketSession
     {
-        private int _iacPhase;
-
         private static readonly byte[] IAC_NOP = { 0xFF, 0xF1 };
 
         private readonly bool _heartbeat;
@@ -43,7 +41,7 @@ namespace MBBSEmu.Session.Telnet
                 {EnumIacOptions.BinaryTransmission, new TelnetOptionsValue { Local = true, Remote = true}},
                 {EnumIacOptions.Echo, new TelnetOptionsValue { Local = true, Remote = false}},
                 {EnumIacOptions.SuppressGoAhead, new TelnetOptionsValue { Local = true, Remote = true}},
-                {EnumIacOptions.NegotiateAboutWindowSize, new TelnetOptionsValue { Local = true, Remote = true }},
+                {EnumIacOptions.NegotiateAboutWindowSize, new TelnetOptionsValue { Local = false, Remote = true }},
             };
 
         private readonly IacFilter _iacFilter;
@@ -116,12 +114,10 @@ namespace MBBSEmu.Session.Telnet
             base.Send(msOutputBuffer.ToArray());
         }
 
-        protected override void PreSend()
+        public override void Start()
         {
-            if (SessionTimer.ElapsedMilliseconds >= 500 && _iacPhase == 0)
-            {
-                TriggerIACNegotiation();
-            }
+            TriggerIACNegotiation();
+            base.Start();
         }
 
         protected override (byte[], int) ProcessIncomingClientData(byte[] clientData, int bytesReceived)
@@ -134,8 +130,9 @@ namespace MBBSEmu.Session.Telnet
         /// </summary>
         private void TriggerIACNegotiation()
         {
-            _iacPhase = 1;
-            base.Send(new IacResponse(EnumIacVerbs.DO, EnumIacOptions.BinaryTransmission).ToArray());
+            var responses = new HashSet<IacResponse>();
+            AddInitialNegotiations(responses);
+            SendIacResponses(responses);
         }
 
         private void AddInitialNegotiations(HashSet<IacResponse> responses)
@@ -155,32 +152,39 @@ namespace MBBSEmu.Session.Telnet
 
             if (_localOptions.TryGetValue(args.Option, out var localOptionsValue))
             {
-                // we support this, and we're hard coded, so tell client to back off and listen to
-                // us
-                iacResponses.Add(new IacResponse(localOptionsValue.GetLocalStatusVerb(), args.Option));
-                if (args.Verb == EnumIacVerbs.WILL || args.Verb == EnumIacVerbs.WONT)
+                switch (args.Verb)
                 {
-                    iacResponses.Add(new IacResponse(localOptionsValue.GetRemoteCommandVerb(), args.Option));
+                    case EnumIacVerbs.DO:
+                        iacResponses.Add(new IacResponse(localOptionsValue.GetLocalStatusVerb(), args.Option));
+                        break;
+                    case EnumIacVerbs.DONT:
+                        iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, args.Option));
+                        break;
+                    case EnumIacVerbs.WILL:
+                        iacResponses.Add(new IacResponse(localOptionsValue.GetRemoteCommandVerb(), args.Option));
+                        break;
+                    case EnumIacVerbs.WONT:
+                        iacResponses.Add(new IacResponse(EnumIacVerbs.DONT, args.Option));
+                        break;
                 }
             }
             else
             {
-                // not supported, just return that we WONT do this
-                iacResponses.Add(new IacResponse(EnumIacVerbs.WONT, args.Option));
+                // Reject the action on the side requested by the client.
+                iacResponses.Add(new IacResponse(
+                    args.Verb == EnumIacVerbs.DO || args.Verb == EnumIacVerbs.DONT
+                        ? EnumIacVerbs.WONT
+                        : EnumIacVerbs.DONT,
+                    args.Option));
             }
 
-            //In the 1st phase of IAC negotiation, ensure the required items are being negotiated
-            if (_iacPhase == 0)
-            {
-                AddInitialNegotiations(iacResponses);
-            }
+            SendIacResponses(iacResponses);
+        }
 
-            _iacPhase++;
-
+        private void SendIacResponses(HashSet<IacResponse> iacResponses)
+        {
             if (iacResponses.Count == 0)
-            {
                 return;
-            }
 
             using var msIacToSend = new MemoryStream(128);
             foreach (var resp in iacResponses.Where(resp => _iacSentResponses.Add(resp)))
@@ -190,9 +194,7 @@ namespace MBBSEmu.Session.Telnet
             }
 
             if (msIacToSend.Length > 0)
-            {
                 base.Send(msIacToSend.ToArray());
-            }
         }
 
         private void OnIacSubnegotiationReceived(object sender, IacFilter.IacSubnegotiationEventArgs args)

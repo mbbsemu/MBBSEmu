@@ -898,7 +898,7 @@ namespace MBBSEmu.HostProcess
             switch (session.CharacterReceived)
             {
                 //Backspace
-                case 127 when session.SessionState == EnumSessionState.InModule:
+                case 127:
                 case 0x8:
                     {
                         if (session.InputBuffer.Length > 0)
