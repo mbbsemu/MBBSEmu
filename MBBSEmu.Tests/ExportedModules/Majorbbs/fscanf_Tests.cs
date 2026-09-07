@@ -68,6 +68,37 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
+        public void fscanf_PreservesNonAsciiBytesInStringConversion()
+        {
+            //Reset State
+            Reset();
+
+            // 0xAD is an invalid single-byte UTF-8 sequence and gets replaced with '?'
+            // if decoded via Encoding.ASCII/UTF8 -- %s must copy it through untouched.
+            var fileBytes = new byte[] { (byte)'a', 0xAD, (byte)'b' };
+            var filePath = Path.Join(mbbsModule.ModulePath, "nonascii.txt");
+            File.WriteAllBytes(filePath, fileBytes);
+
+            var filep = fopen("nonascii.txt", "r");
+            Assert.NotEqual(0, filep.Segment);
+
+            const string FORMAT = "%s";
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(FORMAT.Length + 1));
+            mbbsEmuMemoryCore.SetArray(formatPointer, Encoding.ASCII.GetBytes(FORMAT));
+
+            var resultPointer = mbbsEmuMemoryCore.AllocateVariable("RESULT", 8);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, new List<FarPtr> { filep, formatPointer, resultPointer });
+
+            //Verify Results
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(fileBytes, mbbsEmuMemoryCore.GetArray(resultPointer, (ushort)fileBytes.Length).ToArray());
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        [Fact]
         public void fscanf_invalid_filestream_Test()
         {
             //Reset State

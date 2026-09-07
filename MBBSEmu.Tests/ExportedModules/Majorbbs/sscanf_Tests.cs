@@ -260,6 +260,54 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Fact]
+        public void sscanf_PreservesNonAsciiBytesInStringConversion()
+        {
+            //Reset State
+            Reset();
+
+            // 0xAD is an invalid single-byte UTF-8 sequence and gets replaced with '?'
+            // if decoded via Encoding.ASCII/UTF8 -- %s must copy it through untouched.
+            var inputBytes = new byte[] { (byte)'a', 0xAD, (byte)'b', 0x0 };
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)inputBytes.Length);
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", inputBytes);
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", 4);
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes("%s"));
+
+            var resultPointer = mbbsEmuMemoryCore.AllocateVariable(null, 8);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, resultPointer });
+
+            //Verify Results
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(new byte[] { (byte)'a', 0xAD, (byte)'b' }, mbbsEmuMemoryCore.GetArray(resultPointer, 3).ToArray());
+        }
+
+        [Fact]
+        public void sscanf_PreservesNonAsciiBytesInCharacterConversion()
+        {
+            //Reset State
+            Reset();
+
+            var inputBytes = new byte[] { 0xAD, 0x0 };
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("INPUT_STRING", (ushort)inputBytes.Length);
+            mbbsEmuMemoryCore.SetArray("INPUT_STRING", inputBytes);
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable("FORMAT_STRING", 4);
+            mbbsEmuMemoryCore.SetArray("FORMAT_STRING", Encoding.ASCII.GetBytes("%c"));
+
+            var resultPointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, SSCANF_ORDINAL, new List<FarPtr> { stringPointer, formatPointer, resultPointer });
+
+            //Verify Results
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(0xAD, mbbsEmuMemoryCore.GetByte(resultPointer));
+        }
+
+        [Fact]
         public void invalid_formatString_throws()
         {
             //Reset State

@@ -41,5 +41,48 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 Assert.Equal(string1Pointer.Segment, mbbsEmuCpuRegisters.DX);
             }
         }
+
+        [Fact]
+        public void STRSTR_FindsNonAsciiNeedle()
+        {
+            //Reset State
+            Reset();
+
+            var haystackPointer = mbbsEmuMemoryCore.AllocateVariable("STRING1", 6);
+            mbbsEmuMemoryCore.SetArray("STRING1", new byte[] { (byte)'a', (byte)'b', 0xAD, (byte)'c', (byte)'d', 0x0 });
+
+            var needlePointer = mbbsEmuMemoryCore.AllocateVariable("STRING2", 2);
+            mbbsEmuMemoryCore.SetArray("STRING2", new byte[] { 0xAD, 0x0 });
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRSTR_ORDINAL, new List<FarPtr> { haystackPointer, needlePointer });
+
+            //Verify Results
+            Assert.Equal(haystackPointer.Offset + 2, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(haystackPointer.Segment, mbbsEmuCpuRegisters.DX);
+        }
+
+        [Fact]
+        public void STRSTR_DoesNotFalsePositiveOnDifferentNonAsciiBytes()
+        {
+            //Reset State
+            Reset();
+
+            // 0x81 and 0xA5 are both invalid single-byte UTF-8 sequences, and both get
+            // replaced with '?' if decoded via Encoding.ASCII/UTF8 -- a needle containing
+            // 0xA5 must not "find" a haystack byte of 0x81.
+            var haystackPointer = mbbsEmuMemoryCore.AllocateVariable("STRING1", 4);
+            mbbsEmuMemoryCore.SetArray("STRING1", new byte[] { (byte)'a', 0x81, (byte)'b', 0x0 });
+
+            var needlePointer = mbbsEmuMemoryCore.AllocateVariable("STRING2", 2);
+            mbbsEmuMemoryCore.SetArray("STRING2", new byte[] { 0xA5, 0x0 });
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRSTR_ORDINAL, new List<FarPtr> { haystackPointer, needlePointer });
+
+            //Verify Results
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(0, mbbsEmuCpuRegisters.DX);
+        }
     }
 }

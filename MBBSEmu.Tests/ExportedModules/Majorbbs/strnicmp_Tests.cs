@@ -44,5 +44,62 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(expected, mbbsEmuCpuRegisters.AX);
         }
+
+        [Fact]
+        public void strnicmp_DistinguishesDifferentNonAsciiBytes()
+        {
+            //Reset State
+            Reset();
+
+            // 0x81 and 0xA5 are both invalid single-byte UTF-8 sequences, and both get
+            // replaced with '?' if decoded via Encoding.ASCII/UTF8 -- they must still
+            // compare as different strings.
+            var str1Pointer = mbbsEmuMemoryCore.AllocateVariable("STR1", 2);
+            mbbsEmuMemoryCore.SetArray(str1Pointer, new byte[] { 0x81, 0x0 });
+
+            var str2Pointer = mbbsEmuMemoryCore.AllocateVariable("STR2", 2);
+            mbbsEmuMemoryCore.SetArray(str2Pointer, new byte[] { 0xA5, 0x0 });
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNICMP_ORDINAL,
+                new List<ushort>
+                {
+                    str1Pointer.Offset,
+                    str1Pointer.Segment,
+                    str2Pointer.Offset,
+                    str2Pointer.Segment,
+                    1
+                });
+
+            Assert.NotEqual(0, mbbsEmuCpuRegisters.AX);
+        }
+
+        [Fact]
+        public void strnicmp_StillIgnoresAsciiCase()
+        {
+            //Reset State
+            Reset();
+
+            // Confirms the byte-level comparison introduced to fix the non-ASCII
+            // corruption bug didn't regress ASCII case-insensitivity.
+            var str1Pointer = mbbsEmuMemoryCore.AllocateVariable("STR1", 4);
+            mbbsEmuMemoryCore.SetArray(str1Pointer, Encoding.ASCII.GetBytes("AbC"));
+
+            var str2Pointer = mbbsEmuMemoryCore.AllocateVariable("STR2", 4);
+            mbbsEmuMemoryCore.SetArray(str2Pointer, Encoding.ASCII.GetBytes("aBc"));
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNICMP_ORDINAL,
+                new List<ushort>
+                {
+                    str1Pointer.Offset,
+                    str1Pointer.Segment,
+                    str2Pointer.Offset,
+                    str2Pointer.Segment,
+                    3
+                });
+
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+        }
     }
 }
