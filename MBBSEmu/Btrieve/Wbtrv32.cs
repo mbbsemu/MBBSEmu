@@ -24,7 +24,7 @@ namespace MBBSEmu.Btrieve
                     RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "wbtrv32.dylib" :
                     "wbtrv32.so";
 
-            if (!string.Equals(libraryName, "wbtrv32.dll", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(libraryName, "wbtrv32", StringComparison.OrdinalIgnoreCase))
                 return IntPtr.Zero;
 
             nint handle;
