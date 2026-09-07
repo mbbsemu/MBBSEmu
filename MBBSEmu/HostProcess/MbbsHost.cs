@@ -1096,6 +1096,11 @@ namespace MBBSEmu.HostProcess
         /// <returns></returns>
         public bool RemoveSession(ushort channel)
         {
+            return RemoveSession(channel, true);
+        }
+
+        private bool RemoveSession(ushort channel, bool stopSession)
+        {
             if (!_channelDictionary.ContainsKey(channel))
             {
                 return false;
@@ -1106,7 +1111,8 @@ namespace MBBSEmu.HostProcess
             CallModuleRoutine("huprou", preRunCallback: null, channel);
 
             var session = _channelDictionary[channel];
-            session.Stop();
+            if (stopSession)
+                session.Stop();
             session.SessionState = EnumSessionState.Disconnected;
 
             _channelDictionary.Remove(channel);
@@ -1480,12 +1486,15 @@ namespace MBBSEmu.HostProcess
         {
             Logger.Info("PERFORMING NIGHTLY CLEANUP");
 
+            var localConsoleSessions = _channelDictionary.Values.OfType<LocalConsoleSession>().ToList();
+
             // Notify Users of Nightly Cleanup
             foreach (var c in _channelDictionary)
                 _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
 
-            foreach (var localConsoleSession in _channelDictionary.Values.OfType<LocalConsoleSession>())
-                localConsoleSession.StopHostOnStop = false;
+            // Keep the local console's transport threads alive so it can return to login.
+            foreach (var localConsoleSession in localConsoleSessions)
+                RemoveSession(localConsoleSession.Channel, false);
 
             // removes all sessions before module cleanup
             RemoveSessions(session => true);
@@ -1509,6 +1518,12 @@ namespace MBBSEmu.HostProcess
             Logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
 
             Start(moduleConfigurations);
+
+            foreach (var localConsoleSession in localConsoleSessions)
+            {
+                localConsoleSession.ResetForLogin();
+                AddSession(localConsoleSession);
+            }
         }
 
         /// <summary>
