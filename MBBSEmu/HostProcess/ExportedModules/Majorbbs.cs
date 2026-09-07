@@ -3039,7 +3039,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void strncpy()
         {
             var destinationPointer = GetParameterPointer(0);
-            var source = GetParameterString(2);
+            var source = GetParameterStringSpan(2);
             var numberOfBytesToCopy = GetParameter(4);
 
             Registers.SetPointer(destinationPointer);
@@ -3055,7 +3055,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 }
 
-                Module.Memory.SetByte(destinationPointer, (byte)source[i]);
+                Module.Memory.SetByte(destinationPointer, source[i]);
             }
         }
 

@@ -45,5 +45,31 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(destinationStringPointer.Segment, mbbsEmuCpuRegisters.DX);
             Assert.Equal(destinationStringPointer.Offset, mbbsEmuCpuRegisters.AX);
         }
+
+        [Fact]
+        public void strncpy_CopiesNonAsciiBytesVerbatim()
+        {
+            Reset();
+
+            var destinationPointer = mbbsEmuMemoryCore.AllocateVariable("DST", 2);
+            mbbsEmuMemoryCore.SetArray(destinationPointer, new byte[] { 0, 0 });
+
+            var sourcePointer = mbbsEmuMemoryCore.AllocateVariable("SRC", 2);
+            mbbsEmuMemoryCore.SetArray(sourcePointer, new byte[] { 0xAD, 0 });
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, STRNCPY_ORDINAL,
+                new List<ushort>
+                {
+                    destinationPointer.Offset,
+                    destinationPointer.Segment,
+                    sourcePointer.Offset,
+                    sourcePointer.Segment,
+                    1
+                });
+
+            Assert.Equal(0xAD, mbbsEmuMemoryCore.GetByte(destinationPointer));
+            Assert.Equal(destinationPointer.Segment, mbbsEmuCpuRegisters.DX);
+            Assert.Equal(destinationPointer.Offset, mbbsEmuCpuRegisters.AX);
+        }
     }
 }
