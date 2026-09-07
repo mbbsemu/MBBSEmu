@@ -75,11 +75,13 @@ namespace MBBSEmu.CPU.Benchmark
 
         private void MonitorThread()
         {
+            var lastCount = 0L;
             while (_isRunning)
             {
                 new AutoResetEvent(false).WaitOne(1000);
-                Console.WriteLine($"Instructions Per Second: {mbbsEmuCpuCore.InstructionCounter}");
-                mbbsEmuCpuCore.InstructionCounter = 0;
+                var currentCount = mbbsEmuCpuCore.InstructionCounter;
+                Console.WriteLine($"Instructions Per Second: {currentCount - lastCount}");
+                lastCount = currentCount;
             }
         }
 
