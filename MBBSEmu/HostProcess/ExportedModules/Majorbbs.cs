@@ -108,6 +108,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private int _sprIndex;
 
         /// <summary>
+        ///     True after outprf() sends the current buffer. Repeated outprf() calls
+        ///     resend it, while the next formatting call starts a new message. This
+        ///     state belongs to the same per-module Majorbbs instance as PRFBUF.
+        /// </summary>
+        private bool _prfBufferSent;
+
+        /// <summary>
         ///     Int 21h handler
         /// </summary>
         private readonly Int21h _int21h;
@@ -359,9 +366,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Reset NXTCMD
             Module.Memory.SetPointer("NXTCMD", Module.Memory.GetVariablePointer("INPUT"));
 
-            //Reset PRFPTR
+            //A valid-channel callback begins with an empty formatted-output buffer.
             Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
             Module.Memory.SetZero(Module.Memory.GetVariablePointer("PRFBUF"), 0x4000);
+            _prfBufferSent = false;
 
             //Set FSDSCB Pointer for Current User
             var channelFsdscb = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
@@ -2106,6 +2114,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 2);
 
+            PreparePrfBufferForWrite();
+
             var pointerPosition = Module.Memory.GetPointer("PRFPTR");
             Module.Memory.SetArray(pointerPosition, formattedMessage);
 
@@ -2129,6 +2139,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //Set prfptr to the base address of prfbuf
             Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
             Module.Memory.SetByte(Module.Memory.GetVariablePointer("PRFBUF"), 0);
+            _prfBufferSent = false;
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Reset Output Buffer");
@@ -2136,10 +2147,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Begin a new message when the previous contents have already been sent.
+        ///     The buffer remains untouched between repeated outprf() calls so one
+        ///     formatted message can still be broadcast to multiple channels.
+        /// </summary>
+        private void PreparePrfBufferForWrite()
+        {
+            if (!_prfBufferSent)
+                return;
+
+            var basePointer = Module.Memory.GetVariablePointer("PRFBUF");
+            Module.Memory.SetPointer("PRFPTR", basePointer);
+            Module.Memory.SetByte(basePointer, 0);
+            _prfBufferSent = false;
+        }
+
+        /// <summary>
         ///     Send prfbuf to a channel
         ///
-        ///     Does NOT clear prfbuf -- that's clrprf()'s job. This allows the same
-        ///     buffered output to be sent to multiple channels via repeated outprf() calls.
+        ///     Does NOT immediately clear prfbuf. This allows the same buffered output
+        ///     to be sent to multiple channels via repeated outprf() calls. The next
+        ///     formatting call starts a new message.
         ///
         ///     Signature: void outprf (unum)
         /// </summary>
@@ -2159,6 +2187,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (ChannelDictionary.ContainsKey(userChannel))
                 ChannelDictionary[userChannel].SendToClient(outputBufferProcessed.ToArray());
+
+            _prfBufferSent = true;
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) Sent {outputBuffer.Length} bytes to Channel {userChannel}");
@@ -2214,6 +2244,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var formattedMessage = FormatPrintf(outputMessage, 1);
+
+            PreparePrfBufferForWrite();
 
             var currentPrfPositionPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
 
@@ -4098,6 +4130,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //If the supplied string has any control characters for formatting, process them
             var formattedMessage = FormatPrintf(output, 1);
 
+            PreparePrfBufferForWrite();
+
             var currentPrfPositionPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
             Module.Memory.SetArray(currentPrfPositionPointer, formattedMessage);
             currentPrfPositionPointer.Offset += (ushort)(formattedMessage.Length - 1); //dont count the null terminator
@@ -4894,8 +4928,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> vdatmp => Module.Memory.GetVariablePointer("*VDATMP").Data;
 
         /// <summary>
-        ///     Send prfbuf to a channel & clear
-        ///     Multilingual version of outprf(), for now we just call outprf()
+        ///     Multilingual version of outprf(), for now we just call outprf().
         /// </summary>
         private void outmlt() => outprf();
 
@@ -7429,8 +7462,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetZero(basePointer, outputLength);
 
-            //Set prfptr to the base address of prfbuf
+            //injoth() consumes and clears the formatted-output buffer.
             Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
+            _prfBufferSent = false;
         }
 
         /// <summary>
