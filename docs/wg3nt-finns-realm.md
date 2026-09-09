@@ -60,9 +60,14 @@ Undo g-era tree only: `xcopy C:\backup\wgserv-1.11g C:\wgserv /E /I /H /Y` (over
 
 ## Play from Linux
 
-Same xterm: **80×30**, font **Px IBM VGA8**, ice colors. 25-line Mud + 5-line footer. Raw `telnet` can be 80×25.
+Same xterm: **80×30** (size locked — maximize is dead black and breaks the footer), font **Px IBM VGA8**, ice colors. Icon is `client/icons/finns-realm.png`, not the xterm XT. Raw `telnet` can be 80×25.
 
-Client: TTYPE `xterm-256color` and CSI **6n** (WG auto-sense). SGR 5 = iCE bright bg. Single keys use a short type gap; commands use a longer key gap so WG does not eat input.
+Client: TTYPE **ANSI-BBS** first (then ANSI, then xterm) for parchment
+TRAIN STATS (`EDITCHA1`). Login Auto-sensing still sends CSI **6n** — answer
+with the **real caret** (row and column), not forced `25;1R`. Idle room
+listings are **Statline Full** bare Enter / move / combat reprints, not a
+WG timer. SGR 5 = iCE. If TRAIN STATS is still a text dump: Account
+Display/Edit → ANSI Yes, editor **FSE** (not LINE).
 
 **Worldgroup NT (live):**
 
@@ -71,6 +76,7 @@ cd ~/Code/Repo/Projects/majormud
 ./scripts/play-wg.sh klymacks   # BBS sysop → mud klymacks
 ./scripts/play-wg.sh matt
 ./scripts/play-wg.sh new        # type login yourself
+./scripts/play-wg.sh maint      # sysop BBS menu only (USERCOPY / ANSI / FSE)
 ```
 
 **DOS MBBSEmu (testing only, `127.0.0.1:2323`):**
@@ -80,19 +86,33 @@ cd ~/Code/Repo/Projects/majormud
 ./scripts/reboot-board.sh
 ```
 
-Desktop (reinstall: `./scripts/install-wg-shortcuts.sh`):
+Desktop folder `Finn's Realm/` (reinstall: `./scripts/install-wg-shortcuts.sh`):
 
-- **Finn's Realm — klymacks / matt / new** → NT (`192.168.122.33:23`)
-- **Finn's Realm DOS — klymacks** → MBBSEmu
-- **Reboot Finn's Realm DOS**
+- **NT/** roster + new + **BBS — klymacks** → Worldgroup VM (`192.168.122.33:23`)
+- **DOS/** **Finn's Realm DOS — klymacks** + reboot → MBBSEmu
+- **Codes/** yours (registration lists) — installer does not write there
 
 Logins: NT `config/wg-local.json`, `wg-matt.json`, `wg-new.json` (gitignored). DOS `config/player.json`. WG is often **one Mud character per BBS user**. ANSI **Y** on new accounts.
+
+### Overnight / 3 AM cleanup
+
+WG nightly **CLEANUP** (~3 AM) drops every client. Leave the play windows up (matt, klymacks, ryan, …).
+
+1. Client detects cleanup / “off the air” / socket death while in the realm.
+2. Saves `data/resume-<user>.json` (room, hunt/gear/rest, follow, party, rank).
+3. Prefers graceful `x` logoff when still connected; otherwise waits.
+4. Polls FINN:23 until the board is back, auto-logs in, **M**/**E**, clears hangup pager with **N**.
+5. Resumes: followers `follow` the leader again; leader re-invites; hunt/gear/rest mode restored. Kit is not redone if already geared.
+
+**F12** is intentional logoff — clears the resume file and does **not** auto-reconnect. Cleanup drops do.
+
+Verify: kill the telnet path while hunting (`iptables` / stop WG briefly), or wait for real cleanup. Footer should show wait → sign-in → `hunt · resuming` / follow.
 
 ---
 
 ## Add a BBS user (matt worked this way)
 
-**Worldgroup Manager is not available.** From telnet as sysop: **S** (sysop) → accounting → **USERCOPY** (create a new User-ID). **EDIT** is only for keys on an account that already exists.
+**Worldgroup Manager is not available.** Use **Finn's Realm BBS — klymacks** (`./scripts/play-wg.sh maint`) so sysop logs in and does **not** press **M**. Close the play window first (one login). Then **S** → accounting → **USERCOPY** (create a new User-ID). **EDIT** is only for keys on an account that already exists.
 
 At the accounting prompt:
 

@@ -6,6 +6,13 @@ import struct
 from pathlib import Path
 from typing import Any
 
+# 0-indexed. Graffiti lives in 0–19. Row 20 is the ice rule. Prompts 21–23
+# (rows 22–24) sit under the piece so Username / disconnect never paint the
+# letters or run into chrome at row 26. Row 25 stays a gutter.
+SPLASH_DOCK_RULE = 20
+SPLASH_DOCK_TOP = 21
+SPLASH_DOCK_BOT = 24
+
 HERE = Path(__file__).resolve().parent
 CHARLIST = (
     "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -214,16 +221,16 @@ def _ice_wash(screen: Any, y: int, x: int, w: int, h: int) -> None:
 def _ice_hook(screen: Any) -> None:
     """Hand flourish under the right side — Infinity-style ice tail, not a font."""
     marks = (
-        (18, 62, "▄", 4, True),
-        (18, 63, "▄", 4, True),
-        (19, 64, "▀", 4, False),
-        (19, 65, "▄", 4, True),
-        (19, 66, "▓", 4, False),
-        (20, 67, "▀", 4, True),
-        (20, 68, "▄", 6, True),
-        (20, 69, "·", 7, True),
-        (21, 66, "▀", 4, False),
-        (21, 67, "▀", 4, False),
+        (16, 62, "▄", 4, True),
+        (16, 63, "▄", 4, True),
+        (17, 64, "▀", 4, False),
+        (17, 65, "▄", 4, True),
+        (17, 66, "▓", 4, False),
+        (18, 67, "▀", 4, True),
+        (18, 68, "▄", 6, True),
+        (18, 69, "·", 7, True),
+        (19, 66, "▀", 4, False),
+        (19, 67, "▀", 4, False),
     )
     for y, x, ch, fg, bold in marks:
         _put(screen, y, x, ch, fg, 0, bold, overlay=False)
@@ -237,7 +244,7 @@ def _sparkles(screen: Any) -> None:
         (2, 70, "▀"),
         (11, 4, "·"),
         (11, 76, "+"),
-        (20, 8, "·"),
+        (19, 8, "·"),
     )
     for y, x, ch in marks:
         if screen.buf[y][x].ch == " ":
@@ -249,6 +256,25 @@ def _ice_ticks(screen: Any) -> None:
     _put(screen, 1, 3, "▄", 6, 0, True, overlay=False)
     _put(screen, 2, 3, "▓", 4, 0, False, overlay=False)
     _put(screen, 1, 76, "▄", 6, 0, True, overlay=False)
+
+
+def _login_dock(screen: Any) -> None:
+    """Ice rule + blank prompt band. Sign-in and hangup sit here, not on FINNS."""
+    cols = screen.cols
+    y = SPLASH_DOCK_RULE
+    for x in range(cols):
+        edge = min(x, cols - 1 - x)
+        if edge < 4:
+            ch = "░"
+        elif edge < 12:
+            ch = "▒"
+        else:
+            ch = "▀"
+        fg = 4 if edge < 14 else 6
+        _put(screen, y, x, ch, fg, 0, edge >= 12)
+    for yy in range(SPLASH_DOCK_TOP, min(SPLASH_DOCK_BOT, screen.rows)):
+        for x in range(cols):
+            _put(screen, yy, x, " ", 0, 0, False)
 
 
 def paint(screen: Any, host: str, port: int, *, kind: str = "client") -> None:
@@ -270,9 +296,9 @@ def paint(screen: Any, host: str, port: int, *, kind: str = "client") -> None:
     _ice_hook(screen)
     _sparkles(screen)
     _ice_ticks(screen)
+    _login_dock(screen)
     if kind == "board":
         return
-    _puts(screen, 22, max(0, (screen.cols - 25) // 2), "f i n n ' s     r e a l m", 6, 0, True)
-    _puts(screen, 23, 2, "klymacks", 7, 0, False)
+    _puts(screen, SPLASH_DOCK_TOP, 2, "connecting", 6, 0, False)
     addr = f"{host}:{port}"
-    _puts(screen, 23, screen.cols - len(addr) - 2, addr, 4, 0, False)
+    _puts(screen, SPLASH_DOCK_TOP, screen.cols - len(addr) - 2, addr, 4, 0, False)

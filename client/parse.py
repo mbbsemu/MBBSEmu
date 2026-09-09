@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Literal
 
-from . import paths
+from . import modules, party, paths, spells
 
 EventKind = Literal[
     "prompt",
@@ -25,11 +25,17 @@ EventKind = Literal[
     "combat",
     "combat_off",
     "arrive",
+    "realm_enter",
+    "not_here",
     "leave",
     "drop",
     "inventory",
     "said",
     "heal_ask",
+    "join_call",
+    "rest_call",
+    "rested",
+    "healed",
     "hits",
     "mana",
     "cast_fail",
@@ -38,6 +44,8 @@ EventKind = Literal[
     "following",
     "followed",
     "backrank",
+    "rank",
+    "ranked",
     "party_fail",
     "sneak_try",
     "sneak_ok",
@@ -57,14 +65,18 @@ EventKind = Literal[
     "shop_vague",
     "already_worn",
     "sold",
+    "learned",
+    "spellbook",
     "stats",
     "death",
+    "wealth",
+    "deposit",
 ]
 
 PROMPT_RE = re.compile(
     r"\[HP=(?P<hp>-?\d+)"
     r"(?:/(?P<max>\d+))?"
-    r"(?:/MA=(?P<ma>\d+)(?:/(?P<max_ma>\d+))?)?"
+    r"(?:/(?:MA|KA)=(?P<ma>\d+)(?:/(?P<max_ma>\d+))?)?"
     r"(?:[^\]]*)\]:",
     re.IGNORECASE,
 )
@@ -96,14 +108,17 @@ YOU_HIT_RE = re.compile(
     re.IGNORECASE,
 )
 SELF_SWING_RE = re.compile(
-    r"^([A-Z][A-Za-z]+) moves to attack (.+?)[.!]?$",
+    r"^([A-Z][A-Za-z]{1,14}) (?:moves to attack|swings at|swipes at|attacks) "
+    r"(.+?)[.!]?$",
     re.IGNORECASE,
 )
 THIRD_HIT_RE = re.compile(
-    r"^([A-Z][a-z]{1,14}) (?:critically )?(?:whaps|hits|slashes|pierces|bashes) "
-    r".+ for \d+ damage",
+    r"^([A-Z][a-z]{1,14}) (?:critically )?"
+    r"(?:whaps|hits|slashes|pierces|bashes|backstabs) "
+    r"(.+?) for \d+ damage",
     re.IGNORECASE,
 )
+_AIM_SKIP = frozenset({"you", "yourself", "himself", "herself", "them", "him", "her", "it"})
 THIRD_SIT_RE = re.compile(
     r"^([A-Z][a-z]{1,14}) sits down and (?:meditates|begins to rest)",
     re.IGNORECASE,
@@ -119,6 +134,11 @@ ALLY_FLEE_RE = re.compile(
 )
 YOU_FLEE_RE = re.compile(
     r"^You (?:panic and )?flee(?: to the)? "
+    r"(north|south|east|west|up|down|northeast|northwest|southeast|southwest)\b",
+    re.IGNORECASE,
+)
+YOU_WALL_RE = re.compile(
+    r"^You ran into the wall to the "
     r"(north|south|east|west|up|down|northeast|northwest|southeast|southwest)\b",
     re.IGNORECASE,
 )
@@ -172,7 +192,15 @@ LEAVE_RE = re.compile(
 )
 PC_ARRIVE_RE = re.compile(
     r"^([A-Z][A-Za-z]{1,14}) (?:just arrived|walks into the room|walks in|"
-    r"has just arrived|just entered the Realm)\b",
+    r"has just arrived)\b",
+    re.IGNORECASE,
+)
+REALM_ENTER_RE = re.compile(
+    r"^([A-Z][A-Za-z]{1,14}) (?:just |has )entered the Realm\.?$",
+    re.IGNORECASE,
+)
+NOT_HERE_RE = re.compile(
+    r"^You (?:don't|do not) see (.+?) here[.!]*$",
     re.IGNORECASE,
 )
 PC_LEAVE_RE = re.compile(
@@ -196,9 +224,30 @@ SAY_RE = re.compile(
     re.IGNORECASE,
 )
 _HEAL_ASK = frozenset({"heal", "heals", "healing", "mihe"})
-_HEAL_ASK_SKIP = frozenset({"health", "hea"})
+_HEAL_ASK_SKIP = frozenset({"health", "hea", "!healed", "!rest", "!rested", "!join"})
+_JOIN_CALLS = frozenset({"!join", "join up"})
+_REST_CALLS = frozenset({"!rest"})
+_RESTED_CALLS = frozenset({"!rested"})
+_HEALED_CALLS = frozenset({"!healed"})
+_HEAL_TAGS = frozenset({"!heal"})
 SALE_RE = re.compile(r"for sale|shopkeeper|what would you like to buy", re.IGNORECASE)
 SOLD_RE = re.compile(r"^you sold (?P<item>.+?) for ", re.IGNORECASE)
+WEALTH_RE = re.compile(
+    r"^wealth:\s*(?P<n>[\d,]+)\s+copper",
+    re.IGNORECASE,
+)
+WEALTH_EQUIV_RE = re.compile(
+    r"equivalent(?: value)?(?: of)?(?: to)?\s*(?P<n>[\d,]+)\s+copper",
+    re.IGNORECASE,
+)
+DEPOSIT_RE = re.compile(
+    r"^you (?:deposit|put)\s*(?P<n>[\d,]+)\s+copper",
+    re.IGNORECASE,
+)
+WITHDRAW_RE = re.compile(
+    r"^you withdraw\s*(?P<n>[\d,]+)\s+copper",
+    re.IGNORECASE,
+)
 ALREADY_WORN_RE = re.compile(
     r"you do not have (?P<item>.+?) left unequipped",
     re.IGNORECASE,
@@ -208,11 +257,27 @@ _INV_END_RE = re.compile(
     re.IGNORECASE,
 )
 INVITE_YOU_RE = re.compile(
-    r"^(.+?) has invited you to follow",
+    r"^(.+?) has invited you(?: to (?:follow|join)\b)?",
+    re.IGNORECASE,
+)
+BEEN_INVITED_RE = re.compile(
+    r"^You have been invited(?: to (?:follow|join)\s+|\s+by\s+)(.+?)(?:\.|$)",
+    re.IGNORECASE,
+)
+INVITES_YOU_RE = re.compile(
+    r"^(.+?) invites you to (?:follow|join)\b",
     re.IGNORECASE,
 )
 YOU_INVITE_RE = re.compile(
-    r"^You have invited (.+?) to follow",
+    r"^You have invited (.+?) to (?:follow|join)\b",
+    re.IGNORECASE,
+)
+ALREADY_YOUR_PARTY_RE = re.compile(
+    r"^(.+?) is already (?:in your party|following you)\b",
+    re.IGNORECASE,
+)
+ALREADY_A_PARTY_RE = re.compile(
+    r"^(?:that person|they|.+?) is already (?:in a party|following someone)\b",
     re.IGNORECASE,
 )
 NOW_FOLLOW_RE = re.compile(
@@ -227,8 +292,13 @@ PARTY_LEAD_RE = re.compile(
     r"Following your Party leader (.+?)(?:\s|--|$)",
     re.IGNORECASE,
 )
-BACKRANK_YOU_RE = re.compile(
-    r"You have moved to the back ranks",
+RANK_YOU_RE = re.compile(
+    r"You have moved to the (front|middle|mid|back) ranks",
+    re.IGNORECASE,
+)
+RANK_THEY_RE = re.compile(
+    r"^([A-Z][A-Za-z]{1,14}) just moved to the (front|middle|mid|back) "
+    r"ranks?(?: of| in)? your group",
     re.IGNORECASE,
 )
 HITS_RE = re.compile(
@@ -236,7 +306,7 @@ HITS_RE = re.compile(
     re.IGNORECASE,
 )
 HITS_OF_RE = re.compile(r"(-?\d+)\s+of\s+(\d+)\s+hit points", re.IGNORECASE)
-MANA_RE = re.compile(r"mana:\s*(\d+)\s*/\s*(\d+)", re.IGNORECASE)
+MANA_RE = re.compile(r"(?:mana|kai):\s*(\d+)\s*/\s*(\d+)", re.IGNORECASE)
 LEVEL_STAT_RE = re.compile(r"\bLevel:\s*(\d+)\b", re.IGNORECASE)
 STAT_FIELD_RE = re.compile(
     r"\b(Strength|Intellect|Willpower|Agility|Charm|Health|"
@@ -296,6 +366,30 @@ LEFT_PARTY_RE = re.compile(
     r"^You (?:are no longer following|leave (?:the )?party|have left(?: the party)?)\b",
     re.IGNORECASE,
 )
+_PARTY_SKIP = frozenset({"him", "her", "them", "you", "someone"})
+
+
+def _party_who(name: str) -> str:
+    who = name.strip().rstrip(".,!;:").strip()
+    if not who or who.lower() in _PARTY_SKIP:
+        return ""
+    if (
+        paths.is_given_name(who)
+        or paths.is_home_account(who)
+        or party.on_roster(who)
+    ):
+        return who
+    for token in reversed(re.findall(r"[A-Za-z][A-Za-z'-]{1,14}", who)):
+        if token.lower() in _PARTY_SKIP:
+            continue
+        if (
+            paths.is_given_name(token)
+            or paths.is_home_account(token)
+            or party.on_roster(token)
+            or paths.is_player(token)
+        ):
+            return token
+    return ""
 
 
 def _pc_mover(name: str) -> str:
@@ -414,8 +508,21 @@ def _said_aim(msg: str) -> str:
     return paths.attack_name(name) or name
 
 
+def _bang_tag(msg: str) -> str:
+    """Spoken `!heal` / `!rest`. Keep the bang — do not strip `!` as punctuation."""
+    word = msg.lower().strip().strip("\"'")
+    if not word:
+        return ""
+    if word.startswith("say "):
+        word = word[4:].strip().strip("\"'")
+    return word.rstrip(".,")
+
+
 def _is_heal_ask(msg: str) -> bool:
-    """Spoken `heal me` only (and old `heal` / `say heal`). Never `please` / `health`."""
+    """Spoken `!heal` (and old `heal me` / `heal`). Never `please` / `health`."""
+    tag = _bang_tag(msg)
+    if tag in _HEAL_TAGS:
+        return True
     word = msg.lower().strip().strip("\"'.,!;:")
     if not word:
         return False
@@ -427,6 +534,54 @@ def _is_heal_ask(msg: str) -> bool:
     if word == "heal me":
         return True
     return word in _HEAL_ASK
+
+
+def _is_join_call(msg: str) -> bool:
+    """Spoken `!join` / `join up`. Keep the bang — do not strip `!` as punctuation."""
+    return _bang_tag(msg) in _JOIN_CALLS
+
+
+def _is_rest_call(msg: str) -> bool:
+    return _bang_tag(msg) in _REST_CALLS
+
+
+def _is_rested(msg: str) -> bool:
+    return _bang_tag(msg) in _RESTED_CALLS
+
+
+def _is_healed(msg: str) -> bool:
+    return _bang_tag(msg) in _HEALED_CALLS
+
+
+def _copper_amount(raw: str) -> int:
+    return int((raw or "0").replace(",", "").replace(" ", "") or 0)
+
+
+def _wealth_event(raw: str) -> dict[str, object] | None:
+    m = WEALTH_RE.search(raw) or WEALTH_EQUIV_RE.search(raw)
+    if m:
+        return {"kind": "wealth", "copper": _copper_amount(m.group("n"))}
+    m = DEPOSIT_RE.search(raw)
+    if m:
+        return {
+            "kind": "deposit",
+            "copper": _copper_amount(m.group("n")),
+        }
+    m = WITHDRAW_RE.search(raw)
+    if m:
+        return {
+            "kind": "deposit",
+            "copper": _copper_amount(m.group("n")),
+            "withdraw": True,
+        }
+    low = raw.lower()
+    if (
+        "must be in a bank" in low
+        or "no bank here" in low
+        or "not in a bank" in low
+    ):
+        return {"kind": "deposit", "fail": True}
+    return None
 
 
 def _prompt_event(m: re.Match[str]) -> dict[str, object]:
@@ -509,6 +664,9 @@ def parse_line(line: str) -> dict[str, object] | None:
     if m:
         return {"kind": "drop", "name": m.group(2).lower()}
 
+    wealth = _wealth_event(raw)
+    if wealth:
+        return wealth
     m = EXP_RE.search(raw)
     if m:
         return {"kind": "experience", "amount": int(m.group(1))}
@@ -525,10 +683,31 @@ def parse_line(line: str) -> dict[str, object] | None:
     low = raw.lower()
     m = INVITE_YOU_RE.search(raw)
     if m:
-        return {"kind": "invited", "name": m.group(1).strip()}
+        who = _party_who(m.group(1))
+        if who:
+            return {"kind": "invited", "name": who}
+    m = BEEN_INVITED_RE.search(raw)
+    if m:
+        who = _party_who(m.group(1))
+        if who:
+            return {"kind": "invited", "name": who}
+    m = INVITES_YOU_RE.search(raw)
+    if m:
+        who = _party_who(m.group(1))
+        if who:
+            return {"kind": "invited", "name": who}
     m = YOU_INVITE_RE.search(raw)
     if m:
-        return {"kind": "invited", "name": m.group(1).strip(), "by_me": True}
+        who = _party_who(m.group(1))
+        if who:
+            return {"kind": "invited", "name": who, "by_me": True}
+    m = ALREADY_YOUR_PARTY_RE.search(raw)
+    if m:
+        who = _party_who(m.group(1))
+        if who:
+            return {"kind": "followed", "name": who, "already": True}
+    if ALREADY_A_PARTY_RE.search(raw):
+        return {"kind": "party_fail", "reason": "busy"}
     m = NOW_FOLLOW_RE.search(raw)
     if m:
         return {"kind": "following", "name": m.group(1).strip()}
@@ -538,8 +717,20 @@ def parse_line(line: str) -> dict[str, object] | None:
     m = PARTY_LEAD_RE.search(raw)
     if m:
         return {"kind": "following", "name": m.group(1).strip()}
-    if BACKRANK_YOU_RE.search(raw):
-        return {"kind": "backrank"}
+    m = RANK_YOU_RE.search(raw)
+    if m:
+        row = m.group(1).strip().lower()
+        if row == "middle":
+            row = "mid"
+        if row == "back":
+            return {"kind": "backrank", "row": "back"}
+        return {"kind": "rank", "row": row}
+    m = RANK_THEY_RE.search(raw)
+    if m:
+        row = m.group(2).strip().lower()
+        if row == "middle":
+            row = "mid"
+        return {"kind": "ranked", "name": m.group(1).strip(), "row": row}
     if "you don't think you're sneaking" in low:
         return {"kind": "sneak_fail"}
     if "you may not sneak" in low:
@@ -556,8 +747,11 @@ def parse_line(line: str) -> dict[str, object] | None:
         return {"kind": "sneak_try"}
     if "must be invited first" in low:
         return {"kind": "party_fail", "reason": "invite"}
+    m = NOT_HERE_RE.match(raw.strip())
+    if m:
+        return {"kind": "not_here", "name": m.group(1).strip().strip(".,!;:")}
     if "not in a party" in low:
-        return {"kind": "party_fail", "reason": "party"}
+        return {"kind": "left"}
     if LEFT_PARTY_RE.search(raw):
         return {"kind": "left"}
     if DRAG_FAIL_RE.search(raw):
@@ -576,6 +770,14 @@ def parse_line(line: str) -> dict[str, object] | None:
     if said_line:
         who = said_line.group("who").strip()
         msg = said_line.group("msg").strip().strip("\"'")
+        if _is_join_call(msg):
+            return {"kind": "join_call", "name": who, "text": msg}
+        if _is_rest_call(msg):
+            return {"kind": "rest_call", "name": who, "text": msg}
+        if _is_rested(msg):
+            return {"kind": "rested", "name": who}
+        if _is_healed(msg):
+            return {"kind": "healed", "name": who}
         if _is_heal_ask(msg):
             return {"kind": "heal_ask", "name": who}
         if who.lower() == "you":
@@ -591,6 +793,11 @@ def parse_line(line: str) -> dict[str, object] | None:
     m = LEAVE_RE.search(raw)
     if m:
         return {"kind": "leave", "name": m.group(1).strip()}
+    m = REALM_ENTER_RE.search(raw)
+    if m:
+        who = _pc_mover(m.group(1))
+        if who:
+            return {"kind": "realm_enter", "name": who}
     m = PC_ARRIVE_RE.search(raw)
     if m:
         who = _pc_mover(m.group(1))
@@ -614,7 +821,11 @@ def parse_line(line: str) -> dict[str, object] | None:
         return ev
     m = THIRD_HIT_RE.search(raw)
     if m:
-        return {"kind": "combat", "actor": m.group(1).strip()}
+        ev = {"kind": "combat", "actor": m.group(1).strip()}
+        aimed = m.group(2).strip()
+        if aimed and aimed.lower() not in _AIM_SKIP:
+            ev["aim"] = aimed
+        return ev
     m = THIRD_SIT_RE.search(raw)
     if m:
         return {"kind": "rest", "actor": m.group(1).strip()}
@@ -638,6 +849,13 @@ def parse_line(line: str) -> dict[str, object] | None:
         if step:
             ev["dir"] = step
         return ev
+    m = YOU_WALL_RE.search(raw)
+    if m:
+        step = DIR_SHORT.get(m.group(1).strip().lower(), "")
+        ev = {"kind": "cannot", "text": raw, "wall": True}
+        if step:
+            ev["dir"] = step
+        return ev
     m = WOUNDED_LOOK_RE.search(raw)
     if m:
         return {"kind": "wounded", "name": m.group(1).strip()}
@@ -645,7 +863,11 @@ def parse_line(line: str) -> dict[str, object] | None:
     if m:
         # Party echo of a swing. Actor is enough (invite / last_actor).
         # The target is not a room listing — do not re-add that name.
-        return {"kind": "combat", "actor": m.group(1).strip()}
+        ev: dict[str, object] = {"kind": "combat", "actor": m.group(1).strip()}
+        aimed = m.group(2).strip()
+        if aimed and aimed.lower() not in _AIM_SKIP:
+            ev["aim"] = aimed
+        return ev
     m = HIT_YOU_RE.search(raw)
     if m and not raw.lower().startswith("you "):
         attacker = m.group(1).strip()
@@ -681,21 +903,50 @@ def parse_line(line: str) -> dict[str, object] | None:
         return {"kind": "already_worn", "item": item}
 
     if "you feel lucky" in low:
-        return {"kind": "buff", "name": "bless", "on": True}
-    if "you cast bless on" in low:
-        return {"kind": "buff", "name": "bless", "on": True}
+        return {"kind": "buff", "name": "bless", "on": True, "self": True}
+    if "you feel strong-willed" in low or "you feel strong willed" in low:
+        return {"kind": "buff", "name": "way of the owl", "on": True, "self": True}
+    m = re.search(r"you cast bless on ([^.!]+)", raw, flags=re.I)
+    if m:
+        who = m.group(1).strip()
+        ev: dict[str, object] = {"kind": "buff", "name": "bless", "on": True}
+        if who:
+            ev["target"] = who
+        return ev
     if "effects of bless wear off" in low:
-        return {"kind": "buff", "name": "bless", "on": False}
-    if "enough mana" in low:
+        ev = {"kind": "buff", "name": "bless", "on": False}
+        worn = re.search(r"wear off(?: of ([^.!]+))?", raw, flags=re.I)
+        who = (worn.group(1) or "").strip() if worn else ""
+        if who:
+            ev["target"] = who
+        else:
+            ev["self"] = True
+        return ev
+    if "effects of way of the owl wear off" in low:
+        return {"kind": "buff", "name": "way of the owl", "on": False, "self": True}
+    catalog_hit = modules.match_line(raw)
+    if catalog_hit and catalog_hit.buff_flag == "lit":
+        return {"kind": "torch_lit" if catalog_hit.on else "torch_out"}
+    if "enough mana" in low or "enough kai" in low:
         return {"kind": "cast_fail", "reason": "mana"}
     if (
         "don't know that spell" in low
         or "do not know that spell" in low
+        or "don't know that power" in low
+        or "do not know that power" in low
         or ("have not learned" in low and "spell" in low)
     ):
         return {"kind": "cast_fail", "reason": "unknown"}
     if "already know" in low and "spell" in low:
         return {"kind": "learned", "already": True}
+    if (
+        "\n" in raw
+        or _is_spellbook_header(raw)
+        or _is_spellbook_empty(raw)
+    ):
+        book = _spellbook_event(raw)
+        if book:
+            return book
     if (
         "have learned" in low
         or "you memorize" in low
@@ -707,6 +958,9 @@ def parse_line(line: str) -> dict[str, object] | None:
         "cannot cast" in low
         or "can't cast" in low
         or "can not cast" in low
+        or "cannot invoke" in low
+        or "can't invoke" in low
+        or "can not invoke" in low
         or ("not high enough" in low and "learn" not in low)
         or (
             "too low" in low
@@ -795,6 +1049,7 @@ def parse_line(line: str) -> dict[str, object] | None:
         or "there is a closed door" in low
         or "door is closed" in low
         or "gate is closed" in low
+        or "ran into the wall" in low
     ):
         return {"kind": "cannot", "text": raw}
 
@@ -853,7 +1108,7 @@ def _stats_event(raw: str, *, skip_health: bool = False) -> dict[str, object] | 
 
 GLUE_RE = re.compile(
     r"(?=Also here:|You notice |You see:|Obvious exits:|\*Combat|\[HP=)"
-    r"|(?=Mana:)|(?=Hits:)|(?=Health:)"
+    r"|(?=Mana:)|(?=Kai:)|(?=Hits:)|(?=Health:)"
     r"|(?=Attempting to sneak)|(?=You don't think you're sneaking)|(?=Sneaking\.\.)"
     r"|(?=You may not sneak)"
     r"|(?=You make a sound when entering)|(?=You make a sound as you enter)"
@@ -861,13 +1116,22 @@ GLUE_RE = re.compile(
     r"|(?=[A-Z][a-z]{1,14} is mortally wounded)|(?=too afraid)"
     r"|(?=You are bleeding)|(?=[A-Z][a-z]{1,14} is bleeding)"
     r"|(?=You are now dragging)|(?=You are no longer following)"
+    r"|(?=You are not in a party)"
     r"|(?=You have invited )|(?=You are now following )|(?=You are following )"
+    r"|(?=You have been invited )"
+    # Name must start at a boundary — bare lookahead splits M/a/tt on Matt.
+    r"|(?:^|(?<=[^A-Za-z]))(?=[A-Za-z][A-Za-z'-]{1,14} has invited you)"
+    r"|(?:^|(?<=[^A-Za-z]))(?=[A-Za-z][A-Za-z'-]{1,14} invites you to )"
     r"|(?=You say )|(?=[A-Z][a-z]{1,14} says?,? )"
-    r"|(?=You feel lucky)|(?=You cast bless)|(?=The effects of bless wear off)"
+    r"|(?=You feel lucky)|(?=You feel strong-willed)|(?=You feel strong willed)"
+    r"|(?=You cast bless)|(?=The effects of bless wear off)"
+    r"|(?=The effects of way of the owl wear off)"
+    r"|(?=You are surrounded by a shimmering light)"
+    r"|(?=Your starlight spell fades away)"
     r"|(?=You swipe at )|(?=The [a-z].{0,48}dissolves into)"
-    r"|(?=You have moved to the back ranks)"
+    r"|(?=You have moved to the (?:front|middle|mid|back) ranks)"
+    r"|(?=[A-Z][a-z]{1,14} just moved to the (?:front|middle|mid|back) ranks?)"
     r"|(?<=[^A-Za-z])(?=[A-Z][a-z]{1,14} started to follow you)"
-    r"|(?<=[^A-Za-z])(?=[A-Z][a-z]{1,14} has invited you to follow)"
     r"|(?=You have gained a level)|(?=You gain a level)|(?=You are now level )"
     r"|(?=You train for a while)|(?=Your training is complete)"
     r"|(?=Exp:)|(?=You gain )|(?=You receive )"
@@ -879,6 +1143,7 @@ GLUE_RE = re.compile(
     r"claws at |swipes at |whips |walks out))"
     r"|(?=[A-Z][a-z]{1,14} just arrived)|(?=[A-Z][a-z]{1,14} just left)"
     r"|(?=[A-Z][a-z]{1,14} just entered the Realm)"
+    r"|(?=You don't see )|(?=You do not see )"
     r"|(?=[A-Z][a-z]{1,14} sits down)|(?=[A-Z][a-z]{1,14} stands up)"
     r"|(?=[A-Z][a-z]{1,14} (?:panics and )?flees)|(?=You flee )"
     r"|(?=[A-Z][a-z]{1,14} gasps for breath)"
@@ -887,6 +1152,8 @@ _CSI = re.compile(rb"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[@-_]")
 _FLUSH_KINDS = frozenset(
     {
         "arrive",
+        "realm_enter",
+        "not_here",
         "leave",
         "killed",
         "death",
@@ -895,6 +1162,10 @@ _FLUSH_KINDS = frozenset(
         "drop",
         "said",
         "heal_ask",
+        "join_call",
+        "rest_call",
+        "rested",
+        "healed",
         "also_here",
         "you_see",
         "exits",
@@ -906,6 +1177,8 @@ _FLUSH_KINDS = frozenset(
         "following",
         "followed",
         "backrank",
+        "rank",
+        "ranked",
         "party_fail",
         "sneak_try",
         "sneak_ok",
@@ -930,8 +1203,11 @@ _FLUSH_KINDS = frozenset(
         "already_worn",
         "sold",
         "learned",
+        "spellbook",
         "spell_skip",
         "stats",
+        "wealth",
+        "deposit",
     }
 )
 _SCREEN_KINDS = frozenset(
@@ -945,10 +1221,18 @@ _SCREEN_KINDS = frozenset(
         "death",
         "combat_off",
         "invited",
+        "join_call",
+        "heal_ask",
+        "rest_call",
+        "rested",
+        "healed",
         "following",
         "followed",
         "backrank",
+        "rank",
+        "ranked",
         "party_fail",
+        "not_here",
         "sneak_try",
         "sneak_ok",
         "sneak_fail",
@@ -972,8 +1256,11 @@ _SCREEN_KINDS = frozenset(
         "inventory",
         "sold",
         "learned",
+        "spellbook",
         "spell_skip",
         "stats",
+        "wealth",
+        "deposit",
     }
 )
 
@@ -992,6 +1279,20 @@ def _is_inventory_line(raw: str) -> bool:
     return paths.has_inv_slot(raw)
 
 
+def _inv_interrupt(raw: str) -> bool:
+    """Party/prompt lines that must not be glued into a wrapped `i`."""
+    low = raw.strip().lower()
+    if "invited you" in low or "have invited " in low or "been invited" in low:
+        return True
+    if "invites you to" in low:
+        return True
+    if low.startswith("you are now following") or low.startswith("you are following"):
+        return True
+    if "started to follow you" in low:
+        return True
+    return False
+
+
 def hold_inventory(held: list[str], lines: list[str]) -> tuple[list[str], list[str]]:
     """Join wrapped `i` rows. Return (emit now, still held across feeds)."""
     out: list[str] = []
@@ -999,7 +1300,7 @@ def hold_inventory(held: list[str], lines: list[str]) -> tuple[list[str], list[s
     for line in lines:
         raw = line.strip()
         if buf:
-            if _inv_block_end(raw):
+            if _inv_block_end(raw) or _inv_interrupt(raw):
                 out.append(" ".join(buf))
                 buf = []
                 out.append(line)
@@ -1013,12 +1314,74 @@ def hold_inventory(held: list[str], lines: list[str]) -> tuple[list[str], list[s
     return out, buf
 
 
+def _is_spellbook_header(raw: str) -> bool:
+    low = raw.strip().lower()
+    return "following spells" in low or "following powers" in low
+
+
+def _is_spellbook_empty(raw: str) -> bool:
+    low = raw.strip().lower()
+    if "spell" not in low and "power" not in low:
+        return False
+    return bool(
+        re.search(r"(?:don't|do not) know any", low)
+        or "have no spells" in low
+        or "have no powers" in low
+    )
+
+
+def _is_spellbook_columns(raw: str) -> bool:
+    low = raw.strip().lower()
+    return "level" in low and "mana" in low and "short" in low
+
+
+def stitch_spellbook_lines(lines: list[str]) -> list[str]:
+    """Join `spells` / `powers` header plus the level/mana rows."""
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if _is_spellbook_header(line) or _is_spellbook_empty(line):
+            block = [line]
+            i += 1
+            while i < len(lines):
+                nxt = lines[i]
+                if _is_spellbook_columns(nxt) or spells.parse_book_row(nxt):
+                    block.append(nxt)
+                    i += 1
+                    continue
+                break
+            out.append("\n".join(block))
+            continue
+        out.append(line)
+        i += 1
+    return out
+
+
+def _spellbook_event(raw: str) -> dict[str, object] | None:
+    lines = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    if not lines:
+        return None
+    if _is_spellbook_empty(lines[0]) or any(_is_spellbook_empty(ln) for ln in lines):
+        return {"kind": "spellbook", "reset": True, "names": []}
+    if not any(_is_spellbook_header(ln) for ln in lines):
+        return None
+    names: list[str] = []
+    for ln in lines:
+        if _is_spellbook_header(ln) or _is_spellbook_columns(ln):
+            continue
+        got = spells.parse_book_row(ln)
+        if got and got not in names:
+            names.append(got)
+    return {"kind": "spellbook", "reset": True, "names": names}
+
+
 def stitch_inventory_lines(lines: list[str]) -> list[str]:
     """Join wrapped `You are carrying` / `i` rows into one carrying line."""
     out, leftover = hold_inventory([], lines)
     if leftover:
         out.append(" ".join(leftover))
-    return stitch_exit_lines(out)
+    return stitch_spellbook_lines(stitch_exit_lines(out))
 
 
 def _is_exit_continuation(raw: str) -> bool:
@@ -1068,6 +1431,25 @@ def unglue(text: str) -> str:
     return GLUE_RE.sub("\n", text)
 
 
+_PARTY_BARE_CR = re.compile(
+    rb"(?i)([^\r\n]*(?:has invited you|invites you to "
+    rb"|have been invited |are now following "
+    rb"|have invited |started to follow you"
+    # Leave / disband / party list — same bare-CR wipe as invites.
+    rb"|are no longer following|not in a party "
+    rb"|removed from your followers|just left your group"
+    rb"|are in your travel party|want to disband "
+    rb"|has been disbanded)[^\r\n]*)\r(?!\n)"
+)
+
+
+def keep_party_lf(data: bytes) -> bytes:
+    """Bare CR after a party sentence would overwrite that mud row; keep a line."""
+    if not data:
+        return data
+    return _PARTY_BARE_CR.sub(rb"\1\r\n", data)
+
+
 def parse_events(text: str) -> list[dict[str, object]]:
     events: list[dict[str, object]] = []
     chunks = stitch_inventory_lines(
@@ -1077,7 +1459,7 @@ def parse_events(text: str) -> list[dict[str, object]]:
         if not piece:
             continue
         m = PROMPT_RE.search(piece)
-        if m and m.start() > 0:
+        if m:
             prefix = piece[: m.start()].strip()
             if prefix:
                 events.extend(parse_events(prefix))
@@ -1118,6 +1500,10 @@ def harvest_screen(text: str, seen: set[str]) -> list[dict[str, object]]:
             continue
         seen.add(line)
         events.extend(fresh)
+        if any(ev.get("kind") == "room" for ev in fresh):
+            for old in list(seen):
+                if old.lower().startswith("also here"):
+                    seen.discard(old)
     return events
 
 
@@ -1154,10 +1540,18 @@ def events_from_payload(data: bytes) -> list[dict[str, object]]:
             "buff",
             "room",
             "invited",
+            "heal_ask",
+            "join_call",
+            "rest_call",
+            "rested",
+            "healed",
             "following",
             "followed",
             "backrank",
+            "rank",
+            "ranked",
             "party_fail",
+            "not_here",
             "mortal",
             "aided",
             "drag_fail",
@@ -1176,7 +1570,10 @@ def events_from_payload(data: bytes) -> list[dict[str, object]]:
             "already_worn",
             "sold",
             "stats",
+            "spellbook",
             "death",
+            "wealth",
+            "deposit",
         }
     )
     return [e for e in parse_events(strip_csi(data)) if e.get("kind") in keep]
@@ -1198,6 +1595,24 @@ _TITLE_SKIP = (
     "wealth",
     "keys",
     "worn",
+    "perception",
+    "stealth",
+    "thievery",
+    "traps",
+    "picklocks",
+    "picklock",
+    "tracking",
+    "martial arts",
+    "magicres",
+    "magic res",
+    "name:",
+    "race:",
+    "class:",
+    # Wrapped look text: "This is a cobblestoned street..." is not a room.
+    "this is",
+    "this huge",
+    "it is",
+    "there is",
 )
 _TITLE_NOISE = (
     "says",
@@ -1227,15 +1642,83 @@ _TITLE_NOISE = (
     "aided",
     "drag",
     "afraid",
+    "picklocks",
+    "perception",
+    "thievery",
+    "martial arts",
+    "magicres",
 )
+# STAT right-hand column / attribute rows. Not rooms, not hunt targets.
+_STAT_SHEET_LABELS = frozenset(
+    {
+        "name",
+        "race",
+        "class",
+        "lives",
+        "lives/cp",
+        "perception",
+        "stealth",
+        "thievery",
+        "traps",
+        "picklocks",
+        "picklock",
+        "tracking",
+        "martial arts",
+        "magicres",
+        "magic res",
+        "magic resistance",
+        "strength",
+        "intellect",
+        "willpower",
+        "agility",
+        "charm",
+        "health",
+        "attack",
+        "accuracy",
+        "defense",
+        "armour class",
+        "ac",
+        "exp",
+    }
+)
+_STAT_VALUE_LINE_RE = re.compile(
+    r"^[A-Za-z][A-Za-z /'-]*:\s*-?\d+\s*$",
+)
+
+
+def _stat_sheet_label(raw: str) -> str:
+    """`Picklocks:` / `Martial Arts: 60` → the STAT column name."""
+    head = raw.split(":", 1)[0].strip().lower()
+    return " ".join(head.split())
+
+
+def looks_like_stat_sheet(raw: str) -> bool:
+    """STAT skill/attribute rows — not a room, mob, or walk dest."""
+    text = (raw or "").strip()
+    if not text:
+        return False
+    label = _stat_sheet_label(text)
+    if label in _STAT_SHEET_LABELS:
+        return True
+    words = text.replace(":", " ").split()
+    if words and words[0].lower() in _STAT_SHEET_LABELS:
+        return True
+    if len(words) >= 2 and " ".join(words[:2]).lower() in _STAT_SHEET_LABELS:
+        return True
+    return bool(_STAT_VALUE_LINE_RE.match(text))
 
 
 def _looks_like_room_title(raw: str) -> bool:
     if len(raw) > 80:
         return False
+    if looks_like_stat_sheet(raw):
+        return False
     street = raw.endswith("St.") or " St. " in raw or " St. &" in raw
+    # STAT fields are `Picklocks: 48`. Real room titles do not use a colon.
+    if ":" in raw:
+        return False
     if not street:
-        if raw.endswith(":") or raw.endswith(".") or raw.endswith("]") or raw.endswith("!"):
+        if raw.endswith(".") or raw.endswith("]") or raw.endswith("!"):
             return False
     if raw.startswith("[") or raw.startswith("You "):
         return False
@@ -1254,6 +1737,9 @@ def _looks_like_room_title(raw: str) -> bool:
         return False
     words = raw.split()
     if low.startswith("the ") and len(words) > 4:
+        return False
+    # "Thi" / "The" / "This" are wrap scraps, not Fountain / Pier.
+    if len(words) == 1 and len(raw) < 4:
         return False
     limit = 10 if street else 8
     return 1 <= len(words) <= limit and raw[0].isupper()

@@ -36,12 +36,19 @@ def test_step_confirms_on_new_room() -> None:
 
 
 def test_same_title_confirms_when_exits_reprint() -> None:
+    """Same-title halls land on the next prompt even if the exits line is a dup."""
     c = Compass()
     c.note("e", "Secret Passage", 10, now=100.0, travel_seq=4, exits=["n"])
-    assert c.see("Secret Passage", 11, now=100.4, travel_seq=4, exits=["n"]) == "look"
+    assert c.see("Secret Passage", 11, now=100.4, travel_seq=4, exits=["n"]) == "ok"
+    assert not c.pending
+
+
+def test_guild_street_same_title_confirms_without_new_exits_line() -> None:
+    """Two Guild Street tiles share title + n/s. Do not look-fail into south."""
+    c = Compass()
+    c.note("n", "Guild Street", 10, now=100.0, travel_seq=4, exits=["n", "s"])
     assert (
-        c.see("Secret Passage", 11, now=100.5, travel_seq=5, exits=["w", "se"])
-        == "ok"
+        c.see("Guild Street", 11, now=100.4, travel_seq=4, exits=["n", "s"]) == "ok"
     )
     assert not c.pending
 
@@ -74,8 +81,8 @@ def test_timeout_asks_for_look() -> None:
     assert c.failed
 
 
-def test_unlatch_confirms_in_same_room() -> None:
-    """Gate bash does not change title. Do not time out into a look / south."""
+def test_unlatch_asks_look_until_dir_lists() -> None:
+    """Bash stays in the room. Land only when a look lists the latch dir."""
     c = Compass()
     c.note(
         "bash north",
@@ -90,6 +97,7 @@ def test_unlatch_confirms_in_same_room() -> None:
         10,
         now=100.2,
         travel_seq=3,
+        exits=["e", "s", "w"],
     ) == "wait"
     assert (
         c.see(
@@ -98,6 +106,77 @@ def test_unlatch_confirms_in_same_room() -> None:
             now=100.4,
             travel_seq=3,
             exits=["e", "s", "w"],
+        )
+        == "look"
+    )
+    assert c.pending == "bash north"
+    assert (
+        c.see(
+            "Intersection of River St. & Bridge St.",
+            12,
+            now=100.6,
+            travel_seq=4,
+            exits=["n", "e", "s", "w"],
+        )
+        == "ok"
+    )
+    assert not c.pending
+    assert not c.failed
+
+
+def test_unlatch_still_closed_after_look_allows_rebash() -> None:
+    """Look reprinted the same exits. Clear pending so the next tick can bash."""
+    c = Compass()
+    c.note(
+        "bash north",
+        "Bridge Street",
+        10,
+        now=100.0,
+        travel_seq=3,
+        exits=["e", "s", "w"],
+    )
+    assert (
+        c.see(
+            "Bridge Street",
+            11,
+            now=100.4,
+            travel_seq=3,
+            exits=["e", "s", "w"],
+        )
+        == "look"
+    )
+    assert (
+        c.see(
+            "Bridge Street",
+            12,
+            now=100.8,
+            travel_seq=4,
+            exits=["e", "s", "w"],
+        )
+        == "ok"
+    )
+    assert not c.pending
+    assert not c.failed
+
+
+def test_unlatch_walks_when_tick_already_lists_dir() -> None:
+    """A room tick that lists north is enough — no extra look."""
+    c = Compass()
+    c.note(
+        "bash north",
+        "Bridge Street",
+        10,
+        now=100.0,
+        travel_seq=3,
+        exits=["e", "s", "w"],
+    )
+    assert (
+        c.see(
+            "Bridge Street",
+            11,
+            now=100.4,
+            travel_seq=3,
+            exits=["n", "e", "s", "w"],
         )
         == "ok"
     )
@@ -157,10 +236,13 @@ if __name__ == "__main__":
     test_is_move()
     test_step_confirms_on_new_room()
     test_same_title_confirms_when_exits_reprint()
+    test_guild_street_same_title_confirms_without_new_exits_line()
     test_move_exits_count_as_landing()
     test_unique_title_change_is_enough()
     test_timeout_asks_for_look()
-    test_unlatch_confirms_in_same_room()
+    test_unlatch_asks_look_until_dir_lists()
+    test_unlatch_still_closed_after_look_allows_rebash()
+    test_unlatch_walks_when_tick_already_lists_dir()
     test_blocked_clears_pending()
     test_blocked_looks_even_without_pending()
     test_sneak_empty_room()

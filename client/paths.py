@@ -6,9 +6,10 @@ north spell shop, west to the road. Narrow Road: down into the arena, north
 guild, west healer.
 
 Silvermere is the next town — skiff only. Do not walk the Paramud / cave-bear
-overland. Newhaven Docks `borrow skiff` lands on the Pier; the same command
-returns. Town Square `n` walks Guild Street toward the outdoor graveyard farm.
-The manhole is not the hunt — humans skip sewer torch tracking.
+overland. From Newhaven, Village Entrance: se, s, borrow skiff, then 3 south,
+6 east, 10 south to Town Square. Docks `borrow skiff` lands on the Pier; the
+same command returns. Town Square `n` walks Guild Street toward the outdoor
+graveyard farm. The manhole is not the hunt — humans skip sewer torch tracking.
 
 MegaMMUD v2.1 stock uses the same Newhaven graph (Town = Narrow Road, shops
 Betram / Nathaniel / Dathalar / Rayth).
@@ -19,15 +20,45 @@ from __future__ import annotations
 import re
 
 STARTER_WEAPON = "club"
-# Nathaniel value picks — not the crypt uniques. Cheap and good enough.
-STARTER_WEAPONS = {
-    "ninja": "stiletto",
-    "paladin": "battle axe",
+STARTER_STAFF = "quarterstaff"
+# Nathaniel cheap kit: melee/thief/warlock club; mage/druid/priest/mystic staff.
+# Warlock is a pure caster but MajorMUD starts them on club (intentional).
+# Mystic still punches in combat (UNARMED) but buys a staff like other casters.
+STAFF_CLASSES = frozenset({"mage", "druid", "priest", "mystic"})
+UNARMED_CLASSES = frozenset({"mystic"})
+# Older kits (stiletto / battle axe) still count as dressed — do not rebuy.
+STARTER_WEAPON_NAMES = (
+    STARTER_WEAPON,
+    STARTER_STAFF,
+    "stiletto",
+    "battle axe",
+)
+# In-game Night Vision / Dark Vision racials. Not class (ninja is not NV).
+NIGHT_VISION_RACES = frozenset({
+    "dwarf",
+    "gnome",
+    "elf",
+    "dark-elf",
+    "goblin",
+    "nekojin",
+    "gaunt one",
+})
+_RACE_ALIAS = {
+    "gaunt": "gaunt one",
+    "gauntone": "gaunt one",
+    "darkelf": "dark-elf",
+    "dark elf": "dark-elf",
+    "halfelf": "half-elf",
+    "half elf": "half-elf",
+    "halforc": "half-orc",
+    "half orc": "half-orc",
+    "halfogre": "half-ogre",
+    "half ogre": "half-ogre",
 }
 STARTER_LIGHT = "torch"
 # Human sewer kit: one lit to grind, one spare to light on the way out / restock.
 TORCH_BAG_MIN = 2
-LOOT = ("copper", "silver", "gold", "platinum")
+LOOT = ("copper", "silver", "gold", "platinum", "runic")
 
 # Harm (and most priest damage) is living-only. Oozes and undead ignore it.
 UNLIVING = (
@@ -82,6 +113,7 @@ FRIENDLY = (
     "corwyn",
     "nathaniel",
     "dathalar",
+    "rayth",
     "shopkeeper",
     "guard",
     "boatman",
@@ -139,16 +171,135 @@ ARMOUR_ITEMS = (
 )
 
 
+def normalize_race(race: str = "") -> str:
+    low = (race or "").strip().lower().replace("_", " ")
+    low = " ".join(low.split())
+    return _RACE_ALIAS.get(low.replace(" ", ""), _RACE_ALIAS.get(low, low))
+
+
+def sees_in_dark(race: str = "") -> bool:
+    return normalize_race(race) in NIGHT_VISION_RACES
+
+
+def needs_torch(race: str = "", klass: str = "") -> bool:
+    """Newhaven store + sewer kit. Night vision (Gaunt x-ray, elf, dwarf, …) skip.
+
+    Class does not matter: Rhiannon (human mystic) buys a torch; Robald (gaunt
+    mystic) does not. Ninja is not NV — only the empty-race dark-elf fallback.
+    """
+    if sees_in_dark(race):
+        return False
+    # Legacy configs: klymacks is a dark-elf ninja with no race field.
+    if not normalize_race(race) and (klass or "").strip().lower() == "ninja":
+        return False
+    return True
+
+
+def needs_weapon(klass: str = "") -> bool:
+    """True when the Newhaven weapon shop should sell this class a starter."""
+    return bool(starter_weapon(klass))
+
+
+def uses_bash_aa(klass: str = "", aa: object = None) -> bool:
+    """Client `aa` is paladin/basher auto-swing. Mystic punches with `att`."""
+    low = (klass or "").strip().lower()
+    if low == "ninja" or low in UNARMED_CLASSES:
+        return False
+    if aa is None:
+        return True
+    return bool(aa)
+
+
+def needs_padded(klass: str = "") -> bool:
+    """Everyone buys Betram padded. A wear-fail still advances via shop_vague."""
+    del klass
+    return True
+
+
+_EMPTY_INV = frozenset({"", "nothing", "nothing."})
+# 1.11p bank rates. `Wealth:` is the authority; this is only a purse fallback.
+_COIN_COPPER = {
+    "copper": 1,
+    "silver": 10,
+    "gold": 100,
+    "platinum": 1000,
+    "runic": 10000,
+}
+_COIN_STACK_RE = re.compile(
+    r"^(?:(\d+)\s+)?(copper|silver|gold|platinum|runic)"
+    r"(?:\s+(?:farthings?|nobles?|crowns?|runics?|coins?|pieces?))?$",
+    re.IGNORECASE,
+)
+
+
+def _held_names(*groups: list[str] | None) -> list[str]:
+    found: list[str] = []
+    for group in groups:
+        for raw in group or ():
+            low = str(raw).strip().lower()
+            if low and low not in _EMPTY_INV:
+                found.append(low)
+    return found
+
+
+def _coin_name(item: str) -> str:
+    low = item.strip().lower().rstrip(".")
+    low = _INV_ARTICLE_RE.sub("", low).strip()
+    return _INV_SLOT_RE.sub("", low).strip()
+
+
+def is_coin_item(item: str) -> bool:
+    """True for purse coins on `i` / You notice — not a gold ring or silver sword."""
+    low = _coin_name(item)
+    return bool(low and _COIN_STACK_RE.match(low))
+
+
+def coin_copper(item: str) -> int:
+    """One purse stack in copper, or 0 if it is not coins."""
+    m = _COIN_STACK_RE.match(_coin_name(item))
+    if not m:
+        return 0
+    qty = int(m.group(1) or 1)
+    return qty * _COIN_COPPER[m.group(2).lower()]
+
+
+def purse_copper(*groups: list[str] | None) -> int:
+    """Carried coins as copper. Bank `Wealth:` still wins when we have it."""
+    return sum(coin_copper(n) for n in _held_names(*groups))
+
+
+def is_naked(
+    worn: list[str] | None = None,
+    inventory: list[str] | None = None,
+    extras: list[str] | None = None,
+) -> bool:
+    """True when `i` has no kit — new toon gold does not count as dressed."""
+    return not any(not is_coin_item(n) for n in _held_names(worn, inventory, extras))
+
+
+def in_afterlife(room: str = "") -> bool:
+    """Halls of the Dead / temple revive. Never the deathpile room."""
+    low = (room or "").strip().lower()
+    if not low:
+        return False
+    if "halls of the dead" in low or "hall of the dead" in low:
+        return True
+    if "halls of dead" in low:
+        return True
+    return "temple healer" in low
+
+
 def starter_weapon(klass: str = "") -> str:
-    return STARTER_WEAPONS.get((klass or "").strip().lower(), STARTER_WEAPON)
+    key = (klass or "").strip().lower()
+    if key in STAFF_CLASSES:
+        return STARTER_STAFF
+    if key in UNARMED_CLASSES:
+        return ""
+    return STARTER_WEAPON
 
 
 def starter_weapons() -> tuple[str, ...]:
-    names: list[str] = []
-    for name in (STARTER_WEAPON, *STARTER_WEAPONS.values()):
-        if name not in names:
-            names.append(name)
-    return tuple(names)
+    return STARTER_WEAPON_NAMES
 
 
 def is_starter_weapon(item: str, klass: str = "") -> bool:
@@ -323,9 +474,9 @@ def is_general_store(room: str) -> bool:
 
 
 def is_spell_shop(room: str) -> bool:
-    """Newhaven Spell Shop / Dathalar, north of Narrow Path."""
+    """Newhaven Spell Shop / Rayth, north of Narrow Path."""
     low = room.lower()
-    return "spell" in low or "dathalar" in low
+    return "spell" in low or "dathalar" in low or "rayth" in low
 
 
 SHOP_WORDS = (
@@ -339,6 +490,7 @@ SHOP_WORDS = (
     "bertram",
     "nathaniel",
     "dathalar",
+    "rayth",
     "helfgrim",
     "skali",
     "sentara",
@@ -346,6 +498,8 @@ SHOP_WORDS = (
 
 ARENA_WORDS = ("arena", "pit", "dungeon", "sewer", "slum")
 SPECIAL_STEPS = frozenset({"borrow skiff", "search down", "go manhole"})
+# Pier → Town Square. Corridor titles repeat, so this is counted, not BFS.
+SKIFF_TO_SQUARE = ("s",) * 3 + ("e",) * 6 + ("s",) * 10
 _OPEN_DIR = {
     "n": "north",
     "s": "south",
@@ -536,6 +690,34 @@ def is_swing_leftover(word: str) -> bool:
     return _bare_word(word) in _SWING_LEFTOVER
 
 
+# Idle [HP=/MA=] or bare SGR glued onto the next sentence. Live WG paste:
+# `37m/MA=16]:The zombie swings...` after a split prompt + `\x1b[1;37m`.
+_WIRE_JUNK_RE = re.compile(
+    r"^(?:"
+    r"\[?HP=-?\d+(?:/\d+)?(?:/(?:MA|KA)=\d+(?:/\d+)?)?[^\]]*\]:"
+    r"|"
+    r"(?:\[[0-9;]*m|(?:[0-9]+;)?[0-9]+m)?"
+    r"(?:/(?:MA|KA)=\d+(?:/\d+)?)?\]:"
+    r"|"
+    r"\[[0-9;]+m"
+    r"|"
+    r"(?:[0-9]+;)?[0-9]+m(?=[A-Z/\[])"
+    r")\s*",
+    re.IGNORECASE,
+)
+
+
+def _strip_wire_junk(raw: str) -> str:
+    """Drop leftover HP/MA prompt tails and SGR crumbs from a mob aim."""
+    text = raw.strip()
+    for _ in range(6):
+        nxt = _WIRE_JUNK_RE.sub("", text, count=1)
+        if nxt == text:
+            break
+        text = nxt.lstrip()
+    return text
+
+
 def _is_noise_name(name: str) -> bool:
     tokens = [w for w in name.replace(":", " ").replace(".", " ").split() if w]
     if not tokens:
@@ -545,7 +727,7 @@ def _is_noise_name(name: str) -> bool:
 
 def unglue_token(word: str, extra: set[str] | None = None) -> list[str]:
     """Split slimeKlymacks / ratmatt / drat when CSI ate a comma or exit."""
-    raw = word.strip(".,!;:")
+    raw = _strip_wire_junk(word.strip(".,!;:"))
     if not raw:
         return []
     if is_dir_token(raw) or _bare_word(raw) in _LOOK_NOISE:
@@ -657,6 +839,8 @@ def _friendly_npc(piece: str) -> bool:
         return False
     if low in FRIENDLY:
         return True
+    if "guard" in low:
+        return True
     return any(word in FRIENDLY for word in low.split())
 
 
@@ -738,8 +922,9 @@ def attack_name(name: str) -> str:
 
     One helper: `fat carrion beast` / `tack giant rat` / `nasty lashworm`
     become `carrion beast` / `giant rat` / `lashworm`. Everyone calls this.
+    Also peels wire junk: `37m/MA=16]:The zombie` → `zombie`.
     """
-    pieces = peel_presence(name)
+    pieces = peel_presence(_strip_wire_junk(name))
     creature = [p for p in pieces if not is_given_name(p) and not is_player(p)]
     blob = creature[0] if creature else name
     words = [
@@ -822,12 +1007,30 @@ def open_dir(step: str) -> str:
     return "open " + _OPEN_DIR.get(short, short)
 
 
-def unlatch_dir(step: str, klass: str = "") -> str:
-    """Official: `bash north` or `picklock north`. Paladin combat `aa` is not this."""
+def unlatch_dir(step: str, klass: str = "", room: str = "") -> str:
+    """Official: `bash north` or `picklock north`. Paladin combat `aa` is not this.
+
+    GY / Bridge Street uses the same verbs. Ninja/thief/gypsy pick; everyone else bashes.
+    """
+    del room
     word = _OPEN_DIR.get((step or "").strip().lower(), (step or "").strip().lower())
     if (klass or "").strip().lower() in PICK_LOCK_CLASSES:
         return f"picklock {word}"
     return f"bash {word}"
+
+
+def unlatch_dir_short(step: str) -> str:
+    """`bash north` → `n`."""
+    parts = (step or "").strip().lower().split()
+    if len(parts) != 2:
+        return ""
+    word = parts[1]
+    if word in _OPEN_DIR:
+        return word
+    for short, long in _OPEN_DIR.items():
+        if word == long:
+            return short
+    return ""
 
 
 def is_unlatch_step(step: str) -> bool:
@@ -873,10 +1076,18 @@ def at_crypt(room: str) -> bool:
     return any(mark in low for mark in ("crypt", "tomb", "mausoleum", "catacomb"))
 
 
+def at_gy_shack(room: str) -> bool:
+    """West of the GY gate — not the creek bridge. Walk SW to rest."""
+    low = (room or "").strip().lower()
+    if not low or "street" in low or "bridge" in low or "intersection" in low:
+        return False
+    return "shack" in low
+
+
 def at_graveyard(room: str) -> bool:
-    """Outdoor graveyard grass / gate — not the crypt or the creek bridge."""
+    """Outdoor graveyard grass / gate — not the crypt, shack, or creek bridge."""
     low = room.lower()
-    if at_crypt(low):
+    if at_crypt(low) or at_gy_shack(low):
         return False
     if "bridge" in low:
         return False
@@ -905,11 +1116,83 @@ def gy_gate_never_south(room: str, exits: list[str] | None) -> bool:
 
 
 def at_graveyard_gate(room: str) -> bool:
-    """West end of the grass — rest / turn around. Never walk west into town."""
+    """West end of the grass — rest / turn around. Never walk west into the shack.
+
+    Live titles include both `Graveyard Entrance` and `Graveyard, Entry`.
+    """
     low = room.lower()
     if not at_graveyard(low):
         return False
-    return any(mark in low for mark in ("entrance", "gate", "fence"))
+    return any(mark in low for mark in ("entrance", "entry", "gate", "fence"))
+
+
+def at_rest_park(room: str) -> bool:
+    """Creek bridge one step SW of the GY gate. Not the shack / Bridge Street."""
+    low = (room or "").strip().lower()
+    if not low or "street" in low or "intersection" in low or "shack" in low:
+        return False
+    if low in {"bridge", "graveyard bridge"}:
+        return True
+    return "graveyard bridge" in low
+
+
+def gy_to_bridge_step(room: str) -> str | None:
+    """SW onto the creek bridge. Gate west is the shack — never sit or pick that door."""
+    if at_rest_park(room):
+        return None
+    low = (room or "").lower()
+    if at_gy_shack(low) or at_graveyard_gate(low):
+        return "sw"
+    return None
+
+
+def rest_park_to_town_step(
+    room: str,
+    exits: list[str] | None = None,
+    closed: list[str] | None = None,
+    klass: str = "",
+) -> str | None:
+    """Leave the creek bridge toward Bridge Street — never into the GY.
+
+    Live paste often shows `closed gate south, northeast` (SW is a wall).
+    Prefer listed `s`, then unlatch closed south, then listed `sw`.
+    Never invent a direction that is neither listed nor closed.
+    """
+    if not at_rest_park(room):
+        return None
+    listed = [x.lower() for x in (exits or [])]
+    shut = [x.lower() for x in (closed or [])]
+    if "s" in listed:
+        return "s"
+    if "s" in shut:
+        return unlatch_dir("s", klass, room=room)
+    if "sw" in listed:
+        return "sw"
+    return None
+
+
+def onto_rest_bridge(room: str, step: str) -> bool:
+    """True when `step` would walk from GY Entry/Shack onto the creek bridge."""
+    want = (step or "").strip().lower()
+    if not want:
+        return False
+    return gy_to_bridge_step(room) == want
+
+
+def farm_avoids_bridge(goal: str, room: str, step: str) -> bool:
+    """Hunt/farm/GY loop must never walk onto the creek bridge."""
+    want = (goal or "").strip().lower()
+    if want not in {"farm", "graveyard"}:
+        return False
+    return onto_rest_bridge(room, step)
+
+
+def at_bank(room: str) -> bool:
+    """Bank of Godfrey in Silvermere. Deposit here; coins in the account weigh nothing."""
+    low = (room or "").strip().lower()
+    if "bank of godfrey" in low:
+        return True
+    return "godfrey" in low and "bank" in low
 
 
 def at_farm(room: str) -> bool:
@@ -1211,7 +1494,7 @@ def _step_toward_silvermere_store(
     return None
 
 
-SPELL_SHOP_ROOMS = ("Newhaven, Spell Shop", "Dathalar")
+SPELL_SHOP_ROOMS = ("Newhaven, Spell Shop", "Dathalar", "Rayth")
 
 
 def step_toward_spell_shop(room: str, exits: list[str] | None = None) -> str | None:
@@ -1464,6 +1747,8 @@ def step_toward_arena(
         step = "e"
     elif is_trainer(low):
         step = "s"
+    elif "adventurer" in low and "guild" in low:
+        step = "w"
     elif "armour" in low or "armor" in low or "betram" in low or "bertram" in low:
         step = "n"
     elif "weapon" in low or "nathaniel" in low:
@@ -1522,8 +1807,9 @@ def _step_toward_sewers(
             return _open_step("w", exits) or _open_step("e", exits)
         return _open_step("e", exits) or _open_step("w", exits)
     if low in {"bridge", "graveyard bridge"} or low.startswith("bridge,") or low.endswith(" bridge"):
-        # North is the gate. Northeast is the graveyard.
-        return _open_step("ne", exits) or _open_step("e", exits)
+        # Northeast back onto GY grass. Never e/n — that was goto-ts fallthrough
+        # into the yard. SW is a wall on the live creek bridge.
+        return _open_step("ne", exits)
     if "bridge street" in low or ("bridge st" in low and "temple" not in low):
         return _open_step("n", exits) or _open_step("e", exits)
     if "graveyard" in low or at_crypt(low):
@@ -1596,8 +1882,15 @@ def wants_silvermere_farm(
 
 
 def allows_hidden(room: str, step: str) -> bool:
-    """Village `se` is the forest path. The game often omits it from Obvious exits."""
-    return "village entrance" in room.lower() and step == "se"
+    """Doors the game often omits from Obvious exits.
+
+    GY Entry/Shack `sw` onto the creek (rest or commanded town leave).
+    Never hide-force a leave from the bridge itself — live SW is a wall.
+    """
+    low = (room or "").lower()
+    if "village entrance" in low and step == "se":
+        return True
+    return (step or "").strip().lower() == "sw" and gy_to_bridge_step(room) == "sw"
 
 
 def step_toward_farm(
@@ -1613,6 +1906,25 @@ def step_toward_farm(
     if wants_silvermere_farm(level, room, gated):
         return step_toward_silvermere(room, exits)
     return step_toward_arena(room, exits or [])
+
+
+def step_skiff_to_square(
+    room: str,
+    exits: list[str] | None = None,
+    *,
+    skiff_i: int = 0,
+) -> str | None:
+    """Counted Pier → TS walk (3s 6e 10s). Inactive in Newhaven and at the square."""
+    if skiff_i < 0 or skiff_i >= len(SKIFF_TO_SQUARE):
+        return None
+    low = (room or "").lower()
+    if "town square" in low or low == "fountain":
+        return None
+    if in_newhaven(low):
+        return None
+    if skiff_i == 0 and "pier" not in low:
+        return None
+    return _open_step(SKIFF_TO_SQUARE[skiff_i], exits)
 
 
 def step_toward_silvermere(room: str, exits: list[str] | None = None) -> str | None:

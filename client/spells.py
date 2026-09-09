@@ -1,8 +1,9 @@
-"""MajorMUD spells. Paladin starts with a couple; the shop sells more."""
+"""MajorMUD spells. Classes buy the Newhaven scroll that matches their magery."""
 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 # One cast per combat round. 1.11p is about eight seconds; spam just fizzles.
@@ -10,22 +11,66 @@ ROUND = 8.0
 
 # kind: heal = self/friend, harm = combat target, buff = self (luck). mana is the 1.11p cost.
 # level is the 1.11p character level to cast (spells.jsonl). Scrolls can be bought earlier.
+# verb invoke = mystic kai (WCCSPELS). say is the typed name; self_only skips a target.
 SPELLBOOK = {
     "minor healing": {"kind": "heal", "mana": 2, "short": "mihe", "level": 1},
     "major healing": {"kind": "heal", "mana": 6, "short": "mahe", "level": 8},
     "harm": {"kind": "harm", "mana": 1, "short": "harm", "level": 1},
     "bless": {"kind": "buff", "mana": 2, "short": "bles", "level": 2},
+    "magic missile": {"kind": "harm", "mana": 2, "short": "mami", "level": 1},
+    "illuminate": {"kind": "light", "mana": 2, "short": "illu", "level": 3},
+    "smite": {"kind": "might", "mana": 4, "short": "smit", "level": 3},
+    "vine strike": {"kind": "harm", "mana": 1, "short": "vine", "level": 1},
+    "mend": {"kind": "heal", "mana": 4, "short": "mend", "level": 2},
+    "starlight": {
+        "kind": "light",
+        "mana": 4,
+        "short": "star",
+        "level": 1,
+        "self_only": True,
+        "auto": False,
+    },
+    "way of the swan": {
+        "kind": "heal",
+        "mana": 3,
+        "short": "swan",
+        "level": 2,
+        "verb": "invoke",
+        "say": "way of swan",
+        "self_only": True,
+    },
+    "way of the owl": {
+        "kind": "buff",
+        "mana": 10,
+        "short": "owl",
+        "level": 3,
+        "verb": "invoke",
+        "say": "owl",
+        "self_only": True,
+        # Kai power unlocks on train/ding — no scroll, shop, or learn path.
+        "level_up": True,
+    },
 }
 
 # Priest-1 at creation. Other classes buy a scroll at the Newhaven spell shop
-# (Dathalar, north of Narrow Path) and `read` it to memorize.
+# (Rayth / Dathalar, north of Narrow Path) and `read` it to memorize.
+# Mystics invoke kai powers; they do not buy mage scrolls.
+# Druid-3 / Ranger Druid-1 buy bark parchments (vine/mend), not holy writs.
+# Starlight is Druid-1 room light (WCCSPELS). Offered on ding, not auto-shopped.
 CLASS_SPELLS = {
     "paladin": ("minor healing", "harm", "bless", "major healing"),
     "cleric": ("minor healing", "harm", "major healing"),
     "priest": ("minor healing", "harm", "major healing"),
+    "missionary": ("minor healing", "harm", "major healing"),
+    "mage": ("magic missile", "illuminate", "smite"),
+    "warlock": ("magic missile",),
+    "mystic": ("way of the swan", "way of the owl"),
+    "druid": ("vine strike", "mend", "starlight"),
+    "ranger": ("vine strike", "mend", "starlight"),
     "warrior": (),
     "witchunter": (),
     "ninja": (),
+    "thief": (),
 }
 
 # Shop item names. Harm's scroll is "cause harm", not "harm".
@@ -34,10 +79,40 @@ SCROLLS = {
     "harm": "scroll of cause harm",
     "bless": "scroll of bless",
     "major healing": "scroll of major healing",
+    "magic missile": "scroll of magic missile",
+    "illuminate": "scroll of illuminate",
+    "smite": "scroll of smite",
+    "vine strike": "scroll of vine strike",
+    "mend": "scroll of mend",
+    "starlight": "scroll of starlight",
 }
 
-_SHOP_FIRST = ("minor healing", "harm", "bless", "major healing")
+_SHOP_FIRST = (
+    "minor healing",
+    "harm",
+    "magic missile",
+    "illuminate",
+    "smite",
+    "vine strike",
+    "starlight",
+    "mend",
+    "bless",
+    "major healing",
+)
 SPELL_SHOP = "Newhaven, Spell Shop"
+_SPELL_ALIAS = {
+    "way of swan": "way of the swan",
+    "swan": "way of the swan",
+    "way of owl": "way of the owl",
+    "owl": "way of the owl",
+    "vine": "vine strike",
+    "star": "starlight",
+}
+
+
+def canonical_spell(name: str) -> str:
+    low = name.strip().lower()
+    return _SPELL_ALIAS.get(low, low)
 
 
 def normalize_spell_list(raw: object) -> list[str]:
@@ -53,7 +128,7 @@ def known_spells(klass: str, listed: object = None) -> list[str]:
 
 
 def info(name: str) -> dict[str, object] | None:
-    return SPELLBOOK.get(name.strip().lower())
+    return SPELLBOOK.get(canonical_spell(name))
 
 
 def of_kind(names: list[str], kind: str) -> str:
@@ -65,8 +140,15 @@ def of_kind(names: list[str], kind: str) -> str:
 
 
 def shop_spells(klass: str, listed: object = None) -> list[str]:
-    """Spells this class can buy. Minor healing first, then harm, bless."""
-    names = [name for name in known_spells(klass, listed) if name in SCROLLS]
+    """Spells this class auto-buys. Offer-only scrolls (starlight) stay off this list."""
+    names = []
+    for name in known_spells(klass, listed):
+        if name not in SCROLLS:
+            continue
+        meta = info(name)
+        if meta is not None and not meta.get("auto", True):
+            continue
+        names.append(name)
     rank = {name: i for i, name in enumerate(_SHOP_FIRST)}
     names.sort(key=lambda name: (rank.get(name, len(_SHOP_FIRST)), name))
     return names
@@ -171,6 +253,60 @@ def first_held_scroll(items: list[str], names: list[str], tried: set[str]) -> st
     return ""
 
 
+def list_command(klass: str) -> str:
+    """Mystics list kai with `powers`. Everyone else uses `spells`."""
+    if (klass or "").strip().lower() == "mystic":
+        return "powers"
+    return "spells"
+
+
+def uses_book(klass: str) -> bool:
+    """True when `spells`/`powers` can tell us what is already memorized."""
+    return bool(known_spells(klass))
+
+
+_BOOK_ROW = re.compile(
+    r"^\s*(\d{1,3})\s+(\d{1,4})\s+([A-Za-z][A-Za-z']{1,8})\s+(.+?)\s*$"
+)
+
+
+def from_short(code: str) -> str:
+    low = code.strip().lower()
+    if not low:
+        return ""
+    if low in SPELLBOOK:
+        return low
+    aliased = canonical_spell(low)
+    if aliased in SPELLBOOK:
+        return aliased
+    for name, meta in SPELLBOOK.items():
+        if str(meta.get("short") or "").lower() == low:
+            return name
+    return aliased or low
+
+
+def parse_book_row(raw: str) -> str:
+    """Level / mana / short / name row from `spells` or `powers`."""
+    m = _BOOK_ROW.match(raw.strip())
+    if not m:
+        return ""
+    short = m.group(3).strip().lower()
+    rest = re.sub(r"\s+", " ", m.group(4).strip().lower())
+    if not re.fullmatch(r"[a-z']{2,8}", short):
+        return ""
+    if re.search(r"\d", rest):
+        return ""
+    named = canonical_spell(rest)
+    if named in SPELLBOOK:
+        return named
+    coded = from_short(short)
+    if coded in SPELLBOOK:
+        return coded
+    if re.fullmatch(r"[a-z][a-z' ]*[a-z]", named) and len(named) >= 3:
+        return named
+    return ""
+
+
 def learned_who(who: str) -> str:
     """Stable key: first token of the login/given blob."""
     parts = [part.strip().lower() for part in who.replace(",", " ").split() if part.strip()]
@@ -231,10 +367,31 @@ def have_known(items: list[str], spell: str) -> bool:
     return False
 
 
+def self_only(name: str) -> bool:
+    spell = info(name)
+    return bool(spell and spell.get("self_only"))
+
+
+def spoken_name(name: str) -> str:
+    spell = info(name)
+    if spell:
+        said = str(spell.get("say") or "").strip()
+        if said:
+            return said
+    return canonical_spell(name)
+
+
+def verb(name: str) -> str:
+    spell = info(name)
+    if spell and spell.get("verb") == "invoke":
+        return "invoke"
+    return "cast"
+
+
 def command(name: str, target: str = "") -> str:
-    line = f"cast {name.strip().lower()}"
+    line = f"{verb(name)} {spoken_name(name)}"
     who = target.strip()
-    if who:
+    if who and not self_only(name):
         line = f"{line} {who}"
     return line
 

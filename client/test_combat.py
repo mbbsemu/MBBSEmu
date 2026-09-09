@@ -18,8 +18,8 @@ def test_accuracy_base_uses_stored_combat() -> None:
 def test_padded_and_value_weapons() -> None:
     acc, ac, lo, hi = gear_from_worn(["stiletto", *ARMOUR_ITEMS])
     assert acc == 0 and ac == 10 and lo == 1 and hi == 4
-    acc, ac, lo, hi = gear_from_worn(["battle axe", *ARMOUR_ITEMS])
-    assert acc == 0 and ac == 10 and lo == 4 and hi == 15
+    acc, ac, lo, hi = gear_from_worn(["quarterstaff"])
+    assert lo == 3 and hi == 8
     acc, ac, lo, hi = gear_from_worn(["ebony ninjato"])
     assert lo == 5 and hi == 18
     acc, ac, lo, hi = gear_from_worn(["shimmering greatsword"])

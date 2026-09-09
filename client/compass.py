@@ -8,6 +8,10 @@ Gate: send the dir → wait for a new [HP=] plus Obvious exits (or a
 new room title). That is the landing. `look` only if the walk never
 reprinted (blocked door, timeout). Same-title halls still count when
 exits bump `travel_seq`.
+
+Latch (`bash north` / `picklock north`): stays in the room. Land only
+when a short look lists that dir. Still shut after the look → unlatch
+again. Already listed → walk it. Do not treat the latch as a free landing.
 """
 
 from __future__ import annotations
@@ -133,8 +137,14 @@ class Compass:
             self._fail()
             return "look"
         if self.phase == "peeking":
-            if self._landed(room, travel_seq):
+            if self._landed(room, travel_seq, exits):
                 self._confirm(room, exits)
+                return "ok"
+            if paths.is_unlatch_step(self.pending):
+                # Look already went out. Latch still shut — caller may bash.
+                self.pending = ""
+                self.phase = ""
+                self.failed = False
                 return "ok"
             if stamp - self.sent_at < CONFIRM_WAIT:
                 return "wait"
@@ -144,7 +154,7 @@ class Compass:
             return "ok"
         if prompt_seq <= self.prompt:
             return "wait"
-        if self._landed(room, travel_seq):
+        if self._landed(room, travel_seq, exits):
             self._confirm(room, exits)
             return "ok"
         self.phase = "peeking"
@@ -152,14 +162,27 @@ class Compass:
         self.sent_at = stamp
         return "look"
 
-    def _landed(self, room: str, travel_seq: int) -> bool:
+    def _landed(
+        self, room: str, travel_seq: int, exits: list[str] | None = None
+    ) -> bool:
+        if paths.is_unlatch_step(self.pending):
+            # Bash stays here. A look (or a room tick) must list the dir.
+            want = paths.unlatch_dir_short(self.pending)
+            listed = [x.lower() for x in (exits or [])]
+            return bool(want and want in listed)
         if travel_seq > self.travel:
             return True
-        if paths.is_unlatch_step(self.pending):
-            # Bash / picklock stays in the room. Next tick walks through.
-            return True
         here = (room or "").strip()
-        return bool(here and self.from_room and here != self.from_room)
+        if here and self.from_room and here != self.from_room:
+            return True
+        # Same-title halls reprint the same "Obvious exits" line. Harvest
+        # skips it, travel_seq never bumps, and a look-fail used to reverse.
+        return bool(
+            here
+            and self.from_room
+            and here == self.from_room
+            and paths.same_title_corridor(here)
+        )
 
     def note(
         self,

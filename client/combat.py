@@ -36,6 +36,7 @@ ITEMS: dict[str, dict[str, int]] = {
     "stiletto": {"acc": 0, "ac": 0, "min": 1, "max": 4},
     "battle axe": {"acc": 0, "ac": 0, "min": 4, "max": 15},
     "club": {"acc": 0, "ac": 0, "min": 3, "max": 8},
+    "quarterstaff": {"acc": 0, "ac": 0, "min": 3, "max": 8},
     "ninjato": {"acc": 0, "ac": 0, "min": 3, "max": 13},
     "padded vest": {"acc": 0, "ac": 6},
     "padded pants": {"acc": 0, "ac": 1},

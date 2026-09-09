@@ -6,7 +6,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 
-from . import combat, paths
+from . import combat, parse, paths
 
 # One combat round. Long DPS is damage-per-round over the hunt loop
 # (fights + walks). Short is the last few rounds against that norm.
@@ -56,6 +56,7 @@ class WorldState:
     max_ma: int | None = None
     cast_fail: str = ""
     blessed: bool = False
+    willed: bool = False
     room: str = ""
     exits: list[str] = field(default_factory=list)
     closed_exits: list[str] = field(default_factory=list)
@@ -77,9 +78,14 @@ class WorldState:
     already_worn: str = ""
     last_sold: str = ""
     inv_seq: int = 0
+    wealth_copper: int | None = None
+    deposited: bool = False
+    bank_fail: bool = False
     shop_vague: bool = False
     learned: bool = False
     spell_skip: bool = False
+    known_spells: list[str] = field(default_factory=list)
+    spellbook_seq: int = 0
     flooded: bool = False
     needs_scan: bool = False
     scanned: bool = False
@@ -90,16 +96,27 @@ class WorldState:
     saw_see: bool = False
     whiff: bool = False
     blocked: bool = False
+    blocked_dir: str = ""
     arena_gated: bool = False
     pvp_hit: str = ""
     self_names: set[str] = field(default_factory=set)
     last_actor: str = ""
     friendly_fire: str = ""
     invited_by: str = ""
+    join_call_by: str = ""
+    rest_call_by: str = ""
     following: str = ""
     followers: list[str] = field(default_factory=list)
+    # Leader's swing target, or a farm mob hitting the party, while we follow.
+    ally_aim: str = ""
+    # Last farm mob that hit this window (`... at you`).
+    aggro: str = ""
     backrank: bool = False
+    party_rank: str = ""
     party_fail: str = ""
+    not_here: str = ""
+    invite_ok: str = ""
+    arrivals: list[str] = field(default_factory=list)
     sneak_try: bool = False
     sneak_ok: bool = False
     sneak_fail: bool = False
@@ -122,8 +139,13 @@ class WorldState:
     ally_hurt: dict[str, str] = field(default_factory=dict)
     # lowercase given name -> damage seen since last heal / they left.
     ally_dmg: dict[str, int] = field(default_factory=dict)
-    # lowercase given name -> they asked for a heal (`heal me`).
+    # lowercase given name -> they asked for a heal (`!heal`).
     heal_asks: dict[str, str] = field(default_factory=dict)
+    # `!healed` / `!rested` acks while the leader holds the run.
+    healed_acks: dict[str, str] = field(default_factory=dict)
+    rested_acks: dict[str, str] = field(default_factory=dict)
+    # lowercase given name -> we landed bless on them (luck / crits).
+    ally_blessed: dict[str, str] = field(default_factory=dict)
     # From `exp` / train. Max HP/MA stay put until a level or train.
     klass: str = ""
     level: int | None = None
@@ -197,32 +219,107 @@ class WorldState:
         if kind == "buff":
             name = str(event.get("name") or "").strip().lower()
             if name == "bless":
-                self.blessed = bool(event.get("on", True))
+                self._note_bless(event)
+            elif name in {"way of the owl", "owl"}:
+                self.willed = bool(event.get("on", True))
             return
         if kind == "invited":
             who = str(event.get("name") or "").strip()
-            if who and not event.get("by_me"):
+            if who and event.get("by_me"):
+                self.invite_ok = who
+                return
+            if who:
                 self.invited_by = who
+            return
+        if kind == "realm_enter":
+            self.in_realm = True
+            return
+        if kind == "not_here":
+            who = str(event.get("name") or "").strip()
+            self.not_here = who
+            if who:
+                self._drop_presence(who)
+            return
+        if kind == "join_call":
+            who = str(event.get("name") or "").strip()
+            if not who or who.lower() == "you":
+                return
+            if not self._is_toon(who):
+                return
+            self._remember_toon(who)
+            self.join_call_by = who
+            return
+        if kind == "rest_call":
+            who = str(event.get("name") or "").strip()
+            if not who or who.lower() == "you":
+                return
+            if not self._is_toon(who):
+                return
+            self._remember_toon(who)
+            self.rest_call_by = who
+            return
+        if kind == "rested":
+            who = str(event.get("name") or "").strip()
+            if not who or who.lower() == "you":
+                return
+            if not self._is_toon(who):
+                return
+            self._remember_toon(who)
+            self.rested_acks[who.lower()] = who
+            return
+        if kind == "healed":
+            who = str(event.get("name") or "").strip()
+            if not who or who.lower() == "you":
+                return
+            if not self._is_toon(who):
+                return
+            self._remember_toon(who)
+            self.healed_acks[who.lower()] = who
+            self.heal_asks = {
+                k: v
+                for k, v in self.heal_asks.items()
+                if k != who.lower() and v.lower() != who.lower()
+            }
             return
         if kind == "following":
             self.following = str(event.get("name") or "").strip()
             self.invited_by = ""
+            self.join_call_by = ""
+            self.left_party = False
             return
         if kind == "followed":
             who = str(event.get("name") or "").strip()
             if who and who not in self.followers:
                 self.followers.append(who)
             return
+        if kind == "ranked":
+            who = str(event.get("name") or "").strip()
+            if who and who not in self.followers:
+                self.followers.append(who)
+            return
         if kind == "backrank":
             self.backrank = True
+            self.party_rank = "back"
+            return
+        if kind == "rank":
+            row = str(event.get("row") or "").strip().lower()
+            if row == "middle":
+                row = "mid"
+            if row in {"front", "mid", "back"}:
+                self.party_rank = row
+                self.backrank = row == "back"
             return
         if kind == "party_fail":
             self.party_fail = str(event.get("reason") or "fail")
             self.invited_by = ""
+            self.join_call_by = ""
             if self.party_fail == "invite":
                 self.following = ""
             if self.party_fail == "party":
+                self.following = ""
                 self.backrank = False
+                self.party_rank = ""
+                self.left_party = True
             return
         if kind == "sneak_try":
             self.sneak_try = True
@@ -267,6 +364,7 @@ class WorldState:
         if kind == "left":
             self.following = ""
             self.backrank = False
+            self.party_rank = ""
             self.invited_by = ""
             self.left_party = True
             return
@@ -274,13 +372,14 @@ class WorldState:
             self.exits = list(event.get("exits") or [])  # type: ignore[arg-type]
             self.closed_exits = list(event.get("closed") or [])  # type: ignore[arg-type]
             if self.look_scan and not self.saw_here:
-                self.mobs = []
+                self.mobs = self._presence_pcs(self.mobs)
             if self.look_scan and not self.saw_see:
                 self.things = []
             self.look_scan = False
             self.scanned = True
             self.needs_scan = False
             self.travel_seq += 1
+            self.in_realm = True
             return
         if kind == "also_here":
             mobs: list[str] = []
@@ -293,6 +392,7 @@ class WorldState:
             self.look_scan = False
             self.scanned = True
             self.needs_scan = False
+            self.in_realm = True
             present = {n.lower() for n in paths.players_in(self.mobs, self.self_names)}
             self.ally_hurt = {
                 k: v for k, v in self.ally_hurt.items() if k in present or v.lower() in present
@@ -306,6 +406,7 @@ class WorldState:
             self.things = list(event.get("things") or [])  # type: ignore[arg-type]
             self.saw_see = True
             self.scanned = True
+            self.in_realm = True
             return
         if kind == "heal_ask":
             who = str(event.get("name") or "").strip()
@@ -344,11 +445,17 @@ class WorldState:
                 self.exp_stale = True
                 self.exp_asked = False
             self.exp_gained = False
+            self._drop_fight_aim(dead)
             return
         if kind == "death":
             self.just_died = True
             self.in_combat = False
             self.mortal = False
+            self.bleeding = False
+            # The game drops the corpse from the group. Stale follow lines
+            # must not keep `goto pile` / `goto gy` sending leave forever.
+            self.following = ""
+            self.left_party = True
             return
         if kind == "combat":
             self.in_combat = True
@@ -358,7 +465,17 @@ class WorldState:
                 if paths.is_self(actor, self.self_names):
                     self.self_names.add(actor.strip().lower())
                 self._remember_toon(actor)
+            aim = event.get("aim")
+            if (
+                isinstance(aim, str)
+                and aim.strip()
+                and isinstance(actor, str)
+                and actor.strip()
+                and self._is_leader(actor)
+            ):
+                self.ally_aim = aim.strip()
             name = event.get("name")
+            victim = event.get("victim")
             if isinstance(name, str) and name:
                 for piece in paths.peel_presence(name, self.self_names):
                     toon = self._is_toon(piece)
@@ -370,6 +487,13 @@ class WorldState:
                         self.mobs.append(piece)
                         self.saw_here = True
                         self.look_scan = False
+                hit_name = name.strip()
+                if hit_name and paths.lop_in([hit_name]):
+                    who = victim.strip() if isinstance(victim, str) else ""
+                    if not who or who.lower() == "you":
+                        self.aggro = hit_name
+                    elif self._is_leader(who):
+                        self.ally_aim = hit_name
             self._note_ally_hit(event)
             dealt = event.get("dealt")
             if isinstance(dealt, int) and dealt > 0:
@@ -384,6 +508,8 @@ class WorldState:
             self.in_combat = False
             self.pvp_hit = ""
             self.combat_off = True
+            self.ally_aim = ""
+            self.aggro = ""
             # Fight is over — drop leftover farm names. Keep party / PCs.
             # A later arrive / Also here / combat line is the live list.
             self.mobs = [m for m in self.mobs if not paths.lop_in([m])]
@@ -414,6 +540,25 @@ class WorldState:
             held = self.inventory + self.worn + self.extras
             self.torch_lit = paths.has_lit_torch(held)
             self.inv_seq += 1
+            self.wealth_copper = paths.purse_copper(self.inventory)
+            return
+        if kind == "wealth":
+            copper = event.get("copper")
+            if isinstance(copper, int) and copper >= 0:
+                self.wealth_copper = copper
+            return
+        if kind == "deposit":
+            if event.get("fail"):
+                self.bank_fail = True
+                return
+            copper = event.get("copper")
+            n = copper if isinstance(copper, int) and copper >= 0 else 0
+            if event.get("withdraw"):
+                self.wealth_copper = (self.wealth_copper or 0) + n
+                self.deposited = False
+                return
+            self.wealth_copper = 0
+            self.deposited = True
             return
         if kind == "sold":
             item = str(event.get("item") or "").strip().lower()
@@ -439,18 +584,15 @@ class WorldState:
                     self.mobs.append(piece)
                 if piece:
                     self._remember_toon(piece)
+                    if self._is_toon(piece):
+                        self.arrivals.append(piece)
             self.saw_here = True
             self.look_scan = False
             self.scanned = True
             self.needs_scan = False
             return
         if kind == "leave":
-            name = str(event.get("name") or "").lower()
-            if name:
-                self.mobs = [
-                    m for m in self.mobs if name not in m.lower() and m.lower() not in name
-                ]
-                self._drop_ally_hurt(name)
+            self._drop_presence(event.get("name") or "")
             return
         if kind == "rest":
             actor = event.get("actor")
@@ -495,21 +637,45 @@ class WorldState:
             self.learned = True
             self.spell_skip = False
             return
+        if kind == "spellbook":
+            if event.get("reset"):
+                self.known_spells = []
+            names = event.get("names")
+            if isinstance(names, list):
+                for raw in names:
+                    low = str(raw).strip().lower()
+                    if low and low not in self.known_spells:
+                        self.known_spells.append(low)
+            name = event.get("name")
+            if isinstance(name, str):
+                low = name.strip().lower()
+                if low and low not in self.known_spells:
+                    self.known_spells.append(low)
+            self.spellbook_seq += 1
+            return
         if kind == "spell_skip":
             self.spell_skip = True
             return
         if kind == "room":
             title = str(event.get("title") or "")
+            if parse.looks_like_stat_sheet(title):
+                return
             if self.in_combat and not _looks_like_place(title):
                 return
             moved = bool(self.room) and title != self.room
             self.room = title
             self.dark = False
+            if _looks_like_place(title):
+                self.in_realm = True
             if moved:
                 if self.in_combat:
                     self.combat_off = True
                 self.mobs = []
                 self.things = []
+                # Drop prior tile exits — Entry's `sw` must not linger on Bridge
+                # or goto ts / hunt will wall-spam a stale door.
+                self.exits = []
+                self.closed_exits = []
                 self.scanned = False
                 self.in_combat = False
                 self.in_shop = False
@@ -559,8 +725,13 @@ class WorldState:
                 or "door is closed" in text
                 or "closed door" in text
                 or "closed gate" in text
+                or "ran into the wall" in text
+                or event.get("wall")
             ):
                 self.blocked = True
+                wall_dir = str(event.get("dir") or "").strip().lower()
+                if wall_dir:
+                    self.blocked_dir = wall_dir
                 if "d" in self.exits:
                     self.exits = [x for x in self.exits if x != "d"]
             return
@@ -573,6 +744,28 @@ class WorldState:
         tokens = [w.strip(".,!;:").lower() for w in name.split() if w.strip(".,!;:")]
         return any(token in mine for token in tokens)
 
+    def _names_match(self, left: str, right: str) -> bool:
+        a = left.strip().lower()
+        b = right.strip().lower()
+        if not a or not b:
+            return False
+        if a == b:
+            return True
+        return a in b.split() or b in a.split()
+
+    def _is_leader(self, name: str) -> bool:
+        """True when `name` is the toon this window is following."""
+        who = (self.following or "").strip()
+        if not who or not name.strip():
+            return False
+        return self._names_match(name, who)
+
+    def _drop_fight_aim(self, dead: str) -> None:
+        if dead and self.ally_aim and paths.same_mob(self.ally_aim, dead):
+            self.ally_aim = ""
+        if dead and self.aggro and paths.same_mob(self.aggro, dead):
+            self.aggro = ""
+
     def _is_toon(self, name: str) -> bool:
         extras = self.self_names
         return (
@@ -580,6 +773,22 @@ class WorldState:
             or paths.is_player(name)
             or paths.is_home_account(name)
         )
+
+    def _presence_pcs(self, names: list[str]) -> list[str]:
+        """Keep standing PCs when a look reprint omits Also here."""
+        kept: list[str] = []
+        seen: set[str] = set()
+        extras = self.self_names
+        for raw in names:
+            for piece in paths.peel_presence(str(raw), extras):
+                if not piece or not self._is_toon(piece):
+                    continue
+                key = piece.strip().lower()
+                if key in seen:
+                    continue
+                seen.add(key)
+                kept.append(piece)
+        return kept
 
     def _remember_toon(self, name: str) -> None:
         """Keep the other PC in the room list so party can invite/join."""
@@ -610,6 +819,38 @@ class WorldState:
     def ally_taken(self, key: str) -> int:
         return int(self.ally_dmg.get(key.strip().lower(), 0))
 
+    def _note_bless(self, event: dict[str, object]) -> None:
+        on = bool(event.get("on", True))
+        target = str(event.get("target") or "").strip()
+        if event.get("self") or not target or self._is_me(target):
+            self.blessed = on
+            return
+        if on:
+            self.ally_blessed[target.lower()] = target
+            return
+        self.forget_ally_bless(target)
+
+    def ally_has_bless(self, *names: str) -> bool:
+        lows = {name.strip().lower() for name in names if name and name.strip()}
+        return any(
+            k in lows or v.lower() in lows for k, v in self.ally_blessed.items()
+        )
+
+    def mark_ally_bless(self, name: str) -> None:
+        who = name.strip()
+        if who:
+            self.ally_blessed[who.lower()] = who
+
+    def forget_ally_bless(self, *names: str) -> None:
+        lows = {name.strip().lower() for name in names if name and name.strip()}
+        if not lows:
+            return
+        self.ally_blessed = {
+            k: v
+            for k, v in self.ally_blessed.items()
+            if k not in lows and v.lower() not in lows
+        }
+
     def forget_ally(self, *names: str) -> None:
         lows = {name.strip().lower() for name in names if name and name.strip()}
         if not lows:
@@ -630,9 +871,24 @@ class WorldState:
         self.ally_hurt.clear()
         self.ally_dmg.clear()
         self.heal_asks.clear()
+        self.healed_acks.clear()
+        self.rested_acks.clear()
         self.ally_rest = ""
         self.ally_stood = False
         self.ally_wounded = ""
+        self.ally_aim = ""
+        self.aggro = ""
+
+    def _drop_presence(self, raw: str | object) -> None:
+        """They left this tile, or `invite` proved they were never here."""
+        name = str(raw or "").strip()
+        if not name:
+            return
+        low = name.lower()
+        self.mobs = [
+            m for m in self.mobs if low not in m.lower() and m.lower() not in low
+        ]
+        self._drop_ally_hurt(name)
 
     def _drop_ally_hurt(self, raw: str) -> None:
         low = raw.strip().lower()
@@ -659,8 +915,9 @@ class WorldState:
             return
         if "also here:" in screen.lower():
             return
-        self.mobs = []
-        self._wipe_allies()
+        self.mobs = self._presence_pcs(self.mobs)
+        if not self.mobs:
+            self._wipe_allies()
         self.scanned = True
         self.look_scan = False
 
@@ -962,12 +1219,20 @@ class WorldState:
     def _note_hits(self) -> None:
         if self.hp is None:
             return
-        if self.hp <= 0 and not self.aided:
-            self.mortal = True
-            self.bleeding = True
-        elif self.hp >= 1:
+        if self.hp >= 1:
             self.mortal = False
             self.bleeding = False
+            return
+        if self.aided:
+            return
+        # Halls / Temple Healer reprint HP=0. That is a ghost, not a
+        # mortal on the grass — `goto` must still be able to walk out.
+        if paths.in_afterlife(self.room):
+            self.mortal = False
+            self.bleeding = False
+            return
+        self.mortal = True
+        self.bleeding = True
 
     def hp_ratio(self) -> float | None:
         if self.hp is None or not self.max_hp:
@@ -1022,5 +1287,7 @@ def _looks_like_place(title: str) -> bool:
             "alley",
             "graveyard",
             "street",
+            "bank",
+            "godfrey",
         )
     )

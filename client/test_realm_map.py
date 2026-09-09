@@ -22,8 +22,10 @@ def test_seed_has_newhaven() -> None:
     assert atlas.path("Newhaven, Village Entrance", "Newhaven, Docks") == ["se", "s"]
     assert atlas.path("Newhaven, Docks", "Pier") == ["borrow skiff"]
     assert atlas.path("Pier", "Newhaven, Docks") == ["borrow skiff"]
-    assert atlas.path("Newhaven, Guild", "Town Square")[0] == "s"
-    assert "borrow skiff" in atlas.path("Newhaven, Guild", "Town Square")
+    assert atlas.path("Newhaven, Guild", "Newhaven, Docks")[0] == "s"
+    assert "borrow skiff" in atlas.path("Newhaven, Guild", "Pier")
+    # After the skiff, TS is a counted 3s 6e 10s walk — not a Docks shortcut.
+    assert atlas.path("Pier", "Town Square") == []
     assert atlas.known("Town Square")
     assert atlas.room_count() >= len(NEWHAVEN) + len(SILVERMERE)
     gy = atlas.path(
@@ -33,6 +35,8 @@ def test_seed_has_newhaven() -> None:
     assert gy[-1] == "ne"
     assert "n" in gy
     assert atlas.path("Bridge Street", "Graveyard Entrance") == ["n", "n", "ne"]
+    assert atlas.path("Graveyard Entrance", "Bridge") == ["sw"]
+    assert atlas.path("Shack", "Bridge") == ["sw"]
     assert atlas.path("Guild Street, Northern End", "Adventurer's Guild, Foyer") == [
         "e"
     ]
@@ -64,8 +68,13 @@ def test_unknown_room_no_crash() -> None:
 def test_maps_title_case_a_hall() -> None:
     assert _mappable("A Dark Hall")
     assert _mappable("Secret Passage")
+    assert _mappable("Guild Street")
+    assert _mappable("Pier")
     assert not _mappable("A large rat")
     assert not _mappable("You swing at the rat")
+    assert not _mappable("Thi")
+    assert not _mappable("This is a")
+    assert not _mappable("This is a cobblestoned street")
 
 
 def test_unmapped_doors_are_explored() -> None:
@@ -143,6 +152,35 @@ def test_bridge_street_south_is_not_the_gates() -> None:
     assert atlas.edges.get(("bridge street", "s")) != "intersection of river st. & bridge st."
 
 
+def test_docks_are_not_a_guild_river_shortcut() -> None:
+    atlas = Atlas()
+    assert atlas.edges.get(("docks", "e")) != "intersection of guild st. & river st."
+    assert atlas.edges.get(("docks", "s")) != "intersection of guild st. & river st."
+    atlas.observe(
+        "Intersection of Guild St. & River St.",
+        ["e", "s", "w"],
+        via="e",
+        prev="Docks",
+    )
+    assert atlas.edges.get(("docks", "e")) != "intersection of guild st. & river st."
+
+
+def test_look_scraps_do_not_poison_guild_street() -> None:
+    atlas = Atlas()
+    atlas.observe(
+        "This is a cobblestoned street",
+        ["n", "s"],
+        via="n",
+        prev="Guild Street",
+    )
+    assert atlas.edges.get(("guild street", "n")) != "thi"
+    assert atlas.edges.get(("guild street", "n")) != "this is a cobblestoned street"
+    live = Path("data/realm-map.json")
+    if live.is_file():
+        loaded = Atlas(live)
+        assert loaded.edges.get(("guild street", "n")) != "thi"
+
+
 if __name__ == "__main__":
     test_seed_has_newhaven()
     test_record_edge_bfs()
@@ -156,4 +194,6 @@ if __name__ == "__main__":
     test_maps_title_case_a_hall()
     test_unmapped_doors_are_explored()
     test_bridge_street_south_is_not_the_gates()
+    test_docks_are_not_a_guild_river_shortcut()
+    test_look_scraps_do_not_poison_guild_street()
     print("ok")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,12 @@ from client.splash import (
 
 HERE = Path(__file__).resolve().parent
 PREVIEW = HERE / "splash-previews"
+
+
+def signed_off_line(when: datetime | None = None) -> str:
+    """Local wall-clock line under the yours-truly art."""
+    stamp = (when or datetime.now()).strftime("%a %Y-%m-%d  %H:%M")
+    return f"signed off  {stamp}"
 
 
 def _plate(screen: Any) -> None:
@@ -48,8 +55,8 @@ def _center(screen: Any, word: str, width: int) -> int:
     return max(0, (screen.cols - width) // 2)
 
 
-def paint(screen: Any) -> None:
-    """80×25 ice tag: klymacks, yours truly. Lowercase only."""
+def paint(screen: Any, *, when: datetime | None = None) -> None:
+    """80×25 ice tag: klymacks + yours truly art; wall-clock under it."""
     ice = load_color_tdf(tdf_path("font23.tdf"))
     juice = load_color_tdf(tdf_path("juicex.tdf"))
     name = "klymacks"
@@ -70,12 +77,10 @@ def paint(screen: Any) -> None:
     _ice_wash(screen, y2, x2, tag_w, tag_h)
     blit_tdf(screen, y2, x2, juice, "yours", 1)
     blit_tdf(screen, y2, x2 + yours_w + gap, juice, "truly", 1)
-    credit = "yours truly"
-    _puts(screen, 21, _center(screen, credit, len(credit)), credit, 6, 0, True)
-    _puts(screen, 22, _center(screen, "the gate closes.", 16), "the gate closes.", 6, 0, False)
-    _puts(screen, 23, _center(screen, "still here.", 11), "still here.", 4, 0, False)
-    _put(screen, 21, 8, "·", 6, 0, True, overlay=False)
-    _put(screen, 21, 71, "·", 6, 0, True, overlay=False)
+    stamp = signed_off_line(when)
+    _puts(screen, 22, _center(screen, stamp, len(stamp)), stamp, 6, 0, False)
+    _put(screen, 22, 8, "·", 6, 0, True, overlay=False)
+    _put(screen, 22, 71, "·", 6, 0, True, overlay=False)
 
 
 class _Cell:

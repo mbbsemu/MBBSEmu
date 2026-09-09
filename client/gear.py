@@ -137,3 +137,56 @@ def save_claimed(path: str | Path | None, who: str, names: set[str]) -> None:
     data[key] = sorted(names)
     file.parent.mkdir(parents=True, exist_ok=True)
     file.write_text(json.dumps(data, indent=2) + "\n")
+
+
+def deathpile_path(gear_path: str | Path | None) -> str | None:
+    if not gear_path:
+        return None
+    return str(Path(gear_path).with_name("deathpile.json"))
+
+
+def load_deathpile(path: str | Path | None, who: str) -> str:
+    key = spells.learned_who(who)
+    if not path or not key:
+        return ""
+    file = Path(path)
+    if not file.is_file():
+        return ""
+    try:
+        raw = json.loads(file.read_text())
+    except (OSError, json.JSONDecodeError):
+        return ""
+    if not isinstance(raw, dict):
+        return ""
+    room = raw.get(key)
+    if not isinstance(room, str):
+        return ""
+    return room.strip()
+
+
+def save_deathpile(path: str | Path | None, who: str, room: str) -> None:
+    key = spells.learned_who(who)
+    if not path or not key:
+        return
+    file = Path(path)
+    data: dict[str, str] = {}
+    if file.is_file():
+        try:
+            loaded = json.loads(file.read_text())
+        except (OSError, json.JSONDecodeError):
+            loaded = {}
+        if isinstance(loaded, dict):
+            data = {
+                str(name): str(where).strip()
+                for name, where in loaded.items()
+                if str(where).strip()
+            }
+    if room.strip():
+        data[key] = room.strip()
+    else:
+        data.pop(key, None)
+    file.parent.mkdir(parents=True, exist_ok=True)
+    if data:
+        file.write_text(json.dumps(data, indent=2) + "\n")
+    elif file.is_file():
+        file.unlink()

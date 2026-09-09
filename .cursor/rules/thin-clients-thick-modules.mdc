@@ -1,0 +1,45 @@
+---
+description: Keep Finn's Realm clients thin; thicken client/modules play policy
+alwaysApply: true
+---
+
+# Thin clients, thick modules
+
+Intelligence for Finn's Realm play lives in `client/modules/` (party, maps, kit, monsters, roles, realm, runtime). Thicken modules; keep drivers thin.
+
+## Put policy in modules
+
+- Realm CPR / LOOK_GAP / soft Enter vs look → `modules.realm` (`room_refresh_cmd`)
+- Follow-sent keep/forget → `modules.party.follow_sent_status`
+- F7 gear→hunt promote → `modules.kit.gear_f7_action`
+- Class ranks, invites, shop goals, farm targets → existing module APIs
+
+## Room listings vs look (do not regress)
+
+Also here / You notice / Obvious exits come from **move**, **combat**, and
+**bare Enter** when Statline is Full — not a Worldgroup idle 6n timer.
+Prefer those over typing `look` (“X is looking around the room”).
+
+**Brain (`_need_look` / `_wait_room_tick`):**
+- Do **not** type `look` just because `scanned` is false.
+- Active `look` only for explicit reasons: exits/party check, ambush boot, walls, `_drop_scan`, or after soft Enter still stuck (`modules.room_refresh_cmd`).
+- After `LOOK_GAP` (12s) unscanned: soft-refresh with bare Enter first, then look.
+- `*Combat Off*` must **not** set `_want_look` or clear `scanned`.
+- Wait for arrive / Also here; `look_scan` in flight → wait, do not pile another refresh.
+
+**Client / sheet (FormHold / CPR):**
+- Wrong CSI 6n CPR (form row 1–24) can keep WG in FSD and break Enter/form leave.
+- Standing in-realm: CPR answers the **real caret** (row and column) — do not force `25;1R`.
+- FormHold only while live F11 train / parchment FSD is open — never during normal realm play.
+- Fix FormHold eating room reprints in bbs_client — do **not** look-spam.
+
+## Keep thin
+
+- **`client/brain.py`**: tick drivers only — gather state, ask modules, send commands. Do not invent play rules inline.
+- **`scripts/bbs_client.py` / play-wg**: I/O, paint, ANSI, key dispatch, real-caret CSI 6n CPR. Empty `push_text("")` → bare `\r`. No hunt/party/kit policy. Do not FormHold leftover sheet titles once FSD is closed.
+
+## When adding behavior
+
+1. Add or extend a function in `client/modules/`.
+2. Have brain or bbs_client call it.
+3. Cover the rule in `client/test_modules.py` (prefer module unit tests over fat brain tests).

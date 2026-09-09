@@ -4,32 +4,38 @@ from __future__ import annotations
 
 import time
 
-from . import gear, megapath, paths, realm_map, runs, spells
+from . import gear, megapath, modules, parse, party, paths, realm_map, runs, spells
 from .compass import Compass, is_move
 from .map import Map, at_goal, landmark_tag, list_landmarks, parse_landmark, pinned_dir
+from .modules.party import (
+    HEAL_ASK,
+    HEALED_SAY,
+    HEAL_RATIO,
+    INVITE_RETRY,
+    JOIN_CALL,
+    REST_CALL,
+    RESTED_SAY,
+    PartySession,
+)
 from .state import WorldState
 
 REST_RATIO = 0.60
-# klymacks ninja party (following Matt): sit-down rest under 75%.
+# Ninja following the leader: sit-down rest under 75%.
 PARTY_REST_RATIO = 0.75
 # Walk out of the fight before rest. Below this, do not keep swinging.
 FLEE_RATIO = 0.40
 REST_ABS = 12
-# Self-heal and party `heal me` (spoken — not the `health` command) at this
+# Self-heal and party `!heal` (spoken — not the `health` command) at this
 # ratio or below. Sit-down rest stays on REST_RATIO (or PARTY_REST_RATIO
 # while a ninja is following).
-HEAL_RATIO = 0.80
-HEAL_ASK = "heal me"
+# Recast ally bless before the typical fade so ninja crits keep luck.
+BLESS_KEEP = 210.0
 # Last-ditch harm on a living target already in the fight. Trash is never a boss.
 HARM_DESPERATE = 0.30
-_ARENA_TRASH = paths.LOPS + ("bug",)
 ALLY_HP_ASSUME = 28
-LOOK_GAP = 12.0
+# Room-tick look gap lives in modules.realm — keep brain thin.
+LOOK_GAP = modules.LOOK_GAP
 PANIC_HOLD = 2.5
-# Ninja/thief stay in the back row after follow. The game accepts `backr`.
-BACKRANK_CMD = "backr"
-BACK_CLASSES = frozenset({"ninja", "thief"})
-BACK_RANKS = frozenset({"back", "backr", "backrank"})
 # `Attempting to sneak...` is not ready. `d` on that prompt breaks sneak.
 # A couple of seconds is enough — not a full combat round.
 SNEAK_SETTLE = 2.0
@@ -37,23 +43,22 @@ SNEAK_SETTLE = 2.0
 
 def _trusted_live(state: WorldState) -> str | None:
     """Listed lops are live. A look in flight must not hide them."""
-    return paths.lop_in(state.mobs)
+    return modules.farm_here(state.mobs)
+
+
+def _farm_species(state: WorldState) -> set[str]:
+    """Unique farm swing names currently listed."""
+    return modules.farm_species(state.mobs)
 
 
 def _is_trash(name: str) -> bool:
     """Newhaven / arena fodder: rats, bugs, worms, slimes, kobolds, …"""
-    low = name.lower()
-    return any(word in low for word in _ARENA_TRASH)
+    return modules.is_trash(name)
 
 
 def _still_here(state: WorldState, name: str) -> str | None:
     """Return the swing name if that farm mob is still listed here."""
-    if not name:
-        return None
-    for mob in state.mobs:
-        if paths.same_mob(mob, name) and paths.lop_in([mob]):
-            return paths.attack_name(mob) or None
-    return None
+    return modules.still_here(state.mobs, name)
 
 
 class Brain:
@@ -67,6 +72,7 @@ class Brain:
         party_leader: str = "",
         rank: str = "",
         klass: str = "",
+        race: str = "",
         spell_list: object = None,
         ambush: str = "stand",
         stealth: str = "",
@@ -92,9 +98,17 @@ class Brain:
         self._joined = False
         self._followed = False
         self._ranked = False
+        self._party_rank = ""
+        self._rank_sent = ""
+        self._party_mates: list[tuple[str, str]] = []
         self._invited = False
         self._got_invite = False
+        self._want_join_call = False
         self._party_at = 0.0
+        self._follow_sent_to = ""
+        self._invite_at: dict[str, float] = {}
+        self._invite_skip: set[str] = set()
+        self._want_invite_all = False
         self.bail = ""
         self.mode = "manual"
         self.next_action = "manual"
@@ -103,6 +117,10 @@ class Brain:
         self.deathpile = ""
         self._recover_pending = False
         self._pile_grabbed = False
+        self._pile_grabs = 0
+        self._need_kit_check = False
+        self._last_live_room = ""
+        self._dead = False
         self.gear_done = False
         self._skip_sell: set[str] = set()
         self._await_inv = False
@@ -140,6 +158,8 @@ class Brain:
         # Mid-block Silver Street tiles after Western End (2 = Giovanni's door).
         self._store_silver_east: int = 0
         self._store_expect_silver: bool = False
+        # Counted Pier → TS walk (3s 6e 10s). 0 = not mid-script, or sitting on Pier.
+        self._skiff_ts: int = 0
         self._default_leader: str = self.leader
         self.hunt_run = runs.parse(hunt) or runs.DEFAULT
         self._sewer_path = megapath.load_sewer_path(
@@ -149,31 +169,60 @@ class Brain:
         self._grave_i = 0
         self._wait_prompt = 0
         self._sent_at = 0.0
+        self._room_pulse_seq = -1
+        self._room_pulse_at = 0.0
+        self._bank_inv = False
+        self._bank_sent = False
+        self._bank_done = False
+        self._bank_prompt = 0
         self._attacking = ""
         self._last_verb = ""
         self._last_aim = ""
         self._in_camp = False
         self._sitting = False
         self._want_look = False
+        self._room_soft_tries = 0
         self._asked_health = True
+        self._asked_spells = False
+        self._spellbook_seen = False
+        self._need_learn_check = False
+        self._spells_at_prompt = 0
+        self._spellbook_seq = 0
+        self._spell_dumps = 0
         self._realm_maxes = False
         self._last_step = ""
         self._step_room = ""
         self._step_prompt = 0
+        self._blocked_dirs: set[str] = set()
         self.klass = klass.strip().lower()
+        self.race = modules.normalize_race(race)
+        if not paths.needs_padded(self.klass):
+            self._armour_i = len(paths.ARMOUR_ITEMS)
+        if not modules.needs_weapon(self.klass):
+            self._weapon_bought = True
+            self._weapon_worn = True
+        if not modules.needs_torch(self.race, self.klass):
+            self._torch_bought = True
         # Open the next lop unless this is a ninja (hunt still swings / backstabs).
-        self.aa = (self.klass != "ninja") if aa is None else bool(aa)
+        # Mystic punches — `aa` is the armed bash wire form, not fists.
+        self.aa = modules.uses_bash_aa(self.klass, aa)
         self._spells = spells.known_spells(self.klass, spell_list)
         self._learn = spells.shop_spells(self.klass, spell_list)
         self._learned_path = learned_path
         self._memorized = spells.load_learned(learned_path, self.me)
+        if modules.known_room_light(self.klass, self._memorized):
+            self._torch_bought = True
         self._last_read = ""
         self._spell_offer = ""
         self._spell_offer_at = 0
         self._want_spell = ""
         self._declined_at: dict[str, int] = {}
         self._gear_path = gear_path
+        self._pile_path = gear.deathpile_path(gear_path)
         self._claimed = gear.load_claimed(gear_path, self.me)
+        saved_pile = gear.load_deathpile(self._pile_path, self.me)
+        if saved_pile:
+            self.deathpile = saved_pile
         self._gear_offer = ""
         self._gear_offer_key = ""
         self._gear_offer_at = 0
@@ -192,6 +241,7 @@ class Brain:
         self._cast_at = 0.0
         # Bless is owned at buy; do not recast until level changes after a refuse.
         self._bless_hold: int | None = None
+        self._bless_until: dict[str, float] = {}
         self._sneaking = False
         self._sneak_wait = False
         self._sneak_armed = False
@@ -240,6 +290,21 @@ class Brain:
         self._train_hold = False
         self._asked_heal = False
         self._asked_heal_hp: int | None = None
+        self._party_rest = False
+        self._park_rest = False
+        self._party_heal = False
+        self._rest_shouted = False
+        self._rested_shouted = False
+        self._healed_shouted = False
+        self._rested_acks: dict[str, str] = {}
+        self._healed_acks: dict[str, str] = {}
+        self._rest_wait: set[str] = set()
+        self._heal_wait: set[str] = set()
+        self._crew = PartySession(identity=self.me, klass=self.klass, race=self.race)
+        # Overnight cleanup resume — re-follow / re-invite after reconnect.
+        self._resume_follow = ""
+        self._resume_invite: list[str] = []
+        self._resume_rank = ""
 
     def _clear_rescue(self) -> None:
         self._rescue = ""
@@ -251,11 +316,29 @@ class Brain:
         if not self.allowed:
             self.next_action = "hunter stays on localhost"
             return
+        # Gear is "hunt on" for the footer; modules.kit decides promote vs cancel.
+        if self.mode == "gear":
+            action = modules.gear_f7_action(
+                mode=self.mode,
+                gear_done=self.gear_done,
+                kit_ready=self._kit_ready(),
+                weapon_worn=self._weapon_worn,
+                armour_done=self._armour_i >= len(paths.ARMOUR_ITEMS),
+                needs_torch=modules.needs_torch(self.race, self.klass),
+            )
+            if action == "promote":
+                self._done_gear()
+                return
+            if action == "arm_torch":
+                self._torch_bought = True
+                self._done_gear()
+                return
         if self.mode in ("hunt", "gear", "rest", "goto"):
             self.mode = "manual"
             self.next_action = "manual"
             self.goto_goal = ""
             self.goto_skip = False
+            self._want_join_call = False
             self._attacking = ""
             self._last_verb = ""
             self._last_aim = ""
@@ -323,6 +406,17 @@ class Brain:
                 return None
         if self.mode in ("hunt", "gear", "rest"):
             self.toggle_hunt()
+        if goal != "_pile":
+            self._recover_pending = False
+        if goal != "restpark":
+            self._clear_party_rest()
+        self._bank_inv = False
+        self._bank_sent = False
+        self._bank_done = False
+        self._bank_prompt = 0
+        if goal == "bank":
+            self._pry_sent = False
+            self._await_inv = False
         self.goto_goal = goal
         self.goto_skip = bool(skip)
         self.mode = "goto"
@@ -332,6 +426,9 @@ class Brain:
         self._panic_until = 0.0
         self._want_train = False
         self._train_hold = False
+        self._wait_prompt = 0
+        self._last_step = ""
+        self.compass.reset()
         return goal
 
     def start_run(self, name: str) -> str | None:
@@ -372,17 +469,56 @@ class Brain:
         if not state.just_died:
             return
         room = (state.room or "").strip()
-        if room:
+        if paths.in_afterlife(room):
+            room = self._last_live_room
+        if room and not paths.in_afterlife(room):
             self.deathpile = room
             self._pile_grabbed = False
+            self._pile_grabs = 0
             self._recover_pending = True
+            self.gear_done = False
+            gear.save_deathpile(self._pile_path, self.me, room)
         state.just_died = False
+        state.geared = False
+        state.worn = []
+        state.inventory = []
+        state.extras = []
         self._attacking = ""
         self._need_swing = False
-        self.next_action = "dead"
+        self._dead = True
+        self._drop_follow(state)
+        self.compass.reset()
+        self._wait_prompt = 0
+        self._last_step = ""
+        # FSD often still shows the kill tile after the teleport. Treat
+        # location as unknown until Halls / Temple Healer reprints.
+        if not paths.in_afterlife((state.room or "").strip()):
+            state.room = ""
+            state.exits = []
+            state.scanned = False
+        where = self.deathpile or "pile"
+        self.next_action = f"dead @ {where}"
+
+    def _forget_deathpile(self) -> None:
+        self.deathpile = ""
+        self._recover_pending = False
+        self._pile_grabbed = False
+        self._pile_grabs = 0
+        gear.save_deathpile(self._pile_path, self.me, "")
+
+    def _snatching_pile(self, state: WorldState | None = None) -> bool:
+        if self.goto_goal == "_pile" or self._recover_pending:
+            return True
+        return bool(state and self._at_deathpile(state.room))
+
+    def _pile_corpse(self, state: WorldState) -> bool:
+        listed = " ".join((*state.mobs, *state.things)).lower()
+        return "corpse" in listed
 
     def _maybe_recover_pile(self, state: WorldState) -> bool:
         if not self._recover_pending or not self.deathpile:
+            return False
+        if self.mode == "goto" and self.goto_goal and self.goto_goal != "_pile":
             return False
         if state.hp is None or state.hp <= 0:
             return False
@@ -392,17 +528,27 @@ class Brain:
         return self.start_goto("pile", skip=True) is not None
 
     def _loot_deathpile(self, state: WorldState, send) -> bool:
-        if self._pick_coins(state, send):
-            return True
-        if not self._pile_grabbed:
+        """`get all` first — snatch the corpse before coins or a look."""
+        if self._pile_grabs < 2:
+            self._pile_grabs += 1
             self._pile_grabbed = True
             self._cmd(send, "get all", state)
             self.next_action = "get pile"
             return True
-        self.deathpile = ""
-        self._pile_grabbed = False
-        self.start_goto("ts", skip=True)
-        return True
+        if self._pile_corpse(state) and self._pile_grabs < 3:
+            self._pile_grabs += 1
+            self._cmd(send, "get all corpse", state)
+            self.next_action = "get pile"
+            return True
+        self._forget_deathpile()
+        self.mode = "gear"
+        self.goto_goal = ""
+        self.goto_skip = False
+        self._need_kit_check = True
+        self._await_inv = True
+        self._pry_sent = False
+        self._looked = True
+        return self._ask_inv(send, state)
 
     def _goto_tick(self, state: WorldState, send) -> None:
         """Walk to `goto_goal`, then stop. Fight lops unless this is `run`."""
@@ -413,6 +559,8 @@ class Brain:
             self.mode = "manual"
             self.next_action = "manual"
             return
+        ghost = self._dead or paths.in_afterlife(state.room)
+        living = state.hp is None or state.hp > 0
         if goal == "_pile":
             if not self.deathpile:
                 self.mode = "manual"
@@ -420,28 +568,49 @@ class Brain:
                 self.goto_skip = False
                 self.next_action = "no deathpile"
                 return
-            if self._at_deathpile(state.room):
+            if (
+                self._at_deathpile(state.room)
+                and not ghost
+                and living
+            ):
                 if self._loot_deathpile(state, send):
                     return
                 tag = landmark_tag(self.goto_goal)
                 word = self._goto_word()
-        elif at_goal(
-            state.room,
-            goal,
-            level=state.level,
-            gated=state.arena_gated,
-            klass=self.klass,
+        elif (
+            not ghost
+            and living
+            and at_goal(
+                state.room,
+                goal,
+                level=state.level,
+                gated=state.arena_gated,
+                klass=self.klass,
+            )
         ):
+            if goal == "restpark":
+                self._arrive_rest_park(state, send)
+                return
+            if goal == "bank":
+                if self._arrive_bank(state, send):
+                    return
+                self.mode = "manual"
+                self.goto_goal = ""
+                self.goto_skip = False
+                self.next_action = f"at {tag}"
+                return
             self.mode = "manual"
             self.goto_goal = ""
             self.goto_skip = False
             self.next_action = f"at {tag}"
             return
-        if self._with_leader(state) and goal != "_pile":
-            self.next_action = f"{word} {tag} (follow)"
+        if self._followed or state.following:
+            self._cmd(send, "leave", state)
+            self._drop_follow(state)
+            self.next_action = f"{word} {tag}"
             return
         self._resolve_fight(state)
-        live = self._aim(state) or paths.lop_in(state.mobs)
+        live = self._aim(state) or modules.farm_here(state.mobs)
         if live and not self.goto_skip:
             if self._engage_lop(state, send, live):
                 return
@@ -453,7 +622,11 @@ class Brain:
         ):
             self.next_action = f"{word} {tag} (fight)"
             return
-        if state.mortal or state.bleeding:
+        if (
+            (state.mortal or state.bleeding)
+            and not ghost
+            and living
+        ):
             self.next_action = f"{word} {tag}"
             return
         if self._down(state):
@@ -461,6 +634,15 @@ class Brain:
             self._cmd(send, "break", state)
             return
         if goal == "sewer" and self._stock_torch_before_sewer(state, send):
+            return
+        # New tile after a move still carries the old room title's exits until
+        # Obvious exits reprints. Look first — never walk Entry's stale `sw`
+        # on the creek bridge (wall spam).
+        if not state.scanned:
+            if not state.look_scan:
+                self._ask_look(send, state)
+            else:
+                self.next_action = f"{word} {tag}"
             return
         if goal == "_pile":
             step = self.world.walk_to(
@@ -477,6 +659,8 @@ class Brain:
                 state.room,
                 state.exits,
                 last_step=self._last_step,
+                silver_east=self._store_silver_east,
+                skiff_i=self._skiff_ts,
                 level=state.level,
                 gated=state.arena_gated,
                 closed=state.closed_exits,
@@ -485,7 +669,7 @@ class Brain:
         if step and self._go(send, step, state, sneak=False):
             self.next_action = f"{word} {tag}"
             return
-        if not state.scanned and not state.look_scan:
+        if not state.look_scan:
             self._ask_look(send, state)
             return
         self.next_action = f"{word} {tag}"
@@ -495,19 +679,21 @@ class Brain:
         if not self.allowed:
             self.next_action = "hunter stays on localhost"
             return
-        if self.mode in ("hunt", "gear", "rest"):
+        if self.mode in ("hunt", "gear"):
             return
         self.goto_goal = ""
-        # Already following: combat loop, not the shop. F7 on a fresh
-        # toon still starts gear.
+        # Follow starts the combat loop only after kit. A naked Ryan /
+        # Robald who auto-joins Matt must still shop, then the arena.
+        # Dressed klymacks (`gear_done`) hunt with the leader.
         self.goto_skip = False
-        self.mode = "gear" if not self.gear_done and not self._followed else "hunt"
+        self.mode = "gear" if not self.gear_done else "hunt"
         self.next_action = self.mode
         self._asked_health = False
         self._panic_until = 0.0
         self._want_train = False
         self._train_hold = False
         if self.mode == "gear":
+            self._need_kit_check = True
             self._await_inv = True
             self._pry_sent = False
             self._wait_prompt = 0
@@ -517,12 +703,36 @@ class Brain:
             self.next_action = "i"
         elif self._stealth_moves() and not self._followed:
             self._begin_ambush_boot()
+        if self._named_leader():
+            self._want_join_call = True
+
+    def _maybe_start_kit(self, state: WorldState, send) -> bool:
+        """Starter gold is not a kit. New toons shop without waiting for F7."""
+        if self.gear_done or self.mode != "manual":
+            return False
+        if self._want_train or self._want_spell or self._want_gear:
+            return False
+        if state.in_combat or self._rescue:
+            return False
+        if not modules.in_newhaven(state.room):
+            return False
+        if state.inv_seq <= 0:
+            return False
+        if not modules.is_naked(state.worn, state.inventory, state.extras):
+            return False
+        self._start_hunt()
+        if self.mode != "gear":
+            return False
+        self._await_inv = False
+        self._pry_sent = False
+        self._gear(state, send)
+        return True
 
     def open_gear_inv(self, state: WorldState) -> str | None:
         """F7 / hunt: send `i` now so gear does not wait for a refresh."""
         if self.mode != "gear" or self._pry_sent:
             return None
-        if self._listed_fight(state):
+        if self._listed_fight(state) and paths.is_dangerous(state.room):
             self._done_gear()
             return None
         self._pry_sent = True
@@ -537,6 +747,7 @@ class Brain:
     def takeover(self) -> None:
         self.mode = "manual"
         self.next_action = "manual"
+        self._want_join_call = False
         self._attacking = ""
         self._last_verb = ""
         self._last_aim = ""
@@ -567,9 +778,82 @@ class Brain:
         self.goto_goal = ""
         self.goto_skip = False
         self._clear_rescue()
+        # Esc / stop: drop in-flight party join so chrome is not stuck on
+        # "next: follow Curtis" forever.
+        self._forget_follow_sent()
+        self.clear_resume_intent()
+        self._got_invite = False
+        self._clear_party_rest()
+        self._park_rest = False
+        self._recovering = False
 
     def hunting(self) -> bool:
         return self.mode != "manual"
+
+    def apply_resume(self, snap: object) -> None:
+        """Restore hunt/party intent after board cleanup reconnect."""
+        from . import resume as resume_mod
+
+        if isinstance(snap, resume_mod.ResumeState):
+            resume_mod.apply_to_brain(self, snap)
+
+    def clear_resume_intent(self) -> None:
+        self._resume_follow = ""
+        self._resume_invite = []
+        self._resume_rank = ""
+
+    def flush_resume(self, state: WorldState, send) -> bool:
+        """One-shot: re-follow leader or re-invite followers after cleanup."""
+        if not state.in_realm:
+            return False
+        follow = (self._resume_follow or "").strip()
+        if follow and not self._named_leader():
+            if state.following and self._same_toon(state.following, follow):
+                self._resume_follow = ""
+                self._followed = True
+                self._joined = True
+                if self._resume_rank and not self._ranked:
+                    row = self._resume_rank
+                    self._resume_rank = ""
+                    cmd = party.RANK_CMD.get(row, "")
+                    if cmd:
+                        self._note_rank_sent(cmd, state)
+                        self._cmd(send, cmd, state)
+                        self.next_action = cmd
+                        return True
+                return False
+            if self._follow_sent_to and self._same_toon(self._follow_sent_to, follow):
+                # Do not park forever on "next: follow X" — retry after a gap.
+                if time.monotonic() - self._party_at < INVITE_RETRY:
+                    self.next_action = f"follow {follow}"
+                    return False
+                self._forget_follow_sent()
+            named = self._toon_call_name(follow) or follow
+            self._follow_sent_to = follow
+            self._party_at = time.monotonic()
+            self._cmd(send, f"follow {named}", state)
+            self.next_action = f"follow {named}"
+            return True
+        invites = [n for n in self._resume_invite if str(n).strip()]
+        if invites and (self._named_leader() or self._leading()):
+            self._resume_invite = []
+            for who in invites:
+                self._send_invite(who, state, send)
+            self._want_join_call = True
+            self.next_action = "invite party"
+            return True
+        if self._resume_rank and (state.following or self._followed):
+            row = self._resume_rank
+            self._resume_rank = ""
+            cmd = party.RANK_CMD.get(row, "")
+            if cmd:
+                self._note_rank_sent(cmd, state)
+                self._cmd(send, cmd, state)
+                self.next_action = cmd
+                return True
+        self._resume_follow = ""
+        self._resume_invite = []
+        return False
 
     def _me(self, name: str) -> bool:
         tokens = [w.strip(".,!;:").lower() for w in name.split() if w.strip(".,!;:")]
@@ -595,40 +879,153 @@ class Brain:
             state.self_names.add(low)
 
     def _leading(self) -> bool:
+        if self._followed:
+            return False
         if not self.leader:
             return True
         mine = {part for part in self.me.replace(",", " ").split() if part}
         return self.leader.lower() in mine
 
+    def _named_leader(self) -> bool:
+        """Configured party_leader is this toon — invite the roster, never follow."""
+        return bool(self.leader) and self._leading()
+
     def _following(self) -> bool:
+        if self._followed:
+            return True
         return bool(self.leader) and not self._leading()
 
     def _leader_down(self, state: WorldState) -> bool:
-        """Leader is mortal or we are mid-rescue — we may move on our own."""
-        if not self.leader:
-            return True
-        if self._rescue and self._same_toon(self._rescue_who, self.leader):
+        """The person we follow is mortal, or we are mid-rescue — we may move."""
+        follow = (state.following or self.leader or "").strip()
+        if not follow:
+            return not (self._followed or state.following)
+        if self._rescue and self._same_toon(self._rescue_who, follow):
             return True
         who = state.ally_mortal.strip()
-        return bool(who and self._same_toon(who, self.leader))
+        return bool(who and self._same_toon(who, follow))
 
     def _with_leader(self, state: WorldState) -> bool:
-        """Following Matt: no own `u` / `d`. Ninja party still sns and bs."""
+        """Live follow: no own u/d/walk. Config party_leader is not required."""
+        if not (self._followed or state.following):
+            return False
         if self._leader_down(state):
             return False
-        return bool(self._followed or state.following)
+        return True
 
-    def _wants_back(self) -> bool:
-        """Ninja (and thief) backrank after follow unless rank is front/off."""
-        raw = (self.rank or "").strip().lower()
-        if raw in {"front", "fore", "none", "off"}:
-            return False
-        if raw in BACK_RANKS:
-            return True
-        return self.klass in BACK_CLASSES
+    def _rank_self_name(self) -> str:
+        parts = [p for p in self.me.replace(",", " ").split() if p]
+        for part in reversed(parts):
+            if part.strip(".,!;:").lower() not in {"sysop", "guest"}:
+                return part
+        return parts[0] if parts else ""
+
+    def _note_party_mate(self, name: str, klass: str = "") -> None:
+        """Remember a roster toon in this group. Rank is party-wide, not room-wide."""
+        who = (name or "").strip()
+        if not who or self._me(who):
+            return
+        job = (klass or party.roster_class(who) or "").strip().lower()
+        if not job:
+            return
+        for i, (seen, old) in enumerate(self._party_mates):
+            if self._same_toon(who, seen):
+                if job and not old:
+                    self._party_mates[i] = (seen, job)
+                return
+        self._party_mates.append((who, job))
+
+    def _rank_members(self, state: WorldState) -> list[tuple[str, str]]:
+        """This toon, sticky roster mates, and the person we follow.
+
+        Also here blanks between rooms. Counting only who is listed this
+        tick flips mystic (and thief) front/mid/back and spams `backr`.
+        """
+        found: list[tuple[str, str]] = [
+            (self._rank_self_name() or self.me, self.klass)
+        ]
+        if not (self._followed or state.following):
+            self._party_mates = []
+            return found
+        for who in self.room_players(state):
+            self._note_party_mate(who, party.roster_class(who))
+        lead = (state.following or self.leader or "").strip()
+        if lead:
+            self._note_party_mate(lead, party.roster_class(lead))
+        found.extend(self._party_mates)
+        return found
+
+    def _party_facts(self, state: WorldState) -> modules.PartyFacts:
+        ratio = None
+        if state.max_hp and state.hp is not None:
+            ratio = state.hp / state.max_hp
+        return modules.PartyFacts(
+            me=self.me,
+            klass=self.klass,
+            leader=self.leader,
+            auto_join=self.auto_join,
+            in_realm=state.in_realm,
+            following=state.following,
+            invited_by=state.invited_by,
+            join_call_by=state.join_call_by,
+            room_pcs=tuple(self.room_players(state)),
+            room_scanned=bool(state.saw_here),
+            follow_sent_to=self._follow_sent_to,
+            rank_sent=self._rank_sent,
+            party_rank=self._party_rank or state.party_rank,
+            cfg_rank=self.rank,
+            named_leader=self._named_leader(),
+            followed=bool(self._followed or state.following),
+            ranked=self._ranked,
+            mode=self.mode,
+            # Self tokens only — party alts stay out of invite self-checks.
+            aka=tuple(
+                part for part in self.me.replace(",", " ").split() if part
+            ),
+            area=self._crew.area,
+            can_cast_heal=bool(self._spell("heal")),
+            with_leader=self._with_leader(state),
+            asked_heal=self._asked_heal,
+            healed_shouted=self._healed_shouted,
+            rested_up=self._rested_up(state),
+            hurt_ally=bool(self._hurt_ally(state)),
+            hp_ratio=ratio,
+            needs_heal=self._needs_heal(state),
+            session_key=self._crew.key(),
+        )
+
+    def _desired_rank(self, state: WorldState) -> str:
+        return party.desired_rank(self.klass, self.me, self.rank)
+
+    def _rank_cmd(self, state: WorldState) -> str:
+        """`frontr` / `midr` / `backr` when this follower is in the wrong row."""
+        if self._named_leader() or self._leading():
+            return ""
+        offer = modules.rank_action(self._party_facts(state))
+        return offer.command if offer else ""
+
+    def _reset_party_rank(self) -> None:
+        self._ranked = False
+        self._party_rank = ""
+        self._rank_sent = ""
+        self._party_mates = []
+
+    def _note_rank_sent(self, cmd: str, state: WorldState | None = None) -> None:
+        row = {v: k for k, v in party.RANK_CMD.items()}.get(cmd, "")
+        if row:
+            self._party_rank = row
+            if state is not None:
+                # Keep WorldState on the row we just commanded. Otherwise
+                # `_sync_party` restores the last printed rank (often back)
+                # and the next tick / maybe_auto_party spams `midr`.
+                state.party_rank = row
+                state.backrank = row == "back"
+        self._rank_sent = cmd
+        self._ranked = True
+        self._party_at = time.monotonic()
 
     def _ninja_party(self, state: WorldState) -> bool:
-        """Default klymacks party: follow, backrank, rest/heal, sn until hidden, bs."""
+        """Ninja following the leader: follow, backrank, rest/heal, sn until hidden, bs."""
         return self._ninja() and self._with_leader(state)
 
     def _stealthed(self) -> bool:
@@ -643,16 +1040,16 @@ class Brain:
     def _pvp_sense(self, state: WorldState) -> bool:
         if not state.friendly_fire:
             return False
-        self.bail = f"hit {paths.attack_name(state.friendly_fire)}"
+        self.bail = f"hit {modules.attack_name(state.friendly_fire)}"
         self.takeover()
         self.next_action = "logoff"
         return True
 
     def _ninja(self) -> bool:
-        return self.klass == "ninja"
+        return modules.is_ninja(self.klass)
 
     def _paladin(self) -> bool:
-        return self.klass in {"paladin", "pal"}
+        return modules.is_paladin(self.klass)
 
     def _stealth_moves(self) -> bool:
         if not self._ninja():
@@ -843,11 +1240,13 @@ class Brain:
         self._need_break = False
         return "break"
 
+    def _punches(self) -> bool:
+        """No weapon hand — MajorMUD `att` is a punch. Mystic still fists after a staff."""
+        return modules.punches(self.klass)
+
     def _opens_swing(self, state: WorldState) -> bool:
-        """Start or continue a swing. Ninja hunt always; paladin follows `aa`."""
-        if self._ninja():
-            return True
-        return self.aa
+        """Start or continue a swing. Ninja and mystic always; paladin follows `aa`."""
+        return modules.opens_swing(self.klass, aa=self.aa)
 
     def toggle_auto_join(self) -> bool:
         """Flip invite auto-join. No takeover — works while hunting or manual."""
@@ -859,70 +1258,408 @@ class Brain:
         return "join" if self.auto_join else "join off"
 
     def _same_toon(self, left: str, right: str) -> bool:
-        a = left.strip().lower()
-        b = right.strip().lower()
-        if not a or not b:
+        return party.same_toon(left, right)
+
+    def _given_case(self, name: str) -> str:
+        return party.given_case(name)
+
+    def _toon_call_name(self, who: str) -> str:
+        """In-game given name: Matthew, not the BBS login Matt."""
+        return party.call_name(
+            who, me=self.me, leader=self.leader, aka=tuple(self._aka)
+        )
+
+    def _roster_invite(self, who: str, state: WorldState) -> bool:
+        """True if this inviter is the configured leader or another roster toon."""
+        if not who or self._me(who):
             return False
-        if a == b:
+        if self.leader and party.same_toon(self.leader, who):
             return True
-        return a in b.split() or b in a.split()
+        return party.on_roster(who)
+
+    def _follow_in_flight(self, who: str = "") -> bool:
+        """True after we already sent `follow` and the mud has not confirmed."""
+        sent = (self._follow_sent_to or "").strip()
+        if not sent:
+            return False
+        if not who:
+            return True
+        return self._same_toon(sent, who)
+
+    def _note_follow_sent(self, who: str) -> None:
+        self._follow_sent_to = who.strip()
+        self._got_invite = True
+        self._party_at = time.monotonic()
+
+    def _forget_follow_sent(self) -> None:
+        self._follow_sent_to = ""
+
+    def _refresh_follow_sent(self, state: WorldState) -> None:
+        """Drop a dead `follow` so we can send again (or stop waiting)."""
+        who = (self._follow_sent_to or "").strip()
+        if not who:
+            return
+        facts = self._party_facts(state)
+        here = modules.party.inviter_here(
+            who, facts.room_pcs, scanned=facts.room_scanned
+        )
+        status = modules.follow_sent_status(
+            follow_sent_to=who,
+            following=state.following or "",
+            room_scanned=facts.room_scanned,
+            inviter_present=here,
+            sent_at=self._party_at,
+            now=time.monotonic(),
+            retry_after=INVITE_RETRY,
+        )
+        if status != "keep":
+            self._forget_follow_sent()
 
     def on_invite(self, state: WorldState, send) -> bool:
-        """Join a follow invite even in manual. Hunt tick is not required."""
-        if not self.allowed or not self.auto_join or not state.in_realm:
+        """Join a roster invite when F9 join is on. The named leader never follows."""
+        if not self.allowed:
             return False
         if self._rescue or state.ally_mortal:
             return False
         self._sync_party(state)
-        who = state.invited_by.strip()
+        offer = modules.join_action(self._party_facts(state))
+        if not offer:
+            return False
+        self._note_follow_sent(offer.name)
+        self._cmd(send, offer.command, state)
+        return True
+
+    def _join_call_follow(self, who: str, state: WorldState) -> bool:
+        """Hear `!join` from a roster toon — follow that speaker, not a hardcoded Matt."""
         if not who or self._me(who):
             return False
-        if state.following and self._same_toon(state.following, who):
+        return self._roster_invite(who, state)
+
+    def on_join_call(self, state: WorldState, send) -> bool:
+        """F9 join on: hear the leader's `!join` → follow that speaker (no shout)."""
+        if not self.allowed or not state.in_realm:
             return False
-        if self.leader and not self._same_toon(self.leader, who):
+        if self._rescue or state.ally_mortal:
             return False
-        now = time.monotonic()
-        if self._party_at and now - self._party_at < 6:
+        who = state.join_call_by.strip()
+        # Leader's own echo / named leader never follows a rally shout.
+        if self._named_leader() or self._me(who):
+            state.join_call_by = ""
             return False
-        self._got_invite = True
-        self._party_at = now
-        self._cmd(send, f"follow {who}", state)
+        self._sync_party(state)
+        if state.following and who and self._same_toon(state.following, who):
+            state.join_call_by = ""
+            return self.on_follow(state, send)
+        offer = modules.join_action(self._party_facts(state))
+        state.join_call_by = ""
+        if not offer:
+            return False
+        self._note_follow_sent(offer.name)
+        self._cmd(send, offer.command, state)
         return True
 
     def on_follow(self, state: WorldState, send) -> bool:
         """backrank after following, including from manual. Then hunt with the party."""
         if not self.allowed or not state.in_realm:
             return False
+        if self.mode == "goto":
+            return False
+        self._clear_party_rest()
         self._sync_party(state)
         if not (state.following or self._followed):
             return False
         sent = False
-        if self._wants_back() and not self._ranked:
-            self._ranked = True
-            self._party_at = time.monotonic()
-            self._cmd(send, BACKRANK_CMD, state)
+        cmd = self._rank_cmd(state)
+        if cmd:
+            self._note_rank_sent(cmd, state)
+            self._cmd(send, cmd, state)
             sent = True
         self._maybe_party_hunt(state)
         return sent
 
     def _maybe_party_hunt(self, state: WorldState) -> None:
-        """After follow+backrank onto the configured leader, hunt without F7.
+        """After follow+backrank onto a roster toon, hunt without F7.
 
         F9 join-off does not start hunt. A random PC follow does not.
-        Hunt already on stays on — never toggle off.
+        The named leader never hunts from a follow. Hunt already on stays on.
         """
-        if not self.auto_join or not self.leader:
+        if not self.auto_join:
             return
-        if self._leading():
+        if self.mode == "goto":
+            return
+        if self._named_leader():
             return
         who = (state.following or "").strip()
-        if who and not self._same_toon(who, self.leader):
+        if who and not self._roster_invite(who, state):
             return
         if not (state.following or self._followed):
             return
-        if self._wants_back() and not self._ranked:
+        if self._rank_cmd(state):
             return
         self._start_hunt()
+
+    def _tag_key(self, who: str, state: WorldState) -> str:
+        extras = self._aka | state.self_names
+        return (paths.party_name(who, extras) or who).strip().lower()
+
+    def _note_wait_name(self, waiting: set[str], who: str, state: WorldState) -> None:
+        key = self._tag_key(who, state)
+        if key and not self._me(who):
+            waiting.add(key)
+
+    def _acked(self, who: str, acks: dict[str, str], state: WorldState) -> bool:
+        key = self._tag_key(who, state)
+        if not key:
+            return False
+        if key in acks:
+            return True
+        return any(self._same_toon(who, seen) for seen in acks.values())
+
+    def _party_tag_ok(self, who: str, state: WorldState) -> bool:
+        if not who or self._me(who):
+            return False
+        if self._roster_invite(who, state):
+            return True
+        if state.following and self._same_toon(who, state.following):
+            return True
+        if any(self._same_toon(who, name) for name in state.followers):
+            return True
+        return any(self._same_toon(who, name) for name in self._alts_here(state))
+
+    def _clear_party_rest(self) -> None:
+        self._party_rest = False
+        self._park_rest = False
+        self._rest_shouted = False
+        self._rested_shouted = False
+        self._rested_acks.clear()
+        self._rest_wait.clear()
+
+    def _clear_party_heal(self) -> None:
+        self._party_heal = False
+        self._healed_shouted = False
+        self._healed_acks.clear()
+        self._heal_wait.clear()
+
+    def start_party_rest(
+        self, state: WorldState | None = None, *, shouted: bool = False
+    ) -> str | None:
+        """Leave, walk to the creek bridge SW of the GY gate, sit, then `!rested`."""
+        self._clear_party_heal()
+        self._rest_shouted = bool(shouted) or self._rest_shouted
+        self._rested_shouted = False
+        got = self.start_goto("rest", skip=True)
+        if got is None:
+            return None
+        self._party_rest = True
+        self._park_rest = True
+        if state is not None:
+            for who in (*state.followers, *self._alts_here(state)):
+                self._note_wait_name(self._rest_wait, who, state)
+        return got
+
+    def start_party_heal(self, *, shouted: bool = False) -> None:
+        """Hold the run, heal, then `!healed` so the leader can walk again."""
+        self._party_heal = True
+        self._healed_shouted = False
+
+    def rest_call_cmds(self, state: WorldState) -> list[str]:
+        if not state.in_realm:
+            self.next_action = "rest in the realm"
+            return []
+        self.start_party_rest(state, shouted=True)
+        for who in (*state.followers, *self._alts_here(state)):
+            self._note_wait_name(self._rest_wait, who, state)
+        self.next_action = REST_CALL
+        return [REST_CALL]
+
+    def heal_call_cmds(self, state: WorldState) -> list[str]:
+        if not state.in_realm:
+            self.next_action = "heal in the realm"
+            return []
+        self.start_party_heal(shouted=True)
+        self._asked_heal = True
+        self._asked_heal_hp = state.hp
+        self.next_action = HEAL_ASK
+        return [HEAL_ASK]
+
+    def _note_party_tags(self, state: WorldState) -> None:
+        who = state.rest_call_by.strip()
+        state.rest_call_by = ""
+        if who and self._party_tag_ok(who, state):
+            self._note_wait_name(self._rest_wait, who, state)
+            if not self._party_rest:
+                self.start_party_rest(state, shouted=not self._named_leader())
+        for name in list(state.rested_acks.values()):
+            self._rested_acks[self._tag_key(name, state)] = name
+        for name in list(state.healed_acks.values()):
+            key = self._tag_key(name, state)
+            self._healed_acks[key] = name
+        for name in list(state.heal_asks.values()):
+            if self._me(name):
+                continue
+            if not self._party_tag_ok(name, state) and not self._mine(name, state):
+                continue
+            self._note_wait_name(self._heal_wait, name, state)
+            if not self._party_heal:
+                self._healed_shouted = False
+            self._party_heal = True
+            if (
+                not self._party_rest
+                and self._park_rest_room(state)
+                and not self._can_cast_heal(state)
+            ):
+                # Followers wait for the leader's !heal / !rest. A peer (or
+                # self-echo) !heal must not peel them to the bridge alone.
+                if self._followed or state.following:
+                    lead = (state.following or self.leader or "").strip()
+                    if not (lead and self._same_toon(name, lead)):
+                        continue
+                self.start_party_rest(state, shouted=True)
+
+    def _party_rest_wait_names(self, state: WorldState) -> list[str]:
+        found: list[str] = []
+        seen: set[str] = set()
+        for who in (*state.followers, *(n for n, _ in self._party_mates)):
+            if not who or self._me(who):
+                continue
+            key = self._tag_key(who, state)
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            found.append(who)
+        for key in self._rest_wait:
+            if key in seen or self._me(key):
+                continue
+            seen.add(key)
+            found.append(key)
+        return found
+
+    def _party_rested_ready(self, state: WorldState) -> bool:
+        waiting = self._party_rest_wait_names(state)
+        if not waiting:
+            return True
+        acks = {
+            **self._rested_acks,
+            **state.rested_acks,
+            **self._healed_acks,
+            **state.healed_acks,
+        }
+        return all(self._acked(who, acks, state) for who in waiting)
+
+    def _heal_wait_pending(self, state: WorldState) -> bool:
+        acks = {**self._healed_acks, **state.healed_acks}
+        for key in self._heal_wait:
+            if self._me(key):
+                continue
+            if key not in acks and not any(
+                self._same_toon(key, seen) for seen in acks.values()
+            ):
+                return True
+        return bool(state.heal_asks)
+
+    def _holding_party_heal(self, state: WorldState) -> bool:
+        """Hold GY/sewer walking until the party is healed. Keep swinging."""
+        if self._lops_here(state) or state.in_combat:
+            return False
+        if self._needs_heal(state):
+            return bool(self._asked_heal or self._party_heal)
+        if not self._party_heal:
+            return False
+        if self._heal_wait_pending(state):
+            return True
+        self._clear_party_heal()
+        return False
+
+    def _try_ack_healed(self, state: WorldState, send) -> bool:
+        offer = modules.heal_ack_action(self._party_facts(state))
+        if not offer:
+            return False
+        self._healed_shouted = True
+        self._clear_heal_ask()
+        self._cmd(send, offer.command, state)
+        return True
+
+    def _arrive_rest_park(self, state: WorldState, send) -> None:
+        self.goto_goal = ""
+        self.goto_skip = False
+        self._park_rest = True
+        self.mode = "rest"
+        if self._party_rest and not self._rest_shouted:
+            self._rest_shouted = True
+            self._cmd(send, HEAL_ASK, state)
+            self.next_action = HEAL_ASK
+            return
+        self.next_action = "rest"
+        self._rest(state, send)
+
+    def _arrive_bank(self, state: WorldState, send) -> bool:
+        """Deposit the purse at Godfrey. True while still talking to the teller."""
+        if self._bank_done:
+            return False
+        if not self._bank_inv and not self._bank_sent:
+            state.deposited = False
+            state.bank_fail = False
+        if state.bank_fail:
+            state.bank_fail = False
+            self._bank_done = True
+            return False
+        if self._bank_sent:
+            if state.deposited:
+                state.deposited = False
+                self._bank_done = True
+                return False
+            if state.wealth_copper == 0:
+                self._bank_done = True
+                return False
+            if state.prompt_seq > self._bank_prompt:
+                self._bank_done = True
+                return False
+            self.next_action = "deposit"
+            return True
+        if not self._bank_inv:
+            if self._ask_inv(send, state):
+                self.next_action = "bank wealth"
+                return True
+            self._bank_inv = True
+        copper = state.wealth_copper
+        if copper is None:
+            copper = paths.purse_copper(state.inventory)
+        if not copper:
+            self._bank_done = True
+            return False
+        self._cmd(send, f"deposit {copper}", state)
+        self._bank_sent = True
+        self._bank_prompt = state.prompt_seq
+        self.next_action = "deposit"
+        return True
+
+    def _party_rest_tick(self, state: WorldState, send) -> None:
+        if not self._rested_shouted:
+            self._rested_shouted = True
+            self._healed_shouted = True
+            self._cmd(send, HEALED_SAY, state)
+            self.next_action = "wait rest"
+            return
+        if self._named_leader() or self._leading():
+            if not self._party_rested_ready(state):
+                self.next_action = "wait rest"
+                return
+            self._finish_party_rest(state, send)
+            return
+        self.next_action = "wait rest"
+
+    def _finish_party_rest(self, state: WorldState, send) -> None:
+        sitting = self._sitting or state.resting
+        self._clear_party_rest()
+        self.mode = "hunt" if self.gear_done else "gear"
+        self.next_action = self.mode
+        if self._named_leader():
+            self._want_join_call = True
+        if sitting:
+            self._sitting = False
+            state.resting = False
+            self._cmd(send, "break", state)
+            self.next_action = "standing"
 
     def _in_party(self, state: WorldState) -> bool:
         """Grouped with someone — do not unfollow or pit-flee away from them."""
@@ -1045,14 +1782,16 @@ class Brain:
         self._sneak_ready_at = 0.0
 
     def _swing_name(self, name: str) -> str:
-        """Species swing name — `paths.attack_name`, nothing else."""
-        return paths.attack_name(name)
+        """Species swing name — module attack_name, nothing else."""
+        return modules.attack_name(name)
 
     def _swing_verb(self, state: WorldState) -> str:
-        """Hidden ninja `bs`. Paladin bash is `aa`. Else `att`. Never `k`."""
+        """Hidden ninja `bs`. Armed non-ninja hunt is `aa`. Mystic punches `att`."""
         if self._ninja() and self._stealthed():
             return "bs"
-        if self._paladin():
+        if self._punches():
+            return "att"
+        if self.aa and self.klass and not self._ninja():
             return "aa"
         return "att"
 
@@ -1090,6 +1829,8 @@ class Brain:
             return
         self._memorized.add(low)
         spells.save_learned(self._learned_path, self.me, self._memorized)
+        if modules.known_room_light(self.klass, self._memorized):
+            self._torch_bought = True
 
     def _have_mana(self, cost: int, state: WorldState) -> bool:
         if state.ma is None:
@@ -1106,16 +1847,23 @@ class Brain:
                 reason = "level"
         if not reason:
             return
-        tried = self._last_cast.split(":", 1)[-1] if self._last_cast else ""
+        bits = [part for part in self._last_cast.split(":") if part]
+        tried = bits[1] if len(bits) > 1 else ""
+        who = bits[2] if len(bits) > 2 else ""
         # Can't-cast-yet is not "don't have it." Keep bless (and other buffs).
         if reason == "unknown" and tried and not buff:
             self._spells = [name for name in self._spells if name != tried]
             self._memorized.discard(tried)
             spells.save_learned(self._learned_path, self.me, self._memorized)
-        if reason == "mana" and state.ma is None:
+        if reason == "mana":
             state.ma = 0
         if buff:
-            state.blessed = False
+            if who:
+                state.forget_ally_bless(who)
+                self._bless_until.pop(who.lower(), None)
+            else:
+                state.blessed = False
+                self._bless_until.pop("self", None)
             if reason in {"level", "unknown", "fail"}:
                 self._bless_hold = state.level if state.level is not None else 1
         self._last_cast = ""
@@ -1128,11 +1876,11 @@ class Brain:
 
     def _heal_name(self, seen: str, state: WorldState) -> str:
         extras = self._aka | state.self_names
-        aim = paths.party_name(seen, extras) or paths.attack_name(seen)
+        aim = paths.party_name(seen, extras) or modules.attack_name(seen)
         if not aim:
             return ""
         first = aim.split()[0]
-        if paths.is_dir_token(first) or paths.lop_in([aim]):
+        if paths.is_dir_token(first) or modules.farm_here([aim]):
             return ""
         if not (
             paths.is_given_name(aim, extras)
@@ -1163,7 +1911,7 @@ class Brain:
         return found
 
     def _ally_heal_gate(self) -> int:
-        """Damage that puts assumed ally HP at or below HEAL_RATIO. Backup to `heal me`."""
+        """Damage that puts assumed ally HP at or below HEAL_RATIO. Backup to `!heal`."""
         return max(1, ALLY_HP_ASSUME - int(ALLY_HP_ASSUME * HEAL_RATIO))
 
     def _ally_asked(self, state: WorldState, name: str) -> bool:
@@ -1195,6 +1943,8 @@ class Brain:
         return None
 
     def _try_ally_heal(self, state: WorldState, send, spell: str) -> bool:
+        if spells.self_only(spell):
+            return False
         seen = self._hurt_ally(state)
         if not seen:
             return False
@@ -1219,60 +1969,84 @@ class Brain:
         self._asked_heal_hp = None
 
     def _heal_ask_cleared(self, state: WorldState) -> None:
-        """Ask once until HP is back above HEAL_RATIO or a heal lands."""
+        """Keep the one `!heal` until we are actually full. No re-shout on a bump."""
         if not self._asked_heal:
             return
-        if not self._needs_heal(state):
-            self._clear_heal_ask()
+        if self._rested_up(state):
             return
-        hp = state.hp
-        if hp is not None and self._asked_heal_hp is not None and hp > self._asked_heal_hp:
-            self._clear_heal_ask()
+
+    def _can_cast_heal(self, state: WorldState) -> bool:
+        name = self._spell("heal")
+        if not name:
+            return False
+        if state.level is not None and not spells.can_cast(name, state.level):
+            return False
+        return self._have_mana(spells.cost(name), state)
+
+    def _park_rest_room(self, state: WorldState) -> bool:
+        """GY / shack / crypt / sewer — walk to the bridge instead of sitting here."""
+        return modules.park_rest_room(state.room, pit=self._pit_grind())
 
     def _try_ask_heal(self, state: WorldState, send) -> bool:
-        """Follower with no heal spell: speak `heal me` once at HEAL_RATIO or below."""
+        """Follower with no heal spell: speak `!heal` once at HEAL_RATIO or below."""
         if self._spell("heal"):
             return False
         if not self._with_leader(state):
             self._clear_heal_ask()
             return False
-        self._heal_ask_cleared(state)
-        if not self._needs_heal(state):
+        if self._party_rest:
             return False
-        if self._asked_heal:
+        self._heal_ask_cleared(state)
+        offer = modules.heal_ask_action(self._party_facts(state))
+        if not offer:
             return False
         self._asked_heal = True
         self._asked_heal_hp = state.hp
-        self._cmd(send, HEAL_ASK, state)
+        self._party_heal = True
+        self._healed_shouted = False
+        self._note_wait_name(self._heal_wait, self._rank_self_name() or self.me, state)
+        self._cmd(send, offer.command, state)
         return True
 
     def _try_heal(self, state: WorldState, send) -> bool:
         name = self._spell("heal")
         if not name:
-            return self._try_ask_heal(state, send)
+            if self._try_ask_heal(state, send):
+                return True
+            return self._try_ack_healed(state, send)
+        if state.level is not None and not spells.can_cast(name, state.level):
+            return self._try_ack_healed(state, send)
         if not self._spell_ready():
-            return False
+            return self._try_ack_healed(state, send)
         if self._needs_heal(state):
             if not self._have_mana(spells.cost(name), state):
-                return False
+                return self._try_ack_healed(state, send)
             self._last_cast = f"heal:{name}"
             self._cast_at = time.monotonic()
             self._cmd(send, spells.command(name), state)
             self._remember(name)
             return True
-        return self._try_ally_heal(state, send, name)
+        if self._try_ally_heal(state, send, name):
+            return True
+        return self._try_ack_healed(state, send)
+
+    def _spell_is_weapon(self) -> bool:
+        """Mage / warlock damage is the harm spell, not a desperation poke."""
+        return modules.spell_is_weapon(self.klass)
 
     def _harm_reason(self, state: WorldState, target: str) -> bool:
-        """Boss kill-shot, or desperation. Never stacked Newhaven trash."""
+        """Boss kill-shot, or desperation. Casters use it as their attack."""
         if not paths.is_living(target):
             return False
+        if self._spell_is_weapon():
+            return True
         if not _is_trash(target):
             return True
         ratio = state.hp_ratio()
         return ratio is not None and ratio < HARM_DESPERATE
 
     def _try_harm(self, state: WorldState, send, aim: str) -> bool:
-        """Default never. Save MA for heals. Kill shot only, boss or desperate."""
+        """Paladin: kill shot only. Mage: magic missile once the swing is open."""
         name = self._spell("harm")
         if not name or not aim:
             return False
@@ -1287,8 +2061,8 @@ class Brain:
             return False
         if not self._spell_ready():
             return False
-        heal = self._spell("heal") or "minor healing"
-        reserve = 2 * spells.cost(heal)
+        heal = self._spell("heal")
+        reserve = 2 * spells.cost(heal) if heal else 0
         if not self._have_mana(spells.cost(name) + reserve, state):
             return False
         key = f"harm:{target.lower()}"
@@ -1300,18 +2074,46 @@ class Brain:
         self._remember(name)
         return True
 
+    def _bless_key(self, name: str) -> str:
+        extras = self._aka
+        return (paths.party_name(name, extras) or name).strip().lower()
+
+    def _bless_allies_here(self, state: WorldState) -> list[str]:
+        """Party here, ninja (crit luck) first — class/role, not a toon name."""
+        found = list(self._alts_here(state))
+        found.sort(key=lambda n: (modules.bless_priority(n), n.lower()))
+        return found
+
+    def _ally_still_blessed(self, state: WorldState, name: str) -> bool:
+        key = self._bless_key(name)
+        until = self._bless_until.get(key, 0.0)
+        if until and time.monotonic() > until:
+            state.forget_ally_bless(name, key)
+            self._bless_until.pop(key, None)
+            return False
+        return state.ally_has_bless(name, key)
+
+    def _next_bless_target(self, state: WorldState) -> str | None:
+        """Ninja alts first for crit luck, then self. None = all set."""
+        for seen in self._bless_allies_here(state):
+            if not self._ally_still_blessed(state, seen):
+                return seen
+        if state.blessed:
+            return None
+        return ""
+
     def _try_bless(self, state: WorldState, send) -> bool:
-        """Self `cast bless` when hunt is idle. Not mid-swing. Heal wins the round."""
+        """`cast bless [target]` when hunt is idle. Heal wins the round."""
         name = self._spell("buff")
-        if not name:
+        if not name or name != "bless":
             return False
         if state.in_combat or self._attacking:
             return False
-        if _trusted_live(state) or paths.lop_in(state.mobs):
+        if _trusted_live(state) or modules.farm_here(state.mobs):
+            return False
+        if not self._in_pit(state):
             return False
         if self._want_look:
-            return False
-        if state.blessed:
             return False
         if not spells.can_cast(name, state.level):
             return False
@@ -1323,14 +2125,28 @@ class Brain:
             return False
         if state.ma is None:
             return False
+        seen = self._next_bless_target(state)
+        if seen is None:
+            return False
+        target = ""
+        if seen:
+            target = self._heal_name(seen, state)
+            if not target:
+                return False
         heal = self._spell("heal") or "minor healing"
         reserve = 2 * spells.cost(heal)
         if not self._have_mana(spells.cost(name) + reserve, state):
             return False
-        self._last_cast = f"buff:{name}"
+        if target:
+            self._last_cast = f"buff:{name}:{target}"
+            state.mark_ally_bless(target)
+            self._bless_until[self._bless_key(target)] = time.monotonic() + BLESS_KEEP
+        else:
+            self._last_cast = f"buff:{name}"
+            state.blessed = True
+            self._bless_until["self"] = time.monotonic() + BLESS_KEEP
         self._cast_at = time.monotonic()
-        state.blessed = True
-        self._cmd(send, spells.command(name), state)
+        self._cmd(send, spells.command(name, target), state)
         self._remember(name)
         return True
 
@@ -1338,7 +2154,7 @@ class Brain:
         """Read a scroll we are holding. Exact name — bless is not a guess."""
         if state.in_combat or self._attacking:
             return False
-        if _trusted_live(state) or paths.lop_in(state.mobs):
+        if _trusted_live(state) or modules.farm_here(state.mobs):
             return False
         if not self._learn:
             return False
@@ -1358,6 +2174,9 @@ class Brain:
     def _sync_maxes(self, state: WorldState) -> None:
         if state.trained:
             self._asked_health = False
+            self._asked_spells = False
+            self._spellbook_seen = False
+            self._spell_dumps = 0
             state.trained = False
 
     def _need_maxes(self, state: WorldState) -> bool:
@@ -1377,7 +2196,7 @@ class Brain:
             return False
         if state.in_combat or self._attacking:
             return False
-        if self.mode != "manual" and (self._aim(state) or paths.lop_in(state.mobs)):
+        if self.mode != "manual" and (self._aim(state) or modules.farm_here(state.mobs)):
             return False
         self._asked_health = True
         self._cmd(send, "health", state)
@@ -1389,12 +2208,57 @@ class Brain:
             return False
         if state.in_combat or self._attacking:
             return False
-        if self.mode != "manual" and (self._aim(state) or paths.lop_in(state.mobs)):
+        if self.mode != "manual" and (self._aim(state) or modules.farm_here(state.mobs)):
             return False
         if self.next_action == "exp":
             return False
         state.exp_asked = True
         self._cmd(send, "exp", state)
+        return True
+
+    def _take_spellbook(self, state: WorldState) -> None:
+        """Fold a `spells`/`powers` dump into the memorized set."""
+        self._spellbook_seq = state.spellbook_seq
+        for name in state.known_spells:
+            self._remember(name)
+        if self._spell_offer and self._knows(self._spell_offer):
+            self._spell_offer = ""
+        if self._want_spell and self._knows(self._want_spell):
+            self._finish_spell_run()
+
+    def _ask_spellbook(self, state: WorldState, send) -> bool:
+        """Send `spells` (or `powers`) before a Rayth y/n. One dump per check."""
+        if not spells.uses_book(self.klass):
+            self._spellbook_seen = True
+            return False
+        if self._spellbook_seen:
+            return False
+        if not self._need_learn_check:
+            return False
+        if self._want_train or self._want_spell or self._want_gear:
+            return False
+        if state.in_combat or self._attacking:
+            return False
+        if self.mode != "manual" and (self._aim(state) or modules.farm_here(state.mobs)):
+            return False
+        if state.spellbook_seq > self._spellbook_seq:
+            self._take_spellbook(state)
+            self._spellbook_seen = True
+            self._asked_spells = False
+            return False
+        if self._asked_spells:
+            if state.prompt_seq <= self._spells_at_prompt:
+                return False
+            if self._spell_dumps >= 2:
+                self._spellbook_seen = True
+                self._asked_spells = False
+                self._need_learn_check = False
+                return False
+            self._asked_spells = False
+        self._asked_spells = True
+        self._spell_dumps += 1
+        self._spells_at_prompt = state.prompt_seq
+        self._cmd(send, spells.list_command(self.klass), state)
         return True
 
     def train_holding(self) -> bool:
@@ -1439,7 +2303,10 @@ class Brain:
         if self._gear_offer and level is not None:
             return gear.offer_tip(level, self._gear_offer, self.klass)
         if self._spell_offer and level is not None:
-            return f"lvl {level} — get {self._spell_offer} at Dathalar?  y/n"
+            where = modules.learn_where(self._spell_offer)
+            if where:
+                return f"lvl {level} — get {self._spell_offer} at {where}?  y/n"
+            return f"lvl {level} — get {self._spell_offer}?  y/n"
         if self._want_spell:
             return f"getting {self._want_spell}  y already  Esc/stop cancel"
         if self._want_gear:
@@ -1532,6 +2399,19 @@ class Brain:
         self._gear_offer_at = state.level
         return True
 
+    def _player_facts(self, state: WorldState) -> modules.PlayerFacts:
+        return modules.PlayerFacts(
+            klass=self.klass,
+            race=self.race,
+            level=state.level,
+            known=frozenset(self._memorized),
+            dark=state.dark,
+            lit=bool(self._torch_lit or state.torch_lit),
+            willed=state.willed,
+            blessed=state.blessed,
+            in_combat=bool(state.in_combat or self._attacking),
+        )
+
     def _refresh_spell_offer(self, state: WorldState) -> None:
         self._claim_if_held(state)
         if self._train_hold or self._spell_offer or self._want_spell:
@@ -1546,11 +2426,19 @@ class Brain:
         dinged = self._seen_level is not None and state.level > self._seen_level
         trained = bool(state.trained)
         self._seen_level = state.level
-        if not (first or dinged or trained):
+        if first or dinged or trained:
+            self._need_learn_check = True
+        if not self._need_learn_check:
             return
         if self._offer_class_weapon(state):
+            self._need_learn_check = False
             return
-        name = spells.next_due(self.klass, self._learn, state.level, self._memorized)
+        name = modules.next_learn(self._player_facts(state), self._learn)
+        if spells.uses_book(self.klass) and not self._spellbook_seen:
+            if not name:
+                self._need_learn_check = False
+            return
+        self._need_learn_check = False
         if not name:
             return
         declined = self._declined_at.get(name)
@@ -1633,7 +2521,7 @@ class Brain:
         return False
 
     def _go_get_spell(self, state: WorldState, send) -> bool:
-        """Walk to Dathalar, buy/read one scroll, then manual."""
+        """Walk to Rayth, buy/read one scroll, then manual."""
         name = self._want_spell
         if not name:
             return False
@@ -1642,6 +2530,14 @@ class Brain:
             return False
         if self._knows(name):
             self._finish_spell_run()
+            return True
+        ab = modules.get(name)
+        if ab is not None and ab.level_up:
+            # Unlocks on ding/train — never walk a shop or quest for it.
+            self._finish_spell_run()
+            return True
+        if not modules.can_shop(name):
+            self.next_action = f"get {name} (no mapped path)"
             return True
         if state.in_combat or self._attacking or self._lops_here(state):
             self.next_action = f"get {name}"
@@ -1722,6 +2618,8 @@ class Brain:
             state.room,
             state.exits,
             last_step=self._last_step,
+            silver_east=self._store_silver_east,
+            skiff_i=self._skiff_ts,
             level=state.level,
             gated=state.arena_gated,
             closed=state.closed_exits,
@@ -1744,8 +2642,15 @@ class Brain:
                 self.cancel_train()
             return
         self._map_here(state)
+        self._note_skiff_ts(state.room)
         self._clear_landed_step(state)
         self._note_death(state)
+        self._note_party_tags(state)
+        if self._dead:
+            if state.hp is not None and state.hp > 0 and not state.mortal:
+                self._dead = False
+            elif self.mode != "goto":
+                return
         if self._train_hold:
             if state.trained or not paths.is_trainer(state.room, self.klass):
                 self.cancel_train()
@@ -1753,7 +2658,13 @@ class Brain:
             else:
                 self.next_action = "train hold"
                 return
-        if not pending and self._pick_coins(state, send):
+        if not pending and self._flush_invite_all(state, send):
+            return
+        if not pending and self.flush_resume(state, send):
+            return
+        if not pending and not self._snatching_pile(state) and self._pick_coins(
+            state, send
+        ):
             return
         if not pending and self._maybe_recover_pile(state):
             self._goto_tick(state, send)
@@ -1777,10 +2688,15 @@ class Brain:
             # Invite before torch stock — don't walk off and leave the alt.
             if self._party(state, send):
                 return
+            if self._maybe_start_kit(state, send):
+                return
             # Even while following in manual, treat the Town Square ->
             # manhole transition as a loop “stock check” step.
             if self._stock_torch_before_sewer(state, send):
                 return
+            if self._ask_spellbook(state, send):
+                return
+            self._refresh_spell_offer(state)
             if self._ask_health(state, send):
                 return
             if self._run_ambush_boot(state, send):
@@ -1802,6 +2718,7 @@ class Brain:
         self._remember_self(state)
         if self._pvp_sense(state):
             return
+        self._note_room_pulse(state)
         self._note_cast_fail(state)
         if state.learned:
             name = self._last_read or (
@@ -1815,7 +2732,7 @@ class Brain:
         self._note_sneak(state)
         self._assume_sneak()
         self._note_torch_light(state)
-        if state.saw_here or _trusted_live(state) or paths.lop_in(state.mobs):
+        if state.saw_here or _trusted_live(state) or modules.farm_here(state.mobs):
             self._drop_scan = False
         # Kill / Off clear _last_aim. Keep the queued swing name so a late
         # `at giant rat` can be dropped after the corpse line.
@@ -1840,7 +2757,14 @@ class Brain:
         stale_swing = self._queued_swing_gone(
             pending, queued_aim, queued_verb, dead, state
         )
-        retarget = new_mob or stale_swing
+        leader_switch = bool(
+            self._with_leader(state)
+            and live_now
+            and self._attacking
+            and aim_now
+            and aim_now != self._attacking
+        )
+        retarget = new_mob or stale_swing or leader_switch
         if pending:
             if retarget and cancel is not None and not self._party_pending(state):
                 cancel()
@@ -1875,7 +2799,23 @@ class Brain:
                 self.mode = "hunt"
 
         listed = self._listed_fight(state)
-        down = self._need_rest(state) or state.mortal or state.bleeding
+        down = (
+            self._need_rest(state)
+            or state.mortal
+            or state.bleeding
+            or (
+                self._mana_dry(state)
+                and not self._recovering
+                and not self._healed(state)
+                and (
+                    self._pit_grind()
+                    or (
+                        modules.at_farm(state.room)
+                        and modules.in_newhaven(state.room)
+                    )
+                )
+            )
+        )
         may_rest = (
             not self._with_leader(state)
             or self._ninja_party(state)
@@ -1883,12 +2823,14 @@ class Brain:
             or state.bleeding
             or self._recovering
         )
-        if listed and self.mode == "gear":
+        if listed and self.mode == "gear" and paths.is_dangerous(state.room):
             self._done_gear()
         if listed and self.mode == "rest" and not (state.mortal or state.bleeding):
             self.mode = "hunt"
         if down and self.mode != "rest" and may_rest:
             if self._try_heal(state, send):
+                return
+            if self._try_party_mana_rest(state, send):
                 return
             if not (listed and not (state.mortal or state.bleeding)):
                 self.mode = "rest"
@@ -1930,11 +2872,17 @@ class Brain:
             return ""
 
         low = (state.room or "").lower()
-        if paths.at_graveyard(low) or paths.at_crypt(low):
-            if paths.at_graveyard_gate(low):
-                return take("w", "s", "n")
+        if modules.at_gy_shack(low) or paths.at_graveyard_gate(low):
+            # Rest-park flee: one SW when listed (or hidden allowlist). No wall spam.
+            hit = take("sw")
+            if hit:
+                return hit
+            if not exits or paths.allows_hidden(state.room, "sw"):
+                return "sw"
             return take("w", "s", "e")
-        if paths.at_sewer(low):
+        if modules.at_graveyard(low) or paths.at_crypt(low):
+            return take("w", "s", "e")
+        if modules.at_sewer(low):
             return take("u")
         if self._in_pit(state):
             return take("u")
@@ -2001,10 +2949,52 @@ class Brain:
             return False
         return state.hp >= state.max_hp
 
+    def _mana_dry(self, state: WorldState) -> bool:
+        """Known mana pool is empty. Ninja/thief prompts have no MA."""
+        if state.ma is None:
+            return False
+        return state.ma <= 0
+
+    def _mana_ready(self, state: WorldState) -> bool:
+        if state.ma is None:
+            return True
+        if state.max_ma:
+            return (state.ma / state.max_ma) >= REST_RATIO
+        return state.ma > 0
+
+    def _rested_up(self, state: WorldState) -> bool:
+        """HP full, and mana back if we have a pool."""
+        return self._healed(state) and self._mana_ready(state)
+
+    def _try_party_mana_rest(self, state: WorldState, send) -> bool:
+        """Empty MA or GY rest: walk to the bridge, then one `!heal` on arrival.
+
+        Followers stay glued to the leader — no solo restpark / picklock /
+        SW bridge hop. Leader drives park via !rest / !heal.
+        """
+        if self._party_rest or self.mode == "goto":
+            return False
+        if self._followed or state.following:
+            return False
+        if self._pit_grind() or modules.in_newhaven(state.room):
+            return False
+        if state.in_combat or self._lops_here(state) or self._attacking:
+            return False
+        if not (self._mana_dry(state) or self._need_rest(state) or modules.at_gy_shack(state.room)):
+            return False
+        if not (self._mana_dry(state) or self._park_rest_room(state) or modules.at_gy_shack(state.room)):
+            return False
+        if self.start_party_rest(state) is None:
+            return False
+        self._goto_tick(state, send)
+        return True
+
     def _ready_to_hunt(self, state: WorldState) -> bool:
         if state.mortal or state.bleeding:
             return False
         if self._need_rest(state):
+            return False
+        if self._mana_dry(state) and not self._recovering:
             return False
         if state.hp is not None and state.hp < 1:
             return False
@@ -2021,7 +3011,9 @@ class Brain:
         return state.hp < REST_ABS
 
     def _in_pit(self, state: WorldState) -> bool:
-        if paths.at_farm(state.room):
+        if modules.at_gy_shack(state.room) or modules.at_rest_park(state.room):
+            return False
+        if modules.at_farm(state.room):
             return True
         if paths.in_silvermere(state.room):
             return False
@@ -2047,21 +3039,25 @@ class Brain:
         return self._in_camp
 
     def _party_ready(self, state: WorldState) -> bool:
-        """Grouped enough to hunt. Leader does not need backrank text."""
+        """Grouped enough to hunt. Leader waits until every roster toon here followed."""
         self._sync_party(state)
         if not self._leading():
             if not (state.following or self._followed):
                 return False
-            if self._wants_back():
-                return self._ranked
+            return not self._rank_cmd(state)
+        alts = self._alts_here(state)
+        if not alts:
             return True
-        if not self._invited:
-            return False
-        return any(self._mine(n, state) for n in state.followers)
+        return all(self._with_me(n, state) for n in alts)
+
+    def _with_me(self, name: str, state: WorldState) -> bool:
+        return any(self._same_toon(name, seen) for seen in state.followers)
 
     def _can_drop_arena(self, state: WorldState) -> bool:
         """Clear room with `d` to the pit once the party is ready."""
         if self._in_pit(state) or self._lops_here(state):
+            return False
+        if self._with_leader(state) or self._joining_leader(state):
             return False
         if self._followed or self._wounded_bleeding(state):
             return False
@@ -2085,7 +3081,7 @@ class Brain:
         return self._sitting or state.resting
 
     def _lops_here(self, state: WorldState) -> bool:
-        return bool(_trusted_live(state) or paths.lop_in(state.mobs))
+        return bool(_trusted_live(state) or modules.farm_here(state.mobs))
 
     def _listed_fight(self, state: WorldState) -> bool:
         """Join/look already printed a farm lop — swing before i/look/health."""
@@ -2101,7 +3097,7 @@ class Brain:
 
     def _swing_first(self, state: WorldState, send) -> bool:
         """A listed farm lop is a fight. Skip boot look when Also here already printed."""
-        live = self._aim(state) or paths.lop_in(state.mobs)
+        live = self._hunt_live(state)
         if not live or not self._opens_swing(state):
             return False
         if self._ambush_boot and not self._boot_looked and not state.saw_here:
@@ -2137,7 +3133,7 @@ class Brain:
 
         A look in flight, a just-`d` drop, or an unscanned pit is not empty.
         """
-        if _trusted_live(state) or paths.lop_in(state.mobs):
+        if _trusted_live(state) or modules.farm_here(state.mobs):
             return False
         if state.in_combat or self._attacking:
             return False
@@ -2149,6 +3145,10 @@ class Brain:
 
     def _busy_swing(self, state: WorldState) -> bool:
         """Look mid-swing or on the same prompt as attack/bs flickers combat."""
+        if paths.is_unlatch_step(self._last_step) or paths.is_unlatch_step(
+            self.compass.pending
+        ):
+            return False
         if state.in_combat or self._attacking:
             return True
         if self._last_verb not in {"attack", "att", "bash", "aa", "bs"}:
@@ -2164,6 +3164,30 @@ class Brain:
         state.saw_here = False
         state.saw_see = False
         self._cmd(send, "look", state)
+        return True
+
+    def _ask_room_pulse(self, send, state: WorldState) -> bool:
+        """Refresh Also here without “looking around” when possible.
+
+        Policy from ``modules.room_refresh_cmd``: bare Enter first (Statline
+        Full brief reprint), then look.
+        """
+        if self._busy_swing(state):
+            return False
+        cmd = modules.room_refresh_cmd(soft_tries_used=self._room_soft_tries)
+        self._drop_scan = False
+        state.look_scan = True
+        state.saw_here = False
+        state.saw_see = False
+        if cmd == "":
+            self._room_soft_tries += 1
+            self.next_action = "waiting"
+            send("")
+            self._wait_prompt = state.prompt_seq + 1
+            self._sent_at = time.monotonic()
+            return True
+        self._room_soft_tries = 0
+        self._cmd(send, cmd, state)
         return True
 
     def _sit(self, send, state: WorldState) -> bool:
@@ -2237,14 +3261,11 @@ class Brain:
                 # is the rest/look storm after a pit kill.
                 self._need_break = True
             if not self._lops_here(state):
+                # Prefer the timed room tick / arrive. Forcing look here made
+                # the whole party spam "X is looking around the room."
+                self._want_look = False
                 if fighting and self._stealth_moves() and self._in_pit(state):
-                    self._want_look = False
                     state.scanned = True
-                else:
-                    self._want_look = True
-                    state.scanned = False
-                    state.saw_here = False
-                    state.look_scan = False
         if not off or self._in_pit(state):
             self._evaded = False
             return
@@ -2307,13 +3328,18 @@ class Brain:
         )
 
     def _need_look(self, state: WorldState) -> bool:
-        """No listed farm mob and Also here is missing or stale."""
+        """Type `look` only for an explicit reason — prefer WG room ticks.
+
+        `look_scan` means a title/tick is already in flight: wait, do not pile on.
+        Unscanned alone is not enough; exits/party/boot set `_want_look` or call
+        `_ask_look` from nav paths.
+        """
         if self._busy_swing(state):
             return False
         if self._lops_here(state):
             return False
-        if self._want_look:
-            return True
+        if state.look_scan:
+            return False
         if self._in_pit(state) and self._pit_fight and not paths.coins_in(state.things):
             return False
         if state.in_combat and self._attacking and _still_here(state, self._attacking):
@@ -2324,15 +3350,45 @@ class Brain:
         # Party ninja: stay stealthed; creep/Also here lists the next lop.
         if self._ninja_party(state) and not self._want_look:
             return False
-        # Solo road drop — do not stall on look_scan from the last `d`.
+        # Solo road drop — walk `d`; do not stall on drop_scan / want_look.
         if not self._with_leader(state) and self._arena_drop(state) and not self._want_look:
             return False
         # Known walk — do not look-loop (Secret Passage, Helfgrim, streets).
         if not self._want_look and self._farm_step(state):
             return False
-        if state.look_scan or self._drop_scan or self._want_look:
+        if self._drop_scan or self._want_look:
             return True
-        return not state.scanned
+        return False
+
+    def _note_room_pulse(self, state: WorldState) -> None:
+        """Remember the last Also here / exits pulse (WG timed short look)."""
+        seq = int(state.travel_seq or 0)
+        if seq != self._room_pulse_seq:
+            self._room_pulse_seq = seq
+            self._room_pulse_at = time.monotonic()
+            return
+        if state.saw_here and self._room_pulse_at <= 0:
+            self._room_pulse_at = time.monotonic()
+
+    def _wait_room_tick(self, state: WorldState, send) -> bool:
+        """True when standing for Also here / exits instead of typing look.
+
+        Listings come from move/combat and Statline Full bare Enter — not a
+        WG idle 6n timer. After LOOK_GAP, soft-refresh (Enter) then look.
+        """
+        if state.scanned or state.look_scan or self._lops_here(state):
+            if state.scanned:
+                self._room_soft_tries = 0
+            return False
+        if self._busy_swing(state) or state.in_combat or self._attacking:
+            return False
+        # Known walk / arena drop: move without a look.
+        if self._farm_step(state) or self._arena_drop(state):
+            return False
+        if time.monotonic() - self._sent_at >= LOOK_GAP:
+            return self._ask_room_pulse(send, state)
+        self.next_action = "waiting"
+        return True
 
     def note_send(self, text: str, room: str = "") -> None:
         """Typed or peeked walk — remember the door so the next title maps."""
@@ -2349,8 +3405,10 @@ class Brain:
     def _map_here(self, state: WorldState) -> None:
         """Record this tile. Unknown rooms go on the atlas the first time we see them."""
         title = (state.room or "").strip()
-        if not title:
+        if not title or parse.looks_like_stat_sheet(title):
             return
+        if not paths.in_afterlife(title):
+            self._last_live_room = title
         here = realm_map.room_key(title)
         left = realm_map.room_key(self._step_room)
         via = self._last_step if here and left and here != left else ""
@@ -2365,6 +3423,8 @@ class Brain:
                 state.room,
                 state.exits,
                 last_step=self._last_step,
+                silver_east=self._store_silver_east,
+                skiff_i=self._skiff_ts,
                 level=level,
                 gated=gated,
                 closed=state.closed_exits,
@@ -2385,6 +3445,8 @@ class Brain:
 
     def _walk_out(self, state: WorldState, send) -> bool:
         """Leave a known or one-door tile. Never look-spam when already scanned."""
+        if self._with_leader(state) or self._joining_leader(state):
+            return False
         step = self._farm_step(state)
         if step:
             if not self._skip_reverse(step, state) and self._go(send, step, state):
@@ -2476,6 +3538,9 @@ class Brain:
         """
         if not self._sneak_flop:
             return False
+        if self._with_leader(state) or self._joining_leader(state):
+            self._sneak_flop = False
+            return False
         if self._lops_here(state) or state.in_combat:
             self._sneak_flop = False
             return False
@@ -2504,10 +3569,25 @@ class Brain:
 
     def _street_step(self, step: str, state: WorldState) -> str:
         """Temple west is the hall; casino south is the pit. Force home."""
+        if paths.step_skiff_to_square(state.room, None, skiff_i=self._skiff_ts):
+            if not (
+                self._nav_goal() in {"farm", "graveyard", "guild"}
+                and step == "s"
+                and "guild street" in (state.room or "").lower()
+            ):
+                return step
         low = (state.room or "").lower()
         if step == "w" and "temple street" in low:
             return "e"
         if step == "s" and ("lucky strike" in low or "casino" in low):
+            return "n"
+        # Mid Guild Street is n/s only. GY/guild is north; south is the n/s loop.
+        if (
+            step == "s"
+            and "guild street" in low
+            and self._nav_goal() in {"farm", "graveyard", "guild"}
+            and "n" in (state.exits or [])
+        ):
             return "n"
         return step
 
@@ -2554,6 +3634,7 @@ class Brain:
             self._last_step = step
             self._step_room = state.room
             self._step_prompt = state.prompt_seq
+            self._advance_skiff_ts(state.room, step)
             self.compass.note(
                 step,
                 state.room,
@@ -2584,7 +3665,7 @@ class Brain:
                 # Level 4+ cannot enter the pit. Do not pretend we landed.
                 self._pit_fight = False
                 self._drop_scan = False
-            elif step == "d" and paths.in_newhaven(state.room) and "arena" not in state.room.lower():
+            elif step == "d" and modules.in_newhaven(state.room) and "arena" not in state.room.lower():
                 state.room = "Newhaven, Arena"
                 state.exits = [x for x in state.exits if x != "d"]
             elif step == "d" and "arena" not in state.room.lower() and not paths.in_silvermere(
@@ -2668,6 +3749,7 @@ class Brain:
         left = (self._step_room or "").strip()
         want = self._nav_goal()
         if here and left and here != left:
+            self._blocked_dirs.clear()
             if (
                 pinned_dir(left, want) == self._last_step
                 and paths.same_title_corridor(here)
@@ -2691,31 +3773,64 @@ class Brain:
             and state.travel_seq > self.compass.travel
         ):
             self._last_step = ""
-
+            self._blocked_dirs.clear()
     def _go(self, send, step: str, state: WorldState, *, sneak: bool = True) -> bool:
         if not step:
             return False
         step = self._street_step(step, state)
-        if state.blocked:
-            dead = (self.compass.pending or self._last_step or step or "").strip().lower()
-            if paths.is_unlatch_step(dead):
-                word = dead.split()[-1]
-                dead = {
-                    "north": "n",
-                    "south": "s",
-                    "east": "e",
-                    "west": "w",
-                    "up": "u",
-                    "down": "d",
-                }.get(word, word)
-            if dead in state.exits:
-                state.exits = [x for x in state.exits if x != dead]
+        raw_step = (step or "").strip().lower()
+        short = (
+            paths.unlatch_dir_short(raw_step)
+            if paths.is_unlatch_step(raw_step)
+            else raw_step
+        )
+        # Leader owns latches. Followers must not peel off to bash/pick the shack.
+        if paths.is_unlatch_step(step) and (
+            self._with_leader(state) or self._followed or state.following
+        ):
+            return False
+        if short and short in self._blocked_dirs:
+            # Same dir just hit a wall — look / pick another exit, do not re-spam.
+            if state.exits:
+                state.exits = [x for x in state.exits if x.lower() != short]
             self.compass._fail()
-            state.blocked = False
             self.next_action = "looking"
             if not self._busy_swing(state):
                 self._cmd(send, "look", state)
             return True
+        if state.blocked:
+            listed = [x.lower() for x in (state.exits or [])]
+            raw = (step or "").strip().lower()
+            want = raw if raw in listed else paths.unlatch_dir_short(raw)
+            if (
+                want == "n"
+                and want in listed
+                and paths.gy_gate_never_south(state.room, None)
+            ):
+                # Stale "The gate is closed." after a bash that opened it.
+                state.blocked = False
+                state.blocked_dir = ""
+            else:
+                dead = (
+                    state.blocked_dir
+                    or self.compass.pending
+                    or self._last_step
+                    or step
+                    or ""
+                ).strip().lower()
+                if paths.is_unlatch_step(dead):
+                    dead = paths.unlatch_dir_short(dead) or dead
+                if dead:
+                    self._blocked_dirs.add(dead)
+                if dead in state.exits:
+                    state.exits = [x for x in state.exits if x != dead]
+                self.compass._fail()
+                state.blocked = False
+                state.blocked_dir = ""
+                self.next_action = "looking"
+                if not self._busy_swing(state):
+                    self._cmd(send, "look", state)
+                return True
         if (
             state.exits
             and step not in state.exits
@@ -2734,14 +3849,16 @@ class Brain:
         )
         if state.blocked:
             state.blocked = False
+            state.blocked_dir = ""
         if gate == "wait":
             self.next_action = "waiting"
             return True
         if gate == "look":
             self.next_action = "looking"
-            if state.in_combat or self._busy_swing(state):
+            unlatch = paths.is_unlatch_step(self.compass.pending)
+            if not unlatch and (state.in_combat or self._busy_swing(state)):
                 return True
-            self._cmd(send, "look", state)
+            self._cmd(send, "l" if unlatch else "look", state)
             return True
         # Hard gate: never dive without bag + lit torch.
         if step == "go manhole" and self._needs_sewer_torch():
@@ -2759,16 +3876,19 @@ class Brain:
         return True
 
     def _map_step(self, state: WorldState, send) -> bool:
-        if self._followed:
+        if self._followed or state.following:
             return False
         # Hard compass for temple district — do not atlas-wander into the hall.
         # Run even while torch-stocking: east is both TS and the store.
         low = (state.room or "").lower()
-        if "temple street" in low:
+        skiffing = bool(
+            paths.step_skiff_to_square(state.room, None, skiff_i=self._skiff_ts)
+        )
+        if not skiffing and "temple street" in low:
             if self._go(send, "e", state):
                 self.next_action = "temple east"
                 return True
-        if "lucky strike" in low or "casino" in low:
+        if not skiffing and ("lucky strike" in low or "casino" in low):
             if self._go(send, "n", state):
                 self.next_action = "leave casino"
                 return True
@@ -2786,6 +3906,8 @@ class Brain:
             state.room,
             state.exits,
             last_step=self._last_step,
+            silver_east=self._store_silver_east,
+            skiff_i=self._skiff_ts,
             level=level,
             gated=gated,
             closed=state.closed_exits,
@@ -2814,6 +3936,12 @@ class Brain:
                 return False
             if "guild street" in low and hint.step in {"e", "w"}:
                 return False
+            if (
+                "guild street" in low
+                and hint.step == "s"
+                and self._nav_goal() in {"farm", "graveyard", "guild"}
+            ):
+                return False
             if self._go(send, hint.step, state):
                 if hint.chrome:
                     self.next_action = hint.chrome
@@ -2821,10 +3949,12 @@ class Brain:
         return False
 
     def _rest(self, state: WorldState, send) -> None:
-        live = _trusted_live(state) or paths.lop_in(state.mobs)
+        live = _trusted_live(state) or modules.farm_here(state.mobs)
         if live or state.in_combat or self._attacking:
             self.mode = "hunt" if self.gear_done else "gear"
             self._hunt(state, send)
+            return
+        if self._try_party_mana_rest(state, send):
             return
         if self._in_pit(state) and not self._may_sit(state):
             if state.look_scan:
@@ -2834,6 +3964,24 @@ class Brain:
                 if self._ask_look(send, state):
                     return
         if self._healed(state) or (self._recovering and self._ready_to_hunt(state)):
+            # Full HP but dry MA: sit to refill (party rest / bless). Do not
+            # shout !healed until `_rested_up`.
+            if not self._mana_ready(state):
+                if self._sitting or state.resting:
+                    self.next_action = "healing"
+                    return
+                if self._sit(send, state):
+                    return
+                self.next_action = "waiting"
+                return
+            if self._party_rest or self._park_rest:
+                if self._party_rest:
+                    self._party_rest_tick(state, send)
+                    return
+                self._park_rest = False
+                self.mode = "manual"
+                self.next_action = "at rest"
+                return
             self._recovering = False
             self._attacking = ""
             self.mode = "hunt" if self.gear_done else "gear"
@@ -3129,28 +4277,76 @@ class Brain:
         return True
 
     def _needs_sewer_torch(self) -> bool:
-        """Night-vision-less humans only need torches in the pipes, not outdoors."""
-        return bool(self.hunt_run.torch) and not self._ninja()
+        """Sewer kit. Night vision / known room-light skip. Ninja is not NV."""
+        return modules.sewer_torch_needed(
+            self.race,
+            self.klass,
+            hunt_torch=bool(self.hunt_run and self.hunt_run.torch),
+            room_light_spell=bool(
+                modules.known_room_light(self.klass, self._memorized)
+            ),
+        )
 
     def _needs_sewer_torch_here(self, state: WorldState) -> bool:
-        if self._ninja():
+        if modules.known_room_light(self.klass, self._memorized):
             return False
-        return paths.at_sewer(state.room)
+        if not modules.needs_torch(self.race, self.klass):
+            return False
+        return modules.at_sewer(state.room)
 
     def _leads_sewer_loop(self) -> bool:
         """Only the loop leader stocks/dives; followers ride along."""
         return self._leading()
 
     def _at_manhole_entry(self, state: WorldState) -> bool:
-        low = (state.room or "").lower()
-        return "town square" in low or "fountain" in low
+        return modules.at_manhole_entry(state.room)
 
     def _kit_ready(self) -> bool:
-        return (
-            self._armour_i >= len(paths.ARMOUR_ITEMS)
-            and self._weapon_worn
-            and self._torch_bought
+        return modules.kit_ready(
+            armour_i=self._armour_i,
+            weapon_worn=self._weapon_worn,
+            torch_bought=self._torch_bought,
         )
+
+    def _kit_shop_goal(self) -> str:
+        """Next Newhaven pin: padded, club/staff, torch, class scrolls, then pit."""
+        return modules.shop_goal(
+            armour_i=self._armour_i,
+            weapon_worn=self._weapon_worn,
+            torch_bought=self._torch_bought,
+            spells_shopped=self._spells_shopped,
+        )
+
+    def _walk_kit(self, state: WorldState, send) -> None:
+        """Leave the guild / road toward the next missing shop, then the arena."""
+        goal = self._kit_shop_goal()
+        if goal == "farm" and modules.farm_arrived(
+            state.room, dangerous=paths.is_dangerous(state.room)
+        ):
+            self._done_gear()
+            return
+        step = self.world.step(
+            goal,
+            state.room,
+            state.exits,
+            last_step=self._last_step,
+            silver_east=self._store_silver_east,
+            skiff_i=self._skiff_ts,
+            level=state.level,
+            gated=state.arena_gated,
+            closed=state.closed_exits,
+            klass=self.klass,
+        )
+        if not step:
+            if goal == "spells":
+                step = paths.step_toward_spell_shop(state.room, state.exits)
+            elif goal == "store":
+                step = paths.step_toward_store(state.room, state.exits)
+            else:
+                step = paths.step_toward_arena(state.room, state.exits)
+        if step and self._go(send, step, state):
+            return
+        self._cmd(send, "look", state)
 
     def _advance_spell(self) -> None:
         self._spell_i += 1
@@ -3166,6 +4362,12 @@ class Brain:
             self._spells_shopped = True
             return False
         name = self._learn[self._spell_i]
+        have = 1 if state.level is None else int(state.level)
+        # Bless/mend (level 2) are still bought at creation. Illuminate / smite
+        # / major healing wait for the ding offer at Rayth.
+        if have < spells.min_level(name) and spells.min_level(name) >= 3:
+            self._advance_spell()
+            return self._shop_one_spell(state, send)
         held = list(state.inventory) + list(state.extras)
         if spells.have_known(held, name):
             self._remember(name)
@@ -3212,6 +4414,36 @@ class Brain:
         self._advance_spell()
         return True
 
+    def _skip_kit_shops(self) -> None:
+        """Dressed — skip Betram / Nathaniel. Torch still if this race needs light."""
+        self._armour_i = len(paths.ARMOUR_ITEMS)
+        self._weapon_bought = True
+        self._weapon_worn = True
+        if not modules.needs_torch(self.race, self.klass):
+            self._torch_bought = True
+        if modules.known_room_light(self.klass, self._memorized):
+            self._torch_bought = True
+
+    def _finish_kit_check(self, state: WorldState, send) -> bool:
+        """After F7 `i`: shop only if naked. Naked + a logged pile → recover."""
+        if not self._need_kit_check:
+            return False
+        if self._await_inv:
+            return False
+        self._need_kit_check = False
+        naked = modules.is_naked(state.worn, state.inventory, state.extras)
+        if self.deathpile and naked:
+            if self.start_goto("pile", skip=True):
+                self._goto_tick(state, send)
+            return True
+        if not naked:
+            self._forget_deathpile()
+            self._skip_kit_shops()
+            if self._spells_shopped and self._kit_ready():
+                self._done_gear()
+                return True
+        return False
+
     def _done_gear(self) -> None:
         self.gear_done = True
         self.mode = "hunt"
@@ -3220,7 +4452,7 @@ class Brain:
         self._pry_sent = False
 
     def _gear(self, state: WorldState, send) -> None:
-        if self._listed_fight(state):
+        if self._listed_fight(state) and paths.is_dangerous(state.room):
             self._done_gear()
             return
         if state.blocked:
@@ -3238,6 +4470,18 @@ class Brain:
             if self._spell_buying or self._spell_reading:
                 self._advance_spell()
         if self._sell_extra(state, send):
+            return
+        if self._finish_kit_check(state, send):
+            return
+        if (
+            not self._need_kit_check
+            and not self._await_inv
+            and (self._followed or state.following)
+            and not (self._kit_ready() and self._spells_shopped)
+        ):
+            # Follow steals movement — shop solo, then hunt can rejoin.
+            self._cmd(send, "leave", state)
+            self._drop_follow(state)
             return
         room = state.room.lower()
         if state.shop_vague:
@@ -3274,6 +4518,11 @@ class Brain:
                 self._cmd(send, "look", state)
             return
         if paths.is_armour_shop(room):
+            if not paths.needs_padded(self.klass):
+                self._armour_i = len(paths.ARMOUR_ITEMS)
+                if not self._go(send, "n", state):
+                    self._cmd(send, "look", state)
+                return
             self._skip_worn_armour(state)
             if self._armour_i < len(paths.ARMOUR_ITEMS):
                 item = paths.ARMOUR_ITEMS[self._armour_i]
@@ -3297,7 +4546,13 @@ class Brain:
                 self._cmd(send, "look", state)
             return
         if paths.is_weapon_shop(room):
-            weapon = paths.starter_weapon(self.klass)
+            if not modules.needs_weapon(self.klass):
+                self._weapon_bought = True
+                self._weapon_worn = True
+                if not self._go(send, "s", state):
+                    self._cmd(send, "look", state)
+                return
+            weapon = modules.starter_weapon(self.klass)
             if not self._weapon_bought:
                 self._cmd(send, f"buy {weapon}", state)
                 self._weapon_bought = True
@@ -3318,8 +4573,14 @@ class Brain:
                 self._cmd(send, "look", state)
             return
         if paths.is_general_store(room):
+            if not modules.needs_torch(self.race, self.klass):
+                self._torch_bought = True
+                step = paths.leave_dead_end(state.room, state.exits)
+                if not step or not self._go(send, step, state):
+                    self._cmd(send, "look", state)
+                return
             if not self._torch_bought:
-                self._cmd(send, f"buy {paths.STARTER_LIGHT}", state)
+                self._cmd(send, f"buy {modules.starter_light()}", state)
                 self._torch_bought = True
                 self._await_inv = True
                 self._pry_sent = False
@@ -3335,7 +4596,10 @@ class Brain:
                 self._cmd(send, "look", state)
             return
         if paths.is_dangerous(room):
-            self._done_gear()
+            if self._kit_ready() and self._spells_shopped:
+                self._done_gear()
+                return
+            self._walk_kit(state, send)
             return
         if self._kit_ready() and self._spells_shopped:
             self._done_gear()
@@ -3360,6 +4624,10 @@ class Brain:
             self._done_gear()
             return
         if "narrow path" in room:
+            if self._armour_i < len(paths.ARMOUR_ITEMS) or not self._weapon_worn:
+                if not self._go(send, "e", state):
+                    self._cmd(send, "look", state)
+                return
             if not self._torch_bought:
                 if not self._go(send, "s", state):
                     self._cmd(send, "look", state)
@@ -3372,26 +4640,18 @@ class Brain:
                 self._cmd(send, "look", state)
             return
         if "narrow road" in room:
-            if not self._torch_bought:
-                if not self._go(send, "e", state):
-                    self._cmd(send, "look", state)
-                return
-            if not self._spells_shopped:
+            if (
+                self._armour_i < len(paths.ARMOUR_ITEMS)
+                or not self._weapon_worn
+                or not self._torch_bought
+                or not self._spells_shopped
+            ):
                 if not self._go(send, "e", state):
                     self._cmd(send, "look", state)
                 return
             self._done_gear()
             return
-        if self._kit_ready() and not self._spells_shopped:
-            step = paths.step_toward_spell_shop(state.room, state.exits)
-            if step and self._go(send, step, state):
-                return
-            self._cmd(send, "look", state)
-            return
-        step = paths.step_toward_arena(state.room, state.exits)
-        if step and self._go(send, step, state):
-            return
-        self._cmd(send, "look", state)
+        self._walk_kit(state, send)
 
     def _leader_here(self, state: WorldState) -> bool:
         want = self.leader.lower()
@@ -3410,22 +4670,41 @@ class Brain:
     def _clear_invite(self, state: WorldState) -> None:
         self._got_invite = False
         state.invited_by = ""
+        state.join_call_by = ""
 
     def _sync_party(self, state: WorldState) -> None:
         if state.invited_by:
             self._got_invite = True
+            # Stale `_followed` after the leader logged out still looks grouped,
+            # so hunt never sends `follow` and chrome sits on "follow Matthew".
+            if not state.following:
+                if self._followed:
+                    self._forget_follow_sent()
+                self._followed = False
+                self._joined = False
+        if state.join_call_by and self._join_call_follow(state.join_call_by, state):
+            self._got_invite = True
         if state.following:
             self._joined = True
             self._followed = True
+            self._forget_follow_sent()
             self._clear_invite(state)
         if state.left_party:
             state.left_party = False
-            self._joined = False
-            self._followed = False
-            self._ranked = False
-            self._clear_invite(state)
-        if state.backrank:
+            if not state.following:
+                self._joined = False
+                self._followed = False
+                self._forget_follow_sent()
+                self._reset_party_rank()
+                self._clear_invite(state)
+        if state.party_rank in party.RANK_CMD:
+            self._party_rank = state.party_rank
             self._ranked = True
+            if state.party_rank != "back":
+                state.backrank = False
+        elif state.backrank:
+            self._ranked = True
+            self._party_rank = "back"
         if state.followers:
             self._invited = True
             if self._leading():
@@ -3437,13 +4716,71 @@ class Brain:
         if reason == "invite":
             self._joined = False
             self._followed = False
+            self._forget_follow_sent()
             self._clear_invite(state)
         if reason == "party":
-            self._ranked = False
-            self._clear_invite(state)
-            if not state.following:
-                self._joined = False
-                self._followed = False
+            self._drop_follow(state)
+        for who in state.arrivals:
+            key = self._invite_name_key(who, state)
+            if key:
+                self._invite_skip.discard(key)
+        state.arrivals.clear()
+        gone = state.not_here.strip()
+        state.not_here = ""
+        if gone:
+            self._note_invite_miss(gone, state)
+        ok = state.invite_ok.strip()
+        state.invite_ok = ""
+        if ok:
+            self._note_invite_try(ok, state)
+        self._prune_invite_skip(state)
+        self._crew.note_area(modules.area_of(state.room) or state.room)
+        self._crew.note_follow(state.following, state.followers)
+        self._crew.note_rank(self._party_rank)
+        self._crew.note_mates(self._rank_members(state))
+
+    def _invite_name_key(self, who: str, state: WorldState) -> str:
+        extras = self._aka | state.self_names
+        tagged = paths.party_name(who, extras) or who.strip()
+        return tagged.strip().lower()
+
+    def _note_invite_try(self, who: str, state: WorldState) -> str:
+        """One `invite Name` per sighting. Success or miss both skip retries."""
+        key = self._invite_name_key(who, state)
+        if key:
+            self._invite_skip.add(key)
+            self._invite_at[key] = time.monotonic()
+        return key
+
+    def _note_invite_miss(self, who: str, state: WorldState) -> None:
+        self._note_invite_try(who, state)
+
+    def _prune_invite_skip(self, state: WorldState) -> None:
+        here = {self._invite_name_key(who, state) for who in self.room_players(state)}
+        self._invite_skip = {key for key in self._invite_skip if key in here}
+
+    def _already_invited(self, who: str, state: WorldState) -> bool:
+        key = self._invite_name_key(who, state)
+        if not key or key not in self._invite_skip:
+            return False
+        if self._with_me(who, state):
+            return True
+        at = self._invite_at.get(key, 0.0)
+        if time.monotonic() - at >= INVITE_RETRY:
+            self._invite_skip.discard(key)
+            return False
+        return True
+
+    def _send_invite(self, who: str, state: WorldState, send) -> bool:
+        extras = self._aka | state.self_names
+        name = paths.party_name(who, extras) or who.strip()
+        if not name or self._with_me(name, state) or self._already_invited(name, state):
+            return False
+        self._invited = True
+        self._party_at = time.monotonic()
+        self._note_invite_try(name, state)
+        self._cmd(send, f"invite {name}", state)
+        return True
 
     def _alts_here(self, state: WorldState) -> list[str]:
         extras = self._aka | state.self_names
@@ -3452,6 +4789,108 @@ class Brain:
             if self._mine(name, state) and not self._me(name) and name not in found:
                 found.append(name)
         return found
+
+    def room_players(self, state: WorldState) -> list[str]:
+        """PCs standing in this room. Not us, not shopkeepers, not lops."""
+        extras = self._aka | state.self_names
+        found: list[str] = []
+        seen: set[str] = set()
+        for raw in paths.players_in(state.mobs, extras):
+            who = paths.party_name(raw, extras) or raw.strip()
+            if not who or self._me(who):
+                continue
+            key = who.strip().lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            found.append(who)
+        return found
+
+    def invite_all_cmds(self, state: WorldState) -> list[str]:
+        """One `invite Name` per PC here who is not already following."""
+        now = time.monotonic()
+        here = self.room_players(state)
+        cmds: list[str] = []
+        for who in here:
+            if self._with_me(who, state):
+                continue
+            self._invite_at[who.strip().lower()] = now
+            cmds.append(f"invite {who}")
+        if cmds:
+            self._want_invite_all = False
+            self._invited = True
+            self._party_at = now
+            self.next_action = "invite all" if len(cmds) > 1 else cmds[0]
+        elif here:
+            self._want_invite_all = False
+            self.next_action = "already grouped"
+        else:
+            self.next_action = "no players here"
+        return cmds
+
+    def arm_invite_all_look(self, state: WorldState) -> None:
+        """Typed invite all with no PCs listed — look, then invite on the reprint."""
+        self._want_invite_all = True
+        state.look_scan = True
+        state.saw_here = False
+        self.next_action = "look"
+
+    def _flush_invite_all(self, state: WorldState, send) -> bool:
+        if not self._want_invite_all:
+            return False
+        if state.look_scan:
+            self.next_action = "looking"
+            return True
+        self._want_invite_all = False
+        cmds = self.invite_all_cmds(state)
+        for line in cmds:
+            self._cmd(send, line, state)
+        return bool(cmds)
+
+    def join_call_cmds(self, state: WorldState) -> list[str]:
+        """Typed `!join`: leader rally only — invitees do not shout back.
+
+        Party leader shouts `!join`. Invitees with F9 on follow that speaker
+        (or their inviter). Shouting back starts a join-chain kerfuffle.
+        Never turns a local rally into `follow Matthew` / hunt-the-leader.
+        """
+        if not state.in_realm:
+            self.next_action = "join in the realm"
+            return []
+        # Already following: hear the leader's shout; do not echo !join.
+        if (state.following or self._followed) and not (
+            self._named_leader() or self._leading() or state.followers
+        ):
+            self._want_join_call = False
+            self.next_action = "leader shouts !join — you follow when you hear it"
+            return []
+        cmds: list[str] = []
+        if self._named_leader() or self._leading() or state.followers:
+            cmds.extend(self.invite_all_cmds(state))
+        cmds.append(JOIN_CALL)
+        self._want_join_call = False
+        self.next_action = JOIN_CALL
+        return cmds
+
+    def _rally_party(self, state: WorldState, send) -> bool:
+        """Hunt-start gather: invite PCs here, then `!join` if anyone can hear.
+
+        Only the configured/named leader arms this — followers never shout.
+        """
+        if not self._want_join_call:
+            return False
+        if not self._named_leader():
+            self._want_join_call = False
+            return False
+        for who in self.room_players(state):
+            if self._send_invite(who, state, send):
+                return True
+        hearers = self.room_players(state)
+        self._want_join_call = False
+        if not hearers:
+            return False
+        self._cmd(send, JOIN_CALL, state)
+        return True
 
     def _arm_rescue(self, state: WorldState, who: str) -> None:
         extras = self._aka | state.self_names
@@ -3493,9 +4932,12 @@ class Brain:
     def _drop_follow(self, state: WorldState) -> None:
         state.following = ""
         state.left_party = False
+        state.backrank = False
+        state.party_rank = ""
         self._joined = False
         self._followed = False
-        self._ranked = False
+        self._forget_follow_sent()
+        self._reset_party_rank()
         self._clear_invite(state)
 
     def _rescue_tick(self, state: WorldState, send) -> bool:
@@ -3551,6 +4993,23 @@ class Brain:
         self._clear_rescue()
         return False
 
+    def _gathering_party(self, state: WorldState) -> bool:
+        """Wait/invite at rally, the pit, or a unique tile — not mid-corridor catch-up."""
+        if self._want_join_call:
+            return True
+        if self._in_pit(state):
+            return True
+        if paths.is_farm_drop(self._farm_step(state)):
+            return True
+        room = state.room or ""
+        return not (
+            paths.plain_river_street(room)
+            or paths.plain_guild_street(room)
+            or paths.plain_silver_street(room)
+            or paths.plain_temple_street(room)
+            or paths.plain_secret_passage(room)
+        )
+
     def _party_pending(self, state: WorldState) -> bool:
         if not self.leader:
             return False
@@ -3560,34 +5019,41 @@ class Brain:
         if self._leading():
             if not self._ready_to_hunt(state):
                 return False
+            if not self._gathering_party(state):
+                return False
+            if self._want_join_call and self.room_players(state):
+                return True
             alts = self._alts_here(state)
             return bool(alts) and not self._party_ready(state)
-        if not self._followed:
-            # Invite only. Leader in the room is not a wait — still hunt / `d`.
-            return bool(self._got_invite)
-        return self._wants_back() and not self._ranked
+        if self._with_leader(state) or self._followed or state.following:
+            return bool(self._rank_cmd(state))
+        return modules.follow_pending(self._party_facts(state))
+
+    def _joining_leader(self, state: WorldState) -> bool:
+        """Invite in flight — do not `d` the pit while `follow` is still landing."""
+        if self._leading() or self._with_leader(state):
+            return False
+        self._refresh_follow_sent(state)
+        return modules.follow_pending(self._party_facts(state))
 
     def _party(self, state: WorldState, send) -> bool:
         if not self.leader:
             return False
         self._sync_party(state)
-        now = time.monotonic()
         if self._leading():
             if not self._ready_to_hunt(state):
+                return False
+            if self._rally_party(state, send):
+                return True
+            if not self._gathering_party(state):
                 return False
             alts = self._alts_here(state)
             if not alts:
                 return False
-            if any(self._mine(n, state) for n in state.followers):
-                return False
-            if self._invited and (not self._party_at or now - self._party_at < 15):
-                return False
-            self._invited = True
-            self._party_at = now
-            extras = self._aka | state.self_names
-            who = paths.party_name(alts[0], extras) or alts[0]
-            self._cmd(send, f"invite {who}", state)
-            return True
+            for raw in alts:
+                if self._send_invite(raw, state, send):
+                    return True
+            return False
         # At the manhole, don't re-follow while the leader is stocking/diving.
         if (
             self._needs_sewer_torch()
@@ -3595,28 +5061,64 @@ class Brain:
             and not self._leads_sewer_loop()
         ):
             return False
-        if self._followed and (self._ranked or not self._wants_back()):
-            return False
-        if not self._followed:
+        if not state.following:
             # Invite only — leader in the room is not a join.
-            if not self.auto_join:
-                return False
+            # `_followed` without `state.following` is a leftover flag.
             if self._rescue or state.ally_mortal:
                 return False
-            if not self._got_invite:
-                return False
-            if self._party_at and now - self._party_at < 6:
-                return False
-            self._party_at = now
-            self._cmd(send, f"follow {self.leader}", state)
-            return True
-        if self._wants_back() and not self._ranked:
-            self._ranked = True
-            self._party_at = now
-            self._cmd(send, BACKRANK_CMD, state)
+            self._refresh_follow_sent(state)
+            facts = self._party_facts(state)
+            offer = modules.join_action(facts)
+            if offer:
+                self._followed = False
+                self._note_follow_sent(offer.name)
+                self._cmd(send, offer.command, state)
+                return True
+            if modules.follow_pending(facts):
+                who = (self._follow_sent_to or self.leader or "leader").strip()
+                self.next_action = f"follow {who}"
+                return True
+            return False
+        cmd = self._rank_cmd(state)
+        if cmd:
+            self._note_rank_sent(cmd, state)
+            self._cmd(send, cmd, state)
             self._maybe_party_hunt(state)
             return True
         return False
+
+    def _cast_room_light(self, state: WorldState, send) -> bool:
+        """Lighting module: `cast starlight` when the class knows a room-light spell."""
+        facts = self._player_facts(state)
+        offer = modules.light_action(facts)
+        if offer is None:
+            return False
+        if offer.ask:
+            if (
+                not facts.in_combat
+                and not self._spell_offer
+                and not self._want_spell
+                and not self._train_hold
+            ):
+                declined = self._declined_at.get(offer.name)
+                if declined is None or (state.level is not None and state.level > declined):
+                    self._spell_offer = offer.name
+                    self._spell_offer_at = state.level or 0
+            return False
+        if not self._spell_ready() or not self._have_mana(spells.cost(offer.name), state):
+            state.dark = False
+            return True
+        if state.level is not None and not spells.can_cast(offer.name, state.level):
+            return False
+        self._last_cast = f"light:{offer.name}"
+        self._cast_at = time.monotonic()
+        self._cmd(send, offer.command, state)
+        self._remember(offer.name)
+        self._torch_lit = True
+        state.torch_lit = True
+        state.dark = False
+        self.next_action = "light"
+        return True
 
     def _fix_dark(self, state: WorldState, send) -> bool:
         """Humans (and anyone without night vision) need a lit torch in dark."""
@@ -3624,6 +5126,15 @@ class Brain:
             return False
         if not state.dark:
             return False
+        spell_light = bool(modules.known_room_light(self.klass, self._memorized))
+        if spell_light and self._torch_lit:
+            self._torch_lit = False
+            state.torch_lit = False
+        if self._cast_room_light(state, send):
+            return True
+        if spell_light:
+            state.dark = False
+            return True
         self._sync_torch_est(state)
         self._note_torch_light(state)
 
@@ -3634,19 +5145,24 @@ class Brain:
             if self._torch_est > 0:
                 self._torch_est -= 1
 
-        # If Matt is running on his last torch (dark persists after we try),
-        # allow switching leadership to klymacks in the pinch.
-        # We only arm this for the configured human and only after the first
-        # torch attempt failed (`_tried_torch` is already True).
-        if self._tried_torch and self._torch_est <= 1:
-            if self._me("matt"):
-                self.leader = "klymacks"
-            if self._me("klymacks"):
-                self.leader = "klymacks"
+        # Low torches in the dark: night-vision toon leads; torch-needy defers.
+        pinch = modules.dark_pinch_leader(
+            self.me,
+            self.race,
+            self.klass,
+            default_leader=self._default_leader,
+            alts=set(self._aka) | set(self._alts_here(state)),
+            torch_est=self._torch_est,
+            tried_torch=self._tried_torch,
+        )
+        if pinch:
+            self.leader = pinch
         # Restore default leader when we come out of the dark sewer.
-        if not paths.at_sewer(state.room):
-            if self.leader != self._default_leader:
-                self.leader = self._default_leader
+        self.leader = modules.restore_default_leader(
+            state.room,
+            current=self.leader,
+            default_leader=self._default_leader,
+        )
 
         if not self._tried_torch:
             self._tried_torch = True
@@ -3657,6 +5173,10 @@ class Brain:
             self.next_action = "light"
             return True
         # Still dark after lighting — restock at the local general store.
+        if self._with_leader(state):
+            state.dark = False
+            self.next_action = "light"
+            return True
         self._tried_torch = False
         self._torch_bag_ready = False
         self._sewer_stocked = False
@@ -3686,6 +5206,7 @@ class Brain:
             state.exits,
             last_step=self._last_step,
             silver_east=self._store_silver_east,
+            skiff_i=self._skiff_ts,
         )
         if step:
             self._sitting = False
@@ -3694,6 +5215,23 @@ class Brain:
             self.next_action = "torch"
             return True
         return False
+
+    def _note_skiff_ts(self, room: str) -> None:
+        """Reset the Pier → TS count at the square or back in Newhaven."""
+        low = (room or "").lower()
+        if "town square" in low or low == "fountain":
+            self._skiff_ts = 0
+            return
+        if modules.in_newhaven(low):
+            self._skiff_ts = 0
+            return
+        if self._skiff_ts >= len(paths.SKIFF_TO_SQUARE):
+            self._skiff_ts = 0
+
+    def _advance_skiff_ts(self, room: str, step: str) -> None:
+        nxt = paths.step_skiff_to_square(room, None, skiff_i=self._skiff_ts)
+        if nxt and step == nxt:
+            self._skiff_ts += 1
 
     def _note_store_progress(self, room: str) -> None:
         """Count mid-Silver tiles after Western End (titles repeat)."""
@@ -3731,8 +5269,9 @@ class Brain:
     def _stock_torch_before_sewer(self, state: WorldState, send) -> bool:
         """TS loop: bag check → shop if needed → return → `i` → light → dive.
 
-        Example: human matt leading the sewer grind. Ninjas (klymacks) skip —
-        they can see. Followers skip — the leader owns the surface check.
+        Example: human matt leading the sewer grind. Night-vision races
+        (Gaunt, dark-elf, …) skip — they can see. Followers skip — the
+        leader owns the surface check.
         """
         if not self._needs_sewer_torch() or not self._leads_sewer_loop():
             return False
@@ -3787,6 +5326,7 @@ class Brain:
                     state.exits,
                     last_step=self._last_step,
                     silver_east=self._store_silver_east,
+                    skiff_i=self._skiff_ts,
                 )
                 # From TS the store is east — never wander temple (west).
                 if step == "w":
@@ -3855,6 +5395,7 @@ class Brain:
             state.exits,
             last_step=self._last_step,
             silver_east=self._store_silver_east,
+            skiff_i=self._skiff_ts,
         )
         if step and self._go(send, step, state):
             self._mark_store_east(state.room, step)
@@ -3868,19 +5409,20 @@ class Brain:
         if state.scanned or self._busy_swing(state):
             self.next_action = "camping"
             return
-        now = time.monotonic()
-        if now - self._sent_at >= LOOK_GAP:
+        if state.look_scan:
+            self.next_action = "camping"
+            return
+        # Wait for the timed short look; only look after LOOK_GAP if stuck.
+        if time.monotonic() - self._sent_at >= LOOK_GAP:
             state.look_scan = True
             state.saw_here = False
             state.saw_see = False
             self._cmd(send, "look", state)
-            self.next_action = "camping"
-            return
         self.next_action = "camping"
 
     def _sewer_loop(self, state: WorldState, send) -> bool:
         """Follow the klymacks/Winterhawk sewer tape when the room is clear."""
-        if not paths.at_sewer(state.room):
+        if not modules.at_sewer(state.room):
             return False
         if self._followed or self._lops_here(state) or state.in_combat:
             return False
@@ -3912,7 +5454,7 @@ class Brain:
         """East/west ping-pong on the grass. Never n/s into crypts."""
         if self.hunt_run.loop != "graveyard":
             return False
-        if not (paths.at_graveyard(state.room) or paths.at_crypt(state.room)):
+        if not (modules.at_graveyard(state.room) or paths.at_crypt(state.room)):
             return False
         if self._followed or self._lops_here(state) or state.in_combat:
             return False
@@ -3959,12 +5501,42 @@ class Brain:
         """Stay on the current fight, or open on a listed farm mob.
 
         Listing is arrive / Also here / a monster swing — not our echo.
+        While following, the leader's fight is the source of truth.
         """
+        if self._with_leader(state):
+            return self._follow_aim(state)
         if self._attacking:
             held = _still_here(state, self._attacking)
             if held:
                 return held
         return _trusted_live(state)
+
+    def _follow_aim(self, state: WorldState) -> str | None:
+        """Attack what the leader attacks. Hunt must not pick another lop."""
+        lead = _still_here(state, state.ally_aim) if state.ally_aim else None
+        if lead:
+            return lead
+        if self._attacking:
+            held = _still_here(state, self._attacking)
+            if held:
+                return held
+        if state.aggro:
+            hit = _still_here(state, state.aggro)
+            if hit:
+                return hit
+        species = _farm_species(state)
+        if len(species) == 1:
+            return _trusted_live(state) or modules.farm_here(state.mobs)
+        return None
+
+    def _hunt_live(self, state: WorldState) -> str | None:
+        """Swing target for hunt. Following does not fall back to the first lop."""
+        live = self._aim(state)
+        if live:
+            return live
+        if self._with_leader(state):
+            return None
+        return modules.farm_here(state.mobs)
 
     def _opening(self, state: WorldState) -> bool:
         return self._ninja() and not state.in_combat and (
@@ -3994,12 +5566,10 @@ class Brain:
             state.last_kill = ""
             if self._own_ambush(state) and not self._in_pit(state):
                 self._need_break = True
-            empty = not paths.lop_in(state.mobs) and not paths.coins_in(state.things)
             if self._in_pit(state) and not paths.coins_in(state.things):
-                # Next spawn prints itself. A look after Off lets it swing first.
+                # Next spawn prints itself. Do not look-spam after Off.
                 self._want_look = False
-            elif empty and not state.scanned:
-                self._want_look = True
+            # Empty road/pit: wait for the room tick or arrive — not look.
         elif self._attacking and not self._opening(state):
             if not _still_here(state, self._attacking):
                 if not state.in_combat or _trusted_live(state):
@@ -4007,10 +5577,7 @@ class Brain:
         if state.needs_scan:
             state.needs_scan = False
             self._attacking = ""
-            if not paths.lop_in(state.mobs) and not paths.coins_in(state.things):
-                if not state.scanned and not self._busy_swing(state):
-                    if not self._in_pit(state):
-                        self._want_look = True
+            # Arrive / Also here / tick will list the next lop.
         if state.scanned:
             self._want_look = False
         if self._busy_swing(state):
@@ -4054,10 +5621,14 @@ class Brain:
             held = aim.lower()
             self._attacking = held
         if held and not paths.same_mob(held, aim):
-            if self._try_harm(state, send, paths.attack_name(held)):
+            if self._with_leader(state):
+                self._attacking = ""
+                held = ""
+            else:
+                if self._try_harm(state, send, modules.attack_name(held)):
+                    return True
+                self.next_action = f"fighting {held}"
                 return True
-            self.next_action = f"fighting {held}"
-            return True
         if held and paths.same_mob(held, aim) and not self._opening(state):
             if self._need_swing:
                 # `get` cancelled auto-combat. Same species is a new swing.
@@ -4085,6 +5656,8 @@ class Brain:
 
     def _pick_coins(self, state: WorldState, send) -> bool:
         """Swoop coins as soon as they hit the ground. `get` breaks auto-combat."""
+        if self._snatching_pile(state):
+            return False
         if state.mortal:
             return False
         if state.prompt_seq < self._wait_prompt:
@@ -4108,7 +5681,7 @@ class Brain:
             return
         if self._fix_dark(state, send):
             return
-        if self._walk_store(state, send):
+        if not self._with_leader(state) and self._walk_store(state, send):
             return
         # Pick up the party at TS before torch stock / manhole.
         if self._party(state, send):
@@ -4127,6 +5700,11 @@ class Brain:
             return
         if self._try_heal(state, send):
             return
+        if self._try_party_mana_rest(state, send):
+            return
+        if self._holding_party_heal(state):
+            self.next_action = "heal"
+            return
         if self._holding_sneak(state) and not self._lops_here(state):
             self.next_action = "ambush"
             return
@@ -4143,15 +5721,15 @@ class Brain:
             return
         if self._party_sneak(state, send):
             return
-        if self._party_pending(state) and not self._can_drop_arena(state):
-            live_wait = self._aim(state) or paths.lop_in(state.mobs)
+        if self._party_pending(state):
+            live_wait = self._hunt_live(state)
             if not (self._followed and live_wait):
                 self.next_action = "party"
                 return
         if self._panic_until and time.monotonic() < self._panic_until:
             self.next_action = "panic"
             return
-        live = self._aim(state) or paths.lop_in(state.mobs)
+        live = self._hunt_live(state)
         if self._should_leave_to_sneak(state):
             self._travel(send, "u", state)
             return
@@ -4161,13 +5739,18 @@ class Brain:
         if live and not self._opens_swing(state):
             self.next_action = "aa off"
             return
-        if self._need_look(state):
-            if state.look_scan:
+        if state.look_scan:
+            # In-flight room tick / title — never pile another look. Known farm
+            # walks (Secret Passage, Skali) still move; empty unknown waits.
+            if not live and not self._farm_step(state):
                 self.next_action = "looking"
                 return
+        elif self._need_look(state):
             self._want_look = False
             if self._ask_look(send, state):
                 return
+        elif self._wait_room_tick(state, send):
+            return
         if self._inout() and self._ambush_out:
             self._ambush_out = False
             self._sneaking = False
@@ -4222,33 +5805,43 @@ class Brain:
         if self._go_train(state, send):
             return
         if self._in_pit(state):
-            leftover = self._aim(state) or paths.lop_in(state.mobs)
+            leftover = self._hunt_live(state)
             if leftover and self._opens_swing(state) and self._engage_lop(
                 state, send, leftover
             ):
                 return
-            if (
+            if not self._with_leader(state) and (
                 paths.wants_silvermere_farm(
                     state.level, state.room, state.arena_gated
                 )
-                and paths.in_newhaven(state.room)
+                and modules.in_newhaven(state.room)
                 and not self._lops_here(state)
             ):
                 step = self._farm_step(state)
                 if step and self._go(send, step, state):
                     return
             # Named hall that isn't the farm — walk out, do not look-sit.
-            if not paths.at_farm(state.room) and not paths.at_sewer(state.room):
+            if (
+                not self._with_leader(state)
+                and not modules.at_farm(state.room)
+                and not modules.at_sewer(state.room)
+            ):
                 step = self._farm_step(state)
                 if step and self._go(send, step, state):
                     return
             if state.look_scan:
                 self.next_action = "looking"
                 return
-            if not state.scanned or self._drop_scan:
-                if self._ask_look(send, state):
-                    return
+            if self._wait_room_tick(state, send):
+                return
+            if self._drop_scan and self._ask_look(send, state):
+                return
             if self._try_heal(state, send):
+                return
+            if self._try_party_mana_rest(state, send):
+                return
+            if self._holding_party_heal(state):
+                self.next_action = "heal"
                 return
             # Sewers: walk a clockwise pipe loop. Newhaven pit still camps.
             if self._sewer_loop(state, send):
@@ -4273,14 +5866,21 @@ class Brain:
                     self.next_action = "ambush"
                     return
                 # Guards / busy-fail: do not idle on sn. Fall through and walk.
-            # Full HP: wait for the next lop. Do not rest-camp or walk the healer.
-            if self._healed(state) and self._ready_to_hunt(state):
+            # Full HP: spell-weapon casters (Audrey) wait for the next lop —
+            # rest-camping for MA was a break/rest loop. Paladins still sit
+            # to refill bless mana.
+            if self._healed(state) and (
+                self._mana_ready(state) or self._spell_is_weapon()
+            ):
                 self.next_action = "waiting"
                 return
             if not self._sitting:
-                if not self._sit(send, state):
-                    self.next_action = "looking" if state.look_scan else "waiting"
+                if self._sit(send, state):
+                    self.mode = "rest"
+                    return
+                self.next_action = "looking" if state.look_scan else "waiting"
             else:
+                self.mode = "rest"
                 self.next_action = "healing" if not self._healed(state) else "waiting"
             return
         if (
@@ -4297,7 +5897,7 @@ class Brain:
                 return
             return
         if self._with_leader(state):
-            self.next_action = f"follow {self.leader}"
+            self.next_action = f"follow {state.following or self.leader or 'leader'}"
             return
         if not self._in_pit(state) and not self._ready_to_hunt(state):
             if self._try_heal(state, send):
@@ -4306,37 +5906,49 @@ class Brain:
             self._rest(state, send)
             return
         if state.blocked:
-            state.blocked = False
-            self._in_camp = True
-            if state.arena_gated or (
-                self._last_step == "d"
-                and paths.wants_silvermere_farm(
-                    state.level, state.room, state.arena_gated
-                )
-            ):
-                state.arena_gated = True
-                if "d" in state.exits:
-                    state.exits = [x for x in state.exits if x != "d"]
-                self._last_step = ""
-            elif self._last_step == "d" or not state.room or "road" in state.room.lower():
-                state.room = "Newhaven, Arena"
-                state.exits = [x for x in state.exits if x != "d"]
+            listed = [x.lower() for x in (state.exits or [])]
+            if "n" in listed and paths.gy_gate_never_south(state.room, None):
+                # Bash already opened the latch. Walk n; do not look-fail it shut.
+                state.blocked = False
             else:
-                dead = self.compass.pending or self._last_step
-                if dead in state.exits:
-                    state.exits = [x for x in state.exits if x != dead]
-                self._last_step = ""
-                if self.compass.pending:
-                    self.compass._fail()
-                self.next_action = "looking"
-                if not self._busy_swing(state):
-                    self._cmd(send, "look", state)
-                return
+                state.blocked = False
+                self._in_camp = True
+                if state.arena_gated or (
+                    self._last_step == "d"
+                    and paths.wants_silvermere_farm(
+                        state.level, state.room, state.arena_gated
+                    )
+                ):
+                    state.arena_gated = True
+                    if "d" in state.exits:
+                        state.exits = [x for x in state.exits if x != "d"]
+                    self._last_step = ""
+                elif self._last_step == "d" or not state.room or "road" in state.room.lower():
+                    state.room = "Newhaven, Arena"
+                    state.exits = [x for x in state.exits if x != "d"]
+                else:
+                    dead = self.compass.pending or self._last_step
+                    if paths.is_unlatch_step(dead):
+                        dead = paths.unlatch_dir_short(dead) or dead
+                    if dead in state.exits:
+                        state.exits = [x for x in state.exits if x != dead]
+                    self._last_step = ""
+                    if self.compass.pending:
+                        self.compass._fail()
+                    self.next_action = "looking"
+                    if not self._busy_swing(state):
+                        self._cmd(send, "look", state)
+                    return
         if self._torch_shopping or self._torch_wait_inv:
             self.next_action = "torch"
             return
         if self._in_camp and paths.is_dangerous(state.room):
             if self._try_heal(state, send):
+                return
+            if self._holding_party_heal(state):
+                self.next_action = "heal"
+                return
+            if self._try_party_mana_rest(state, send):
                 return
             if self._sewer_loop(state, send):
                 return
@@ -4347,7 +5959,7 @@ class Brain:
         if self._in_camp:
             if self._walk_out(state, send):
                 return
-            if state.exits and not paths.at_farm(state.room):
+            if state.exits and not modules.at_farm(state.room):
                 self.next_action = "waiting"
                 return
             self._camp(state, send)

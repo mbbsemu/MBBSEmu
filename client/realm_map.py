@@ -127,9 +127,7 @@ SILVERMERE = {
         "e": "River Street",
     },
     "Docks": {
-        "e": "Intersection of Guild St. & River St.",
         "n": "Pier",
-        "s": "Intersection of Guild St. & River St.",
         "search down": "Pier",
     },
     "Pier": {
@@ -204,18 +202,23 @@ SILVERMERE = {
     "Bridge Street": {
         "n": "Intersection of River St. & Bridge St.",
     },
+    # Live: closed gate south + northeast. SW is a wall — never map it.
     "Bridge": {
         "ne": "Graveyard Entrance",
         "s": "Bridge Street",
-        "sw": "Bridge Street",
     },
     "River Street, Eastern End": {
         "w": "River Street",
     },
     "Graveyard Entrance": {
         "sw": "Bridge",
-        "w": "Bridge",
+        "w": "Shack",
         "e": "Graveyard",
+    },
+    # West of the GY gate. Rest is SW onto the creek bridge, never sit here.
+    "Shack": {
+        "sw": "Bridge",
+        "e": "Graveyard Entrance",
     },
     # Mid-grass tiles share this title; hunt ping-pongs e/w only.
     "Graveyard": {
@@ -239,9 +242,12 @@ _HOME_HINTS = _SILVERMERE_HOME + _NEWHAVEN_HOME
 
 
 def room_key(title: str) -> str:
-    """Dedup Newhaven, Arena / Newhaven Arena."""
+    """Dedup Newhaven, Arena / Newhaven Arena; Graveyard, Entry / Entrance."""
     cleaned = title.lower().replace(",", " ")
-    return " ".join(cleaned.split())
+    key = " ".join(cleaned.split())
+    if key == "graveyard entry":
+        return "graveyard entrance"
+    return key
 
 
 def reverse_dir(step: str) -> str:
@@ -254,6 +260,11 @@ def _mappable(title: str) -> bool:
         return False
     # Sign scrap like council" — never a room title.
     if '"' in raw:
+        return False
+    low = raw.lower()
+    if len(raw) < 4:
+        return False
+    if low.startswith(("this is", "this huge", "it is", "there is", "you are ")):
         return False
     if raw.endswith("St."):
         words = raw.split()
@@ -279,6 +290,10 @@ def _valid_edge_dest(dest: str) -> bool:
     key = room_key(dest)
     if not key or '"' in key or key.startswith("?"):
         return False
+    if len(key) < 4:
+        return False
+    if key.startswith(("this is", "this huge", "it is", "there is")):
+        return False
     return True
 
 
@@ -289,6 +304,9 @@ def _plausible_edge(src: str, _step: str, dest: str) -> bool:
     if src == "town square" and dest == "silver street eastern end":
         return False
     if src == "river street" and dest == "graveyard entrance":
+        return False
+    # Live dump once sent gate `w` to the creek. West is the shack; SW is the bridge.
+    if src == "graveyard entrance" and dest == "bridge" and _step == "w":
         return False
     # Live: Bridge Street `n` is the River/Bridge gate, not the creek.
     if src == "bridge street" and dest in {"bridge", "graveyard entrance"}:
@@ -312,6 +330,13 @@ def _plausible_edge(src: str, _step: str, dest: str) -> bool:
         return False
     # Live dump once sent Northern End `e` to River Street. The guild is that east door.
     if src == "guild street northern end" and dest == "river street" and _step == "e":
+        return False
+    # Pier → TS is 3s 6e 10s. Docks is not a one-step shortcut onto Guild/River.
+    if src == "docks" and dest == "intersection of guild st. & river st.":
+        return False
+    if src == "pier" and dest == "intersection of guild st. & river st.":
+        return False
+    if src == "docks" and dest.startswith("guild street"):
         return False
     return True
 

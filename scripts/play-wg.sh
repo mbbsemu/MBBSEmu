@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# VGA 80×30 xterm → Win11 Worldgroup (not MBBSEmu).
-# Usage: play-wg.sh [klymacks|matt|new] [-- extra bbs_client args]
+# VGA 80x30 xterm → Win11 Worldgroup (not MBBSEmu).
+# Usage: play-wg.sh [profile|new|maint] [-- extra bbs_client args]
+# maint = sysop/klymacks BBS login only (USERCOPY, ANSI, FSE). Does not press M.
+# Hunt/kit: AUTO_PLAY_PROFILES in modules.party get --auto-play; others --no-auto-play (F7).
+# --no-auto is BBS login, not hunt. Extra args after the profile override.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 CLIENT="$ROOT/scripts/bbs_client.py"
+ROSTER="$ROOT/scripts/wg_roster.py"
 HOST="${WG_HOST:-192.168.122.33}"
 PORT="${WG_PORT:-23}"
 PROFILE="${WG_PROFILE:-klymacks}"
@@ -15,31 +19,82 @@ if [[ $# -gt 0 && "$1" != -* ]]; then
 fi
 EXTRA=("$@")
 
+wmclass="FinnsRealmWG${PROFILE}"
+CFG=""
+FINNS_DESKTOP="finns-realm-${PROFILE}"
 case "$PROFILE" in
   klymacks|sysop)
     CFG="$ROOT/config/wg-local.json"
-    title="Finn's Realm NT — klymacks"
-    wmclass="FinnsRealmWGKlymacks"
-    ;;
-  matt)
-    CFG="$ROOT/config/wg-matt.json"
-    title="Finn's Realm NT — matt"
-    wmclass="FinnsRealmWGMatt"
+    wmclass="FinnsRealmWGklymacks"
+    FINNS_DESKTOP="finns-realm-klymacks"
     ;;
   new)
     CFG="$ROOT/config/wg-new.json"
-    title="Finn's Realm NT — new"
     wmclass="FinnsRealmWGNew"
-    EXTRA=(--no-auto "${EXTRA[@]}")
+    FINNS_DESKTOP="finns-realm-new"
+    ;;
+  maint|bbs)
+    CFG="$ROOT/config/wg-local.json"
+    wmclass="FinnsRealmWGBBS"
+    FINNS_DESKTOP="finns-realm-bbs"
     ;;
   *)
-    echo "Usage: $0 [klymacks|matt|new]"
-    exit 1
+    CFG="$ROOT/config/wg-${PROFILE}.json"
+    ;;
+esac
+
+case "$PROFILE" in
+  new)
+    EXTRA=(--no-auto --no-auto-play "${EXTRA[@]}")
+    ;;
+  maint|bbs)
+    EXTRA=(--bbs --no-auto-play "${EXTRA[@]}")
+    ;;
+  *)
+    if python3 "$ROSTER" auto-play "$PROFILE"; then
+      EXTRA=(--auto-play "${EXTRA[@]}")
+    else
+      EXTRA=(--no-auto-play "${EXTRA[@]}")
+    fi
+    ;;
+esac
+export FINNS_DESKTOP
+
+_title_from_cfg() {
+  python3 -c '
+import json, sys
+p = json.load(open(sys.argv[1]))
+u = str(p.get("username") or "").strip()
+g = str(p.get("given") or "").strip()
+if u.lower() in {"klymacks", "sysop"} or g.lower() == "klymacks":
+    print("klymacks")
+elif g:
+    print(g[:1].upper() + g[1:] if len(g) > 1 else g.upper())
+elif u:
+    print(u[:1].upper() + u[1:])
+else:
+    print("new")
+' "$1"
+}
+
+case "$PROFILE" in
+  new)
+    title="Finn's Realm — new"
+    ;;
+  maint|bbs)
+    title="Finn's Realm BBS — klymacks"
+    ;;
+  *)
+    if [[ -f "$CFG" ]]; then
+      title="Finn's Realm — $(_title_from_cfg "$CFG")"
+    else
+      title="Finn's Realm — ${PROFILE}"
+    fi
     ;;
 esac
 
 if [[ ! -f "$CFG" ]]; then
-  echo "Missing $CFG (gitignored Worldgroup login)."
+  echo "Missing $CFG (gitignored Worldgroup login). Run ./scripts/install-wg-shortcuts.sh"
   exit 1
 fi
 if ! command -v python3 >/dev/null 2>&1; then
@@ -51,32 +106,9 @@ export PYTHONPATH="$ROOT${PYTHONPATH:+:$PYTHONPATH}"
 export DISPLAY="${DISPLAY:-:0}"
 client=(python3 "$CLIENT" --config "$CFG" "$HOST" "$PORT" "${EXTRA[@]}")
 
-face='monospace'
-size=16
-if fc-list 'Px IBM VGA8' family 2>/dev/null | grep -q 'Px IBM VGA8'; then
-  face='Px IBM VGA8'
-  size=18
-fi
-
-echo "Opening $title. Click that window."
+echo "Opening $title. Click that window (80x30, size locked)."
 if [[ -x /usr/bin/xterm ]]; then
-  exec xterm +aw +sb \
-    -class "$wmclass" \
-    -geometry 80x30 \
-    -tn xterm-256color \
-    -bg '#0b0e0c' -fg '#c8d2c8' -cr '#3dff9a' \
-    -fa "$face" -fs "$size" \
-    -b 12 \
-    -title "$title" \
-    -n "$title" \
-    -xrm 'XTerm*scrollBar: false' \
-    -xrm 'XTerm*selectToClipboard: true' \
-    -xrm 'XTerm*cursorBlink: true' \
-    -xrm 'XTerm*cursorOnTime: 480' \
-    -xrm 'XTerm*cursorOffTime: 280' \
-    -xrm 'XTerm*XftAntialias: false' \
-    -xrm 'XTerm.VT100.translations: #override <Key>F11: string(0x1b) string("[23~")\\n<Key>F12: string(0x1b) string("[24~")' \
-    -e "${client[@]}"
+  exec "$ROOT/scripts/xterm-vga.sh" "$title" "$wmclass" -- "${client[@]}"
 fi
 if command -v konsole >/dev/null 2>&1; then
   exec konsole --hide-menubar --hide-tabbar --geometry 720x640 \

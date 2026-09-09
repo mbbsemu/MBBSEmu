@@ -21,6 +21,7 @@ GOALS = (
     "spells",
     "guild",
     "healer",
+    "bank",
 )
 
 # `goto ts` on the client bar — walk here, then stop. Not a hunt loop.
@@ -57,6 +58,14 @@ _LANDMARK_ALIAS = {
     "sewers": "sewer",
     "manhole": "sewer",
     "pipes": "sewer",
+    "rest": "restpark",
+    "park": "restpark",
+    "restpark": "restpark",
+    "gybridge": "restpark",
+    "gy-bridge": "restpark",
+    "bank": "bank",
+    "godfrey": "bank",
+    "deposit": "bank",
 }
 
 _LANDMARK_TAG = {
@@ -69,6 +78,8 @@ _LANDMARK_TAG = {
     "guild": "guild",
     "healer": "healer",
     "sewer": "sewer",
+    "restpark": "rest",
+    "bank": "bank",
 }
 
 
@@ -82,8 +93,9 @@ def parse_landmark(text: str) -> str | None:
 
 def list_landmarks() -> str:
     return (
-        "goto/run: ts, gy, store, weapons, armour, spells, guild, healer, sewer, pile  "
-        "(guild/train/trainer is class-specific; run skips fights)"
+        "goto/run: ts, gy, rest, bank, store, weapons, armour, spells, guild, healer, sewer, pile  "
+        "(bank is Godfrey west of TS then south — deposits the purse; "
+        "rest parks on the creek bridge SW of the GY gate; guild/train is class-specific; run skips fights)"
     )
 
 
@@ -143,6 +155,7 @@ _pin(
     spells="w",
     guild="n",
     healer="w",
+    bank="w",
 )
 _pin(
     "Fountain",
@@ -155,6 +168,7 @@ _pin(
     spells="w",
     guild="n",
     healer="w",
+    bank="w",
 )
 _pin(
     "Guild Street, Southern End",
@@ -344,22 +358,39 @@ _pin(
     spells="w",
     guild="e",
     healer="w",
+    bank="s",
 )
+_pin("Bank of Godfrey", **_out("n", bank=None))
 _pin("Skali's Fine Armour, Front Room", **_out("s", armour=None))
 _pin("Skali's Fine Armour, Showroom", **_out("s", armour="s"))
 _pin("Skali's Fine Armour, Back Room", **_out("s", armour="s"))
 _pin("Sentara's Clothing, Front Room", **_out("s"))
+# Farm stays on grass (`e`). Town leave / rest: SW onto the creek bridge.
 _pin(
     "Graveyard Entrance",
     farm="e",
     graveyard=None,
-    square="w",
-    store="w",
-    weapons="w",
-    armour="w",
-    spells="w",
-    guild="w",
-    healer="w",
+    square="sw",
+    store="sw",
+    weapons="sw",
+    armour="sw",
+    spells="sw",
+    guild="sw",
+    healer="sw",
+    bank="sw",
+)
+_pin(
+    "Shack",
+    farm="e",
+    graveyard="e",
+    square="sw",
+    store="sw",
+    weapons="sw",
+    armour="sw",
+    spells="sw",
+    guild="sw",
+    healer="sw",
+    bank="sw",
 )
 _pin(
     "Sovereign Street, Northern End",
@@ -387,15 +418,25 @@ _pin(
 )
 _pin("Temple Spell Store", **_out("n", spells=None))
 _pin("Temple Healer", **_out("s", healer=None))
+_pin("Halls of the Dead", **_out("e"))
+_pin("The Halls of the Dead", **_out("e"))
 _pin(
     "Newhaven, Village Entrance",
-    square="w",
+    square="se",
     store="w",
     weapons="n",
     armour="s",
     spells="w",
     guild="w",
     healer="w",
+)
+_pin(
+    "Newhaven, Forest Path",
+    square="s",
+)
+_pin(
+    "Newhaven, Docks",
+    square="borrow skiff",
 )
 _pin("Newhaven, Weapon Shop", **_out("s", weapons=None))
 _pin("Newhaven, Nathaniel", **_out("s", weapons=None))
@@ -431,9 +472,7 @@ _pin(
 )
 _pin(
     "Newhaven, Narrow Path",
-    farm="w",
-    graveyard="w",
-    square="w",
+    square="e",
     store="s",
     weapons="e",
     armour="e",
@@ -442,10 +481,21 @@ _pin(
     healer="w",
 )
 
+
+def _fill_bank_pins() -> None:
+    """Bank is west of TS then south. Everyone else walks like square first."""
+    for row in _PIN.values():
+        if "bank" in row:
+            continue
+        row["bank"] = row.get("square")
+
+
+_fill_bank_pins()
+
 _GOAL_TITLES = {
     "square": ("Town Square", "Fountain"),
     "store": ("General Store", "Newhaven, General Store"),
-    "graveyard": ("Graveyard Entrance", "Graveyard", "Graveyard Bridge"),
+    "graveyard": ("Graveyard Entrance", "Graveyard"),
     "farm": (),
     "weapons": ("Helfgrim's Blades", "Newhaven, Weapon Shop", "Newhaven, Nathaniel"),
     "armour": (
@@ -461,6 +511,7 @@ _GOAL_TITLES = {
         "Ninja Training Room",
     ),
     "healer": ("Newhaven, Healer", "Temple Healer"),
+    "bank": ("Bank of Godfrey",),
 }
 
 
@@ -495,13 +546,15 @@ def _open(
     exits: list[str] | None,
     closed: list[str] | None = None,
     klass: str = "",
+    *,
+    room: str = "",
 ) -> str | None:
     if not step:
         return None
     if paths.is_special_step(step):
         return step
     if closed and step in closed:
-        return paths.unlatch_dir(step, klass)
+        return paths.unlatch_dir(step, klass, room=room)
     if exits and step not in exits:
         return None
     return step
@@ -513,12 +566,13 @@ def _gy_north(
     closed: list[str] | None,
     klass: str,
 ) -> str:
-    """GY is north. Closed latch: bash/pick until the look lists north, then walk n."""
-    if closed and "n" in closed:
-        return paths.unlatch_dir("n", klass)
+    """GY is north. Unlatch, look, walk n once Obvious exits lists it.
+
+    Ninja/thief pick; others bash. Do not unlatch an already-listed north.
+    """
     if "n" in (exits or []):
         return "n"
-    return paths.unlatch_dir("n", klass)
+    return paths.unlatch_dir("n", klass, room=room)
 
 
 def _reject_gy_south(
@@ -538,6 +592,18 @@ def _reject_gy_south(
     return _gy_north(room, exits, closed, klass)
 
 
+def _reject_rest_park_sw(
+    room: str, step: str | None, exits: list[str] | None = None
+) -> bool:
+    """Reject inventing SW from the creek when it is not a listed exit (wall)."""
+    if not step or not paths.at_rest_park(room):
+        return False
+    if (step or "").strip().lower() != "sw":
+        return False
+    listed = [x.lower() for x in (exits or [])]
+    return "sw" not in listed
+
+
 def _goal_here(
     room: str,
     goal: str,
@@ -547,6 +613,12 @@ def _goal_here(
     klass: str = "",
 ) -> bool:
     low = (room or "").lower()
+    if paths.in_afterlife(room):
+        if goal == "healer" and "healer" in low:
+            return True
+        return False
+    if goal == "restpark":
+        return paths.at_rest_park(room)
     if goal == "graveyard":
         return paths.at_graveyard(room) or paths.at_graveyard_gate(room)
     if goal == "farm":
@@ -567,6 +639,8 @@ def _goal_here(
         return paths.is_trainer(room, klass)
     if goal == "healer":
         return "healer" in low
+    if goal == "bank":
+        return paths.at_bank(room)
     if goal == "sewer":
         return paths.at_sewer(room)
     return False
@@ -662,12 +736,34 @@ class Map:
         *,
         last_step: str = "",
         silver_east: int = 0,
+        skiff_i: int = 0,
         level: int | None = None,
         gated: bool = False,
         closed: list[str] | None = None,
         klass: str = "",
     ) -> str | None:
         want = (goal or "farm").strip().lower()
+        seeking_rest = False
+        if want == "restpark":
+            if paths.at_rest_park(room):
+                return None
+            bridge = paths.gy_to_bridge_step(room)
+            if bridge:
+                return bridge
+            if paths.at_crypt(room):
+                hit = (
+                    _open("s", exits, closed, klass, room=room)
+                    or _open("n", exits, closed, klass, room=room)
+                    or _open("w", exits, closed, klass, room=room)
+                )
+                if hit:
+                    return hit
+            if paths.at_graveyard(room):
+                hit = _open("w", exits, closed, klass, room=room)
+                if hit:
+                    return hit
+            want = "graveyard"
+            seeking_rest = True
         if want == "sewer":
             if paths.at_sewer(room):
                 return None
@@ -678,8 +774,19 @@ class Map:
             want = "square"
         if want not in GOALS:
             want = "farm"
-        if _goal_here(room, want, level=level, gated=gated, klass=klass):
+        if not seeking_rest and _goal_here(
+            room, want, level=level, gated=gated, klass=klass
+        ):
             return None
+        skiff = paths.step_skiff_to_square(room, exits, skiff_i=skiff_i)
+        if skiff:
+            # Leftover Pier→TS `s` count must not yank GY back down Guild Street.
+            if not (
+                want in {"farm", "graveyard", "guild"}
+                and skiff == "s"
+                and "guild street" in (room or "").lower()
+            ):
+                return skiff
         if want == "guild":
             hit = paths.step_toward_trainer(room, exits, klass, level)
             if hit:
@@ -690,11 +797,46 @@ class Map:
             hit = _gy_north(room, exits, closed, klass)
             if hit:
                 return hit
+        # Creek bridge is rest-only. Hunt: NE back to grass. Town leave: listed
+        # s / closed s / listed sw only — never invent or farm-fallthrough.
+        if paths.at_rest_park(room):
+            if want in {"farm", "graveyard"}:
+                return _open("ne", exits, closed, klass, room=room)
+            if want != "restpark":
+                return paths.rest_park_to_town_step(
+                    room, exits, closed=closed, klass=klass
+                )
         pinned = _PIN.get(realm_map.room_key(room), {}).get(want, _MISSING)
         if pinned is not _MISSING:
-            hit = _open(pinned, exits, closed, klass)
-            if hit:
-                return _reject_gy_south(want, room, exits, closed, klass, hit)
+            hit = _open(pinned, exits, closed, klass, room=room)
+            # Creek leave toward town: listed s/sw or unlatch closed south.
+            if (
+                not hit
+                and paths.at_rest_park(room)
+                and want not in {"farm", "graveyard"}
+            ):
+                hit = paths.rest_park_to_town_step(
+                    room, exits, closed=closed, klass=klass
+                )
+            # Entry/Shack SW onto bridge for town leave (and rest, above).
+            # Farm/GY never takes that hidden SW — hunt stays on grass.
+            if (
+                not hit
+                and pinned
+                and paths.allows_hidden(room, str(pinned))
+                and not paths.farm_avoids_bridge(want, room, str(pinned))
+            ):
+                hit = str(pinned)
+            if hit and not _reject_rest_park_sw(room, hit, exits):
+                if paths.farm_avoids_bridge(want, room, hit):
+                    hit = None
+                else:
+                    return _reject_gy_south(want, room, exits, closed, klass, hit)
+            # On the creek with a town goal: only real town leave, no explore.
+            if paths.at_rest_park(room) and want not in {"farm", "graveyard"}:
+                return paths.rest_park_to_town_step(
+                    room, exits, closed=closed, klass=klass
+                )
             # GY gates: parser used to drop `closed gate north`, so the pin
             # vanished and we walked south onto Bridge Street in a loop.
             if (
@@ -702,13 +844,18 @@ class Map:
                 and pinned == "n"
                 and paths.gy_gate_never_south(room, exits)
             ):
-                return paths.unlatch_dir("n", klass)
+                return paths.unlatch_dir("n", klass, room=room)
             # Pin door is not here — same title, different tile. Learn live exits.
+        if paths.at_rest_park(room) and want not in {"farm", "graveyard", "restpark"}:
+            return paths.rest_park_to_town_step(
+                room, exits, closed=closed, klass=klass
+            )
         heading = _corridor_heading(room, want, last_step, exits)
         if heading is not None:
-            return _reject_gy_south(
-                want, room, exits, closed, klass, _open(heading, exits)
-            )
+            step = _open(heading, exits)
+            if step and paths.farm_avoids_bridge(want, room, step):
+                step = None
+            return _reject_gy_south(want, room, exits, closed, klass, step)
         if _is_side_shop(room) and not _goal_here(
             room, want, level=level, gated=gated, klass=klass
         ):
@@ -725,6 +872,8 @@ class Map:
             hit = paths.step_toward_farm(
                 room, exits, level, gated, last_step=last_step
             )
+            if hit and paths.farm_avoids_bridge(want, room, hit):
+                hit = None
             if hit:
                 return _reject_gy_south(want, room, exits, closed, klass, hit)
         elif want == "spells":
@@ -732,21 +881,63 @@ class Map:
             if hit:
                 return hit
         elif want == "square":
+            leave = paths.rest_park_to_town_step(
+                room, exits, closed=closed, klass=klass
+            )
+            if leave:
+                return leave
+            # From GY grass/entry: SW onto the bridge toward town (not farm e/n).
+            bridge = paths.gy_to_bridge_step(room)
+            if bridge and (
+                not exits
+                or bridge in exits
+                or paths.allows_hidden(room, bridge)
+            ):
+                return bridge
+            if paths.at_graveyard(room) and not paths.at_graveyard_gate(room):
+                hit = _open("w", exits)
+                if hit:
+                    return hit
             if "guild street" in (room or "").lower():
                 return _open("s", exits)
-            hit = paths.step_toward_farm(
-                room, exits, level, gated, last_step=last_step
-            )
-            if hit:
-                return hit
+            if paths.in_newhaven(room):
+                hit = paths.step_toward_silvermere(room, exits)
+                if hit:
+                    return hit
+            # Farm path walks *into* the GY from the creek bridge. Never use it
+            # as a TS fallback while still on the bridge / yard / crypt.
+            if not (
+                paths.at_rest_park(room)
+                or paths.at_graveyard(room)
+                or paths.at_crypt(room)
+            ):
+                hit = paths.step_toward_farm(
+                    room, exits, level, gated, last_step=last_step
+                )
+                if hit:
+                    return hit
         route = self._route(room, want, exits, klass=klass, level=level)
         if route:
-            return _reject_gy_south(want, room, exits, closed, klass, route[0])
+            nxt = route[0]
+            if paths.farm_avoids_bridge(want, room, nxt) or _reject_rest_park_sw(
+                room, nxt, exits
+            ):
+                nxt = None
+            return _reject_gy_south(want, room, exits, closed, klass, nxt)
         learn = self._explore(room, exits, last_step)
-        if learn:
+        if learn and not (
+            paths.farm_avoids_bridge(want, room, learn)
+            or _reject_rest_park_sw(room, learn, exits)
+        ):
             return _reject_gy_south(want, room, exits, closed, klass, learn)
+        dead = _dead_end(room, exits)
+        if dead and (
+            paths.farm_avoids_bridge(want, room, dead)
+            or _reject_rest_park_sw(room, dead, exits)
+        ):
+            dead = None
         return _reject_gy_south(
-            want, room, exits, closed, klass, _dead_end(room, exits)
+            want, room, exits, closed, klass, dead
         )
 
     def _explore(
@@ -783,11 +974,10 @@ class Map:
             titles = paths.trainer_titles(klass, room, level)
         if goal in {"farm", "graveyard"}:
             if paths.in_silvermere(room):
+                # Bridge / Graveyard Bridge are rest-only — never hunt destinations.
                 titles = [
                     "Graveyard Entrance",
                     "Graveyard",
-                    "Graveyard Bridge",
-                    "Bridge",
                 ]
             else:
                 titles = ["Newhaven, Arena"]
@@ -798,7 +988,8 @@ class Map:
                 and goal in {"farm", "graveyard"}
                 and tape == "s"
             ):
-                return [tape]
+                if not paths.farm_avoids_bridge(goal, room, tape):
+                    return [tape]
         for dest in titles:
             path = self.atlas.path(room, dest)
             if not path:
@@ -809,6 +1000,8 @@ class Map:
                 and goal in {"farm", "graveyard"}
                 and nxt == "s"
             ):
+                continue
+            if paths.farm_avoids_bridge(goal, room, nxt):
                 continue
             if (
                 exits
@@ -861,7 +1054,13 @@ class Map:
         goal = parse_landmark(want)
         if goal and goal != "_pile":
             return self.step(
-                goal, room, exits, last_step=last_step, level=level, gated=gated
+                goal,
+                room,
+                exits,
+                last_step=last_step,
+                skiff_i=0,
+                level=level,
+                gated=gated,
             )
         return None
 

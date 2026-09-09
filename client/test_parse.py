@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import time
 
-from .parse import events_from_payload, harvest_screen, parse_events, parse_line
+from .parse import (
+    events_from_payload,
+    harvest_screen,
+    keep_party_lf,
+    parse_events,
+    parse_line,
+)
 from .paths import (
     attack_name,
     at_sewer,
@@ -25,7 +31,18 @@ from .paths import (
     players_in,
     is_special_step,
     is_trainer,
+    needs_padded,
+    needs_torch,
+    needs_weapon,
+    uses_bash_aa,
+    in_afterlife,
+    is_naked,
+    is_coin_item,
+    coin_copper,
+    purse_copper,
+    at_bank,
     on_skiff_run,
+    sees_in_dark,
     watchful_room,
     sewer_loop_step,
     step_toward_arena,
@@ -68,8 +85,22 @@ def test_prompt_and_room() -> None:
     assert is_player("klymacks")
     assert is_player("sysop")
     assert is_player("Matt")
+    assert is_player("Kevin")
+    assert is_player("Audrey")
+    assert not is_player("Meia")
+    assert not is_player("Giovanni")
+    assert not is_player("Betram")
+    assert not is_player("Nathaniel")
+    assert not is_player("Rayth")
+    assert not is_player("Corwyn")
     assert not is_player("nasty acid slime")
     assert not is_player("nasty lashworm")
+    assert players_in(["Kevin", "Ryan", "Klymacks", "Meia"]) == [
+        "Kevin",
+        "Ryan",
+        "Klymacks",
+    ]
+    assert "Meia" in occupants_in(["Kevin", "Ryan", "Klymacks", "Meia"])
     dart = parse_line("The nasty lashworm darts forward and bites you for 4 damage!")
     assert dart and dart["kind"] == "combat"
     assert "lashworm" in str(dart.get("name")).lower()
@@ -80,6 +111,8 @@ def test_prompt_and_room() -> None:
     assert players_in(["klymacks", "a filthbug"]) == ["klymacks"]
     assert "a town guard" in occupants_in(["a town guard", "Matt"])
     assert occupants_in(["a large rat", "a town guard"]) == ["a town guard"]
+    assert "small guardsman" in occupants_in(["small guardsman"])
+    assert lop_in(["small guardsman"]) is None
     assert occupants_in(["You", "Matt"]) == ["Matt"]
     assert lop_in(["klymacks"]) is None
     assert lop_in(["fierce zombie"]) == "zombie"
@@ -87,6 +120,15 @@ def test_prompt_and_room() -> None:
     assert attack_name("fierce zombie") == "zombie"
     assert not is_player("fierce zombie")
     assert not is_given_name("Zombie")
+    # Live WG: prompt/SGR crumb glued onto the combat sentence before parse.
+    assert attack_name("37m/MA=16]:The zombie") == "zombie"
+    assert attack_name("/MA=16]:The zombie") == "zombie"
+    assert attack_name("[HP=84/MA=16]:The zombie") == "zombie"
+    assert attack_name("1;37m/MA=16]:zombie") == "zombie"
+    junk = parse_line("37m/MA=16]:The zombie swings at you with its arm!")
+    assert junk and junk["kind"] == "combat"
+    assert attack_name(str(junk.get("name"))) == "zombie"
+    assert lop_in([str(junk.get("name"))]) == "zombie"
     assert occupants_in(["Corwyn", "acid slime"]) == ["Corwyn"]
     assert occupants_in(["Coorwyn", "acid slime"]) == ["Coorwyn"]
     assert occupants_in(["acid slime"]) == []
@@ -271,6 +313,7 @@ def test_combat_and_shop() -> None:
     swing = parse_line("Klymacks moves to attack acid slime.")
     assert swing and swing["kind"] == "combat"
     assert swing.get("actor") == "Klymacks"
+    assert swing.get("aim") == "acid slime"
     assert "name" not in swing
     echo = WorldState()
     echo.apply(parse_line("Klymacks moves to attack nasty acid slime."))
@@ -278,11 +321,21 @@ def test_combat_and_shop() -> None:
     assert not lop_in(echo.mobs)
     matt = parse_line("Matt whaps acid slime for 8 damage!")
     assert matt and matt["kind"] == "combat" and matt.get("actor") == "Matt"
+    assert matt.get("aim") == "acid slime"
     assert "matt" not in str(matt.get("name")).lower()
     seen = WorldState()
     seen.apply(matt)
     assert "matt" in seen.self_names or seen.last_actor == "Matt"
     assert not seen.pvp_hit
+    lead = WorldState()
+    lead.following = "Matt"
+    lead.apply(parse_line("Matt moves to attack giant rat."))
+    assert lead.ally_aim == "giant rat"
+    assert not lop_in(lead.mobs)
+    lead.apply(parse_line("Matt whaps giant rat for 8 damage!"))
+    assert lead.ally_aim == "giant rat"
+    lead.apply(parse_line("The giant rat snaps at Matt with its teeth!"))
+    assert "rat" in lead.ally_aim.lower()
     sit = parse_line("Matt sits down and meditates.")
     assert sit and sit["kind"] == "rest" and sit.get("actor") == "Matt"
     assert parse_line("A nasty lashworm crawls into the room from nowhere.")["kind"] == "arrive"
@@ -306,13 +359,24 @@ def test_combat_and_shop() -> None:
     juice.apply(pool)
     assert juice.ma == 3 and juice.max_ma == 8
     assert juice.hp_label() == "HP 41/41  MA 3/8"
+    kai = parse_events("[HP=41/KA=8]:")
+    assert kai and kai[0]["kind"] == "prompt" and kai[0].get("ma") == 8
+    pool_kai = parse_line("Kai:       3/8")
+    assert pool_kai and pool_kai["kind"] == "mana" and pool_kai["ma"] == 3
+    assert parse_line("You do not have enough kai!")["kind"] == "cast_fail"
     assert parse_line("You do not have enough mana!")["kind"] == "cast_fail"
     asked = parse_line("Matt has invited you to follow Matt.")
     assert asked and asked["kind"] == "invited" and asked["name"] == "Matt"
     him = parse_line("Matt has invited you to follow him.")
     assert him and him["kind"] == "invited" and him["name"] == "Matt"
     entered = parse_line("Matt just entered the Realm.")
-    assert entered and entered["kind"] == "arrive" and entered["name"] == "Matt"
+    assert entered and entered["kind"] == "realm_enter" and entered["name"] == "Matt"
+    logged = parse_line("Sarah has entered the Realm.")
+    assert logged and logged["kind"] == "realm_enter" and logged["name"] == "Sarah"
+    login = WorldState()
+    login.apply(entered)
+    login.apply(logged)
+    assert login.mobs == []
     walked = parse_line("Klymacks just arrived from the north.")
     assert walked and walked["kind"] == "arrive" and walked["name"] == "Klymacks"
     below = parse_line("Klymacks just arrived from below.")
@@ -350,7 +414,38 @@ def test_combat_and_shop() -> None:
         pack.apply(ev)
     assert "Klymacks" in pack.followers
     assert parse_line("You must be invited first!")["kind"] == "party_fail"
+    miss = parse_line("You don't see Sarah here!")
+    assert miss and miss["kind"] == "not_here" and miss["name"] == "Sarah"
+    ghost = WorldState()
+    ghost.mobs = ["Sarah", "acid slime"]
+    ghost.apply(miss)
+    assert ghost.mobs == ["acid slime"]
+    assert ghost.not_here == "Sarah"
+    solo = parse_line("You are not in a party at the present time.")
+    assert solo and solo["kind"] == "left"
+    dropped = WorldState()
+    dropped.following = "Matt"
+    dropped.party_rank = "mid"
+    dropped.apply(solo)
+    assert dropped.following == ""
+    assert dropped.left_party
+    assert dropped.party_rank == ""
     assert parse_line("You have moved to the back ranks of your group.")["kind"] == "backrank"
+    they_back = parse_line("Ryan just moved to the back rank in your group.")
+    assert they_back and they_back["kind"] == "ranked"
+    assert they_back.get("name") == "Ryan" and they_back.get("row") == "back"
+    they_mid = parse_line("Klymacks just moved to the middle ranks of your group.")
+    assert they_mid and they_mid["kind"] == "ranked"
+    assert they_mid.get("name") == "Klymacks" and they_mid.get("row") == "mid"
+    grouped = WorldState()
+    grouped.apply(they_back)
+    assert "Ryan" in grouped.followers
+    assert grouped.party_rank == ""
+    assert not grouped.backrank
+    front = parse_line("You have moved to the front ranks of your group.")
+    assert front and front["kind"] == "rank" and front["row"] == "front"
+    mid = parse_line("You have moved to the middle ranks of your group.")
+    assert mid and mid["kind"] == "rank" and mid["row"] == "mid"
     gone = parse_line("The filthbug walks out to the north.")
     assert gone and gone["kind"] == "leave"
     assert parse_line("The nasty giant rat lunges at you!")["kind"] == "combat"
@@ -417,6 +512,12 @@ def test_combat_and_shop() -> None:
     flail = parse_line("The nasty acid slime flails at you!")
     assert flail and flail["kind"] == "combat"
     assert parse_line("There is no exit in that direction!")["kind"] == "cannot"
+    wall = parse_line("You ran into the wall to the southwest.")
+    assert wall and wall["kind"] == "cannot" and wall.get("dir") == "sw"
+    wall_st = WorldState()
+    wall_st.exits = ["ne"]
+    wall_st.apply(wall)
+    assert wall_st.blocked and wall_st.blocked_dir == "sw"
     drop = parse_line("12 copper drop to the ground.")
     assert drop and drop["kind"] == "drop" and drop["name"] == "copper"
     notice = parse_line("You notice 7 silver nobles, 19 copper farthings here.")
@@ -629,6 +730,64 @@ def test_combat_and_shop() -> None:
     assert miss.mobs == ["giant rat"]
 
 
+def test_join_call_say() -> None:
+    shout = parse_line('Matt says "!join"')
+    assert shout and shout["kind"] == "join_call" and str(shout.get("name")) == "Matt"
+    comma = parse_line('Matt says, "!join"')
+    assert comma and comma["kind"] == "join_call"
+    up = parse_line('Matt says "join up"')
+    assert up and up["kind"] == "join_call"
+    own = parse_line('You say "!join"')
+    assert own and own["kind"] == "join_call" and str(own.get("name")) == "You"
+    chatter = parse_line('Matt says "join the hunt"')
+    assert not chatter or chatter.get("kind") != "join_call"
+    heard = WorldState()
+    heard.in_combat = True
+    heard.apply(shout)
+    assert heard.join_call_by == "Matt"
+    assert "Matt" in heard.mobs
+    assert not heard.whiff
+    assert heard.in_combat
+    self_say = WorldState()
+    self_say.in_combat = True
+    self_say.apply(own)
+    assert not self_say.join_call_by
+    assert not self_say.whiff
+
+
+def test_party_rest_heal_tags() -> None:
+    rest = parse_line('Klymacks says "!rest"')
+    assert rest and rest["kind"] == "rest_call" and str(rest.get("name")) == "Klymacks"
+    comma = parse_line('Matt says, "!rest"')
+    assert comma and comma["kind"] == "rest_call"
+    rested = parse_line('Ryan says "!rested"')
+    assert rested and rested["kind"] == "rested" and str(rested.get("name")) == "Ryan"
+    assert parse_line('Matt says "!rested"').get("kind") != "rest_call"
+    heal = parse_line('Klymacks says "!heal"')
+    assert heal and heal["kind"] == "heal_ask"
+    healed = parse_line('Klymacks says "!healed"')
+    assert healed and healed["kind"] == "healed"
+    own_rest = parse_line('You say "!rest"')
+    assert own_rest and own_rest["kind"] == "rest_call" and str(own_rest.get("name")) == "You"
+    heard = WorldState()
+    heard.in_combat = True
+    heard.apply(rest)
+    assert heard.rest_call_by == "Klymacks"
+    heard.apply(rested)
+    assert heard.rested_acks["ryan"] == "Ryan"
+    heard.apply(heal)
+    assert "klymacks" in heard.heal_asks
+    heard.apply(healed)
+    assert heard.healed_acks["klymacks"] == "Klymacks"
+    assert "klymacks" not in heard.heal_asks
+    self_say = WorldState()
+    self_say.apply(own_rest)
+    assert not self_say.rest_call_by
+    own_healed = parse_line('You say "!healed"')
+    self_say.apply(own_healed)
+    assert not self_say.healed_acks
+
+
 def test_backspace_exits() -> None:
     t = Transcript()
     lines = t.feed(b"Obvious exits: nU\x08orth, eU\x08ast, wX\x08est, dE\x08own\r\n[HP=28]: ")
@@ -640,6 +799,7 @@ def test_backspace_exits() -> None:
     assert leave_dead_end("Newhaven, Healer", ["e"]) == "e"
     assert step_toward_arena("Newhaven, Village Entrance", ["n", "s", "w"]) == "w"
     assert step_toward_arena("Newhaven, Narrow Road", ["n", "e", "w", "d"]) == "d"
+    assert step_toward_arena("Newhaven, Guild", ["s"]) == "s"
     assert step_toward_arena("Newhaven, Narrow Road", ["u"]) is None
     assert step_toward_arena("Newhaven, Arena", ["u"]) is None
     assert step_toward_store("Newhaven, Narrow Road") == "e"
@@ -764,6 +924,22 @@ def test_mortal_aid_drag() -> None:
     assert self_hp.hp_label() == "HP -90/28"
     glued = parse_events("Matt is mortally wounded.You have aided Matt, Matt's wounds are now healing.")
     assert [ev["kind"] for ev in glued] == ["mortal", "aided"]
+    killed = WorldState()
+    killed.following = "Matt"
+    killed.bleeding = True
+    killed.mortal = True
+    killed.apply({"kind": "death"})
+    assert killed.just_died
+    assert killed.following == ""
+    assert killed.left_party
+    assert not killed.mortal
+    assert not killed.bleeding
+    ghost = WorldState()
+    ghost.room = "Temple Healer"
+    ghost.apply({"kind": "prompt", "hp": 0, "max_hp": None})
+    assert ghost.hp == 0
+    assert not ghost.mortal
+    assert not ghost.bleeding
 
 
 def test_train_and_level_forget_maxes() -> None:
@@ -818,18 +994,32 @@ def test_bless_lucky_and_wear_off() -> None:
     lucky = parse_line("You feel lucky!")
     assert lucky and lucky["kind"] == "buff"
     assert lucky.get("name") == "bless" and lucky.get("on") is True
+    assert lucky.get("self") is True
     cast = parse_line("You cast bless on Matt!")
     assert cast and cast["kind"] == "buff"
     assert cast.get("name") == "bless" and cast.get("on") is True
+    assert cast.get("target") == "Matt"
     off = parse_line("The effects of bless wear off!")
     assert off and off["kind"] == "buff"
     assert off.get("name") == "bless" and off.get("on") is False
     s = WorldState()
+    s.self_names.add("matt")
     s.apply(cast)
     s.apply(lucky)
     assert s.blessed
     s.apply(off)
     assert not s.blessed
+    other = WorldState()
+    other.self_names.add("matt")
+    hit = parse_line("You cast bless on klymacks!")
+    assert hit and hit.get("target") == "klymacks"
+    other.apply(hit)
+    assert not other.blessed
+    assert other.ally_has_bless("klymacks")
+    fade = parse_line("The effects of bless wear off of klymacks!")
+    assert fade and fade.get("target") == "klymacks"
+    other.apply(fade)
+    assert not other.ally_has_bless("klymacks")
     glued = parse_events("You cast bless on Matt!You feel lucky![HP=49/MA=8]:")
     assert any(e["kind"] == "buff" and e.get("on") for e in glued)
     assert glued[-1]["kind"] == "prompt" and glued[-1].get("ma") == 8
@@ -853,6 +1043,45 @@ def test_bless_lucky_and_wear_off() -> None:
     assert attack_name(str(flail.get("name"))) == "acid slime"
     ooze = parse_line("A acid slime oozes into the room from nowhere.")
     assert ooze and ooze["kind"] == "arrive" and "slime" in str(ooze.get("name")).lower()
+
+
+def test_owl_strong_willed_and_wear_off() -> None:
+    on = parse_line("You feel strong-willed!")
+    assert on and on["kind"] == "buff"
+    assert on.get("name") == "way of the owl" and on.get("on") is True
+    assert on.get("self") is True
+    spaced = parse_line("You feel strong willed!")
+    assert spaced and spaced.get("name") == "way of the owl" and spaced.get("on")
+    off = parse_line("The effects of way of the owl wear off!")
+    assert off and off["kind"] == "buff"
+    assert off.get("name") == "way of the owl" and off.get("on") is False
+    s = WorldState()
+    s.apply(on)
+    assert s.willed
+    assert not s.blessed
+    s.apply(off)
+    assert not s.willed
+    glued = parse_events("You feel strong-willed![HP=41/KA=8]:")
+    assert any(e["kind"] == "buff" and e.get("name") == "way of the owl" for e in glued)
+    assert glued[-1]["kind"] == "prompt" and glued[-1].get("ma") == 8
+
+
+def test_starlight_shimmer_and_fade() -> None:
+    on = parse_line("You are surrounded by a shimmering light!")
+    assert on == {"kind": "torch_lit"}
+    off = parse_line("Your starlight spell fades away.")
+    assert off == {"kind": "torch_out"}
+    s = WorldState()
+    s.apply({"kind": "dark"})
+    assert s.dark
+    s.apply(on)
+    assert s.torch_lit and not s.dark
+    s.apply(off)
+    assert not s.torch_lit
+    glued = parse_events("You are surrounded by a shimmering light![HP=22/MA=4]:")
+    assert any(e.get("kind") == "torch_lit" for e in glued)
+    dark = parse_line("It is pitch black.")
+    assert dark == {"kind": "dark"}
 
 
 def test_inventory_geared() -> None:
@@ -1019,6 +1248,103 @@ def test_already_worn_gloves() -> None:
     assert "padded gloves" in s.worn
 
 
+def test_night_vision_kit_rules() -> None:
+    assert sees_in_dark("gaunt one")
+    assert sees_in_dark("Gaunt")
+    assert sees_in_dark("dark-elf")
+    assert not sees_in_dark("human")
+    assert not sees_in_dark("halfling")
+    assert not needs_torch("gaunt one", "mystic")
+    assert not needs_torch("dark-elf", "ninja")
+    assert not needs_torch("goblin", "gypsy")
+    assert not needs_torch("elf", "bard")
+    assert not needs_torch("dwarf", "priest")
+    assert needs_torch("human", "mystic")
+    assert needs_torch("human", "paladin")
+    assert needs_torch("halfling", "thief")
+    assert needs_torch("half-ogre", "warrior")
+    assert needs_weapon("mystic")
+    assert needs_weapon("thief")
+    assert needs_weapon("mage")
+    assert needs_weapon("warlock")
+    assert not uses_bash_aa("mystic")
+    assert not uses_bash_aa("mystic", True)
+    assert not uses_bash_aa("ninja")
+    assert uses_bash_aa("")
+    assert uses_bash_aa("paladin")
+    assert uses_bash_aa("warrior", True)
+    assert not uses_bash_aa("warrior", False)
+    assert needs_padded("mage")
+    assert needs_padded("mystic")
+    assert needs_padded("priest")
+    assert needs_padded("paladin")
+    assert needs_padded("warlock")
+    assert is_naked([], [], [])
+    assert is_naked([], ["nothing"], [])
+    assert is_naked([], ["9 silver nobles", "27 copper farthings"], [])
+    assert is_naked([], ["silver nobles"], ["copper farthings"])
+    assert not is_naked(["padded vest"], ["silver nobles"], [])
+    assert not is_naked(["padded vest"], [], [])
+    assert not is_naked([], ["quarterstaff"], [])
+    purse = parse_line("You are carrying 9 silver nobles, 27 copper farthings.")
+    assert purse and purse["kind"] == "inventory"
+    assert is_naked(purse["worn"], purse["items"], purse["extras"])
+    assert is_coin_item("9 silver nobles")
+    assert is_coin_item("copper farthings")
+    assert is_coin_item("2 runic coins")
+    assert not is_coin_item("gold ring")
+    assert not is_coin_item("silver longsword")
+    assert coin_copper("9 silver nobles") == 90
+    assert coin_copper("27 copper farthings") == 27
+    assert coin_copper("2 gold crowns") == 200
+    assert coin_copper("runic coins") == 10000
+    assert purse_copper(["9 silver nobles", "27 copper farthings"]) == 117
+    assert at_bank("Bank of Godfrey")
+    assert at_bank("bank of godfrey")
+    assert not at_bank("Town Square")
+    assert not at_bank("Temple Street, Eastern End")
+    assert in_afterlife("Halls of the Dead")
+    assert in_afterlife("The Halls of the Dead")
+    assert in_afterlife("Temple Healer")
+    assert not in_afterlife("Graveyard")
+    assert not in_afterlife("Sewer Tunnel, Junction")
+
+
+def test_wealth_and_deposit_lines() -> None:
+    wealth = parse_line("Wealth: 117 copper farthings")
+    assert wealth == {"kind": "wealth", "copper": 117}
+    big = parse_line("Wealth: 1,234 copper farthings")
+    assert big and big["copper"] == 1234
+    equiv = parse_line("This is equivalent to 90 copper farthings.")
+    assert equiv == {"kind": "wealth", "copper": 90}
+    put = parse_line("You deposit 117 copper farthings.")
+    assert put == {"kind": "deposit", "copper": 117}
+    take = parse_line("You withdraw 50 copper farthings.")
+    assert take and take["kind"] == "deposit" and take.get("withdraw")
+    assert take["copper"] == 50
+    fail = parse_line("You must be in a bank to do that.")
+    assert fail == {"kind": "deposit", "fail": True}
+    s = WorldState()
+    s.apply(parse_line("You are carrying 9 silver nobles, 27 copper farthings."))
+    assert s.wealth_copper == 117
+    s.apply(wealth)
+    assert s.wealth_copper == 117
+    s.apply(put)
+    assert s.deposited
+    assert s.wealth_copper == 0
+    text = (
+        "You are carrying 9 silver nobles, 27 copper farthings\n"
+        "You have no keys.\n"
+        "Wealth: 117 copper farthings\n"
+        "Encumbrance: 800/1920 - Medium [41%]\n"
+    )
+    kinds = [e["kind"] for e in parse_events(text)]
+    assert "inventory" in kinds
+    assert "wealth" in kinds
+    harvested = [e["kind"] for e in harvest_screen(text, set())]
+    assert "wealth" in harvested
+
+
 def test_nathaniel_steps_south() -> None:
     assert is_weapon_shop("Nathaniel")
     assert step_toward_arena("Nathaniel", ["s"]) == "s"
@@ -1064,6 +1390,7 @@ def test_general_store_is_torch_shop() -> None:
 def test_spell_shop_steps() -> None:
     assert is_spell_shop("Newhaven, Spell Shop")
     assert is_spell_shop("Dathalar")
+    assert is_spell_shop("Rayth")
     assert not is_spell_shop("Newhaven, General Store")
     assert step_toward_spell_shop("Newhaven, Village Entrance") == "w"
     assert step_toward_spell_shop("Newhaven, Narrow Path") == "n"
@@ -1086,6 +1413,15 @@ def test_silvermere_titles_and_skiff() -> None:
     assert is_special_step("bash north")
     assert is_special_step("picklock north")
     assert not is_special_step("bash kobold thief")
+    from .paths import unlatch_dir, unlatch_dir_short
+
+    gate = "Intersection of River St. & Bridge St."
+    assert unlatch_dir("n", "ninja", room=gate) == "picklock north"
+    assert unlatch_dir("n", "thief", room="Bridge Street") == "picklock north"
+    assert unlatch_dir("n", "paladin", room=gate) == "bash north"
+    assert unlatch_dir("n", "ninja") == "picklock north"
+    assert unlatch_dir_short("bash north") == "n"
+    assert unlatch_dir_short("picklock east") == "e"
     assert step_toward_arena("Town Square", ["n", "s", "e", "w"]) == "n"
     assert step_toward_arena("Sewer Tunnel, Junction", ["u", "n", "e", "s", "w"]) is None
     assert step_toward_arena("Sewer Tunnel, Junction (below TS)", ["u"]) is None
@@ -1158,6 +1494,44 @@ def test_learn_scroll_lines() -> None:
     assert s.learned
     s.apply({"kind": "spell_skip"})
     assert s.spell_skip
+
+
+def test_spells_command_lists_known() -> None:
+    from . import spells as S
+
+    assert S.list_command("paladin") == "spells"
+    assert S.list_command("mystic") == "powers"
+    assert S.parse_book_row("1     1    harm harm") == "harm"
+    assert S.parse_book_row("  1     2  mihe  Minor Healing") == "minor healing"
+    assert S.parse_book_row("2  2  bles  Bless") == "bless"
+    dump = (
+        "You have the following spells:\n"
+        "Level Mana Short Spell Name\n"
+        "1     2    mihe minor healing\n"
+        "1     1    harm harm\n"
+        "[HP=22]: "
+    )
+    events = [ev for ev in harvest_screen(dump, set()) if ev.get("kind") == "spellbook"]
+    assert events
+    assert events[0].get("reset")
+    assert events[0].get("names") == ["minor healing", "harm"]
+    state = WorldState()
+    state.apply(events[0])
+    assert state.known_spells == ["minor healing", "harm"]
+    empty = parse_line("You don't know any spells.")
+    assert empty and empty["kind"] == "spellbook"
+    assert empty.get("names") == []
+    powers = (
+        "You have the following powers:\n"
+        "Level Mana Short Spell Name\n"
+        "2     3    swan way of the swan\n"
+        "3    10    owl  way of the owl\n"
+    )
+    pev = [ev for ev in harvest_screen(powers, set()) if ev.get("kind") == "spellbook"]
+    assert pev and pev[0].get("names") == ["way of the swan", "way of the owl"]
+    assert S.parse_book_row("3    10    owl  way of the owl") == "way of the owl"
+    assert S.parse_book_row("1     1    vine vine strike") == "vine strike"
+    assert S.parse_book_row("1     4    star starlight") == "starlight"
 
 
 def test_outgoing_hits_feed_dps() -> None:
@@ -1277,6 +1651,26 @@ def test_stat_dump_parses_attack_and_ac() -> None:
     assert s.needs_stat()
 
 
+def test_stat_skill_lines_are_not_rooms() -> None:
+    """STAT skill columns must not become room or hunt targets."""
+    for line in (
+        "Picklocks: 48",
+        "Perception: 60        Stealth: 55",
+        "Thievery: 70          Traps: 45",
+        "Martial Arts: 60",
+    ):
+        assert parse_line(line) is None
+    assert parse_line("Newhaven, Arena") == {"kind": "room", "title": "Newhaven, Arena"}
+    assert parse_line("Adventurer's Guild, Main Room") == {
+        "kind": "room",
+        "title": "Adventurer's Guild, Main Room",
+    }
+    s = WorldState()
+    s.room = "Adventurer's Guild, Main Room"
+    s.apply({"kind": "room", "title": "Picklocks: 48"})
+    assert s.room == "Adventurer's Guild, Main Room"
+
+
 def test_party_cadence_lines() -> None:
     rest = parse_line("Matt sits down and begins to rest.")
     assert rest and rest["kind"] == "rest" and rest.get("actor") == "Matt"
@@ -1309,27 +1703,183 @@ def test_party_cadence_lines() -> None:
     assert leader.ally_wounded == "Klymacks"
 
 
+def test_party_invite_lines() -> None:
+    join = parse_line("Ron has invited you to join him.")
+    assert join and join["kind"] == "invited" and join["name"] == "Ron"
+    been = parse_line("You have been invited to follow Ron.")
+    assert been and been["kind"] == "invited" and been["name"] == "Ron"
+    by = parse_line("You have been invited by Ron.")
+    assert by and by["kind"] == "invited" and by["name"] == "Ron"
+    invites = parse_line("Ron invites you to join him.")
+    assert invites and invites["kind"] == "invited" and invites["name"] == "Ron"
+    glued = parse_events(
+        "You are carrying 9 silver nobles, padded vest (Torso), "
+        "Ron has invited you to join him."
+    )
+    assert any(ev.get("kind") == "invited" and ev.get("name") == "Ron" for ev in glued)
+    after_prompt = parse_events("[HP=21/MA=20]:Ron has invited you to join him.")
+    kinds = [ev["kind"] for ev in after_prompt]
+    assert "prompt" in kinds
+    assert any(ev.get("kind") == "invited" and ev.get("name") == "Ron" for ev in after_prompt)
+    cr = events_from_payload(b"Ron has invited you to follow him.\r[HP=21/MA=20]:")
+    assert any(ev.get("kind") == "invited" and ev.get("name") == "Ron" for ev in cr)
+    kept = keep_party_lf(b"Ron has invited you to follow him.\r[HP=21/MA=20]:")
+    assert b"\r\n[HP=" in kept
+    tr = Transcript()
+    assert tr.feed(
+        b"You are carrying 9 silver nobles, 27 copper farthings, padded vest (Torso),\n"
+    ) == []
+    mid = tr.feed(
+        b"Ron has invited you to join him.\n"
+        b"padded pants (Legs), club (Weapon Hand)\n"
+        b"You have no keys.\n"
+    )
+    names = [
+        ev.get("name")
+        for line in mid
+        for ev in parse_events(line)
+        if ev.get("kind") == "invited"
+    ]
+    assert names == ["Ron"]
+    colored = keep_party_lf(
+        b"\x1b[1;36mSherry\x1b[0m has invited you to follow her.\r[HP=21/MA=20]:"
+    )
+    assert b"\r\n[HP=" in colored
+    assert b"has invited you to follow her." in colored
+    lower = parse_line("sherry has invited you to follow her.")
+    assert lower and lower["kind"] == "invited" and lower["name"].lower() == "sherry"
+    wrapped = events_from_payload(
+        b"Also here: Rhiannon.\x1b[0mSherry has invited you to follow her.[HP=21]:"
+    )
+    assert any(
+        ev.get("kind") == "invited" and str(ev.get("name", "")).lower() == "sherry"
+        for ev in wrapped
+    )
+
+
+def test_party_leave_disband_keep_lf() -> None:
+    """Disband / unfollow lines use bare CR before [HP=]; keep them on screen."""
+    leave = keep_party_lf(b"You are no longer following Matt.\r[HP=45/MA=22]:")
+    assert b"\r\n[HP=" in leave
+    assert b"You are no longer following Matt." in leave
+    removed = keep_party_lf(
+        b"klymacks has been removed from your followers.\r[HP=45]:"
+    )
+    assert b"\r\n[HP=" in removed
+    assert b"removed from your followers." in removed
+    solo = keep_party_lf(
+        b"You are not in a party at the present time.\r[HP=40]:"
+    )
+    assert b"\r\n[HP=" in solo
+    group = keep_party_lf(b"Ryan just left your group (2).\r[HP=40]:")
+    assert b"\r\n[HP=" in group
+    roster = keep_party_lf(
+        b"The following people are in your travel party:\r[HP=40]:"
+    )
+    assert b"\r\n[HP=" in roster
+    # Confirm prompt has no bare CR — leave untouched.
+    sure = b"Are you sure you want to disband party? "
+    assert keep_party_lf(sure) == sure
+
+
+def test_already_in_party_invite_lines() -> None:
+    mine = parse_line("Klymacks is already in your party.")
+    assert mine and mine["kind"] == "followed" and mine.get("name") == "Klymacks"
+    follow = parse_line("Ryan is already following you.")
+    assert follow and follow["kind"] == "followed" and follow.get("name") == "Ryan"
+    grouped = WorldState()
+    grouped.apply(mine)
+    assert "Klymacks" in grouped.followers
+    busy = parse_line("Kevin is already in a party.")
+    assert busy and busy["kind"] == "party_fail" and busy.get("reason") == "busy"
+    other = parse_line("That person is already following someone.")
+    assert other and other["kind"] == "party_fail"
+
+
+def test_look_reprint_keeps_pcs() -> None:
+    """Same-room look without Also here must not wipe standing players."""
+    here = WorldState()
+    here.mobs = ["klymacks", "Ryan", "giant rat"]
+    here.apply({"kind": "room", "title": "Guild Street"})
+    here.apply({"kind": "exits", "exits": ["n", "s"]})
+    assert "klymacks" in here.mobs
+    assert "Ryan" in here.mobs
+    assert "giant rat" not in here.mobs
+    missed = WorldState()
+    missed.mobs = ["klymacks", "acid slime"]
+    missed.empty_if_look_missed({"exits"})
+    assert missed.mobs == ["klymacks"]
+
+
+def test_new_room_reparses_same_also_here() -> None:
+    """Party walking together reprints 'Also here: klymacks.' — must not stay skipped."""
+    seen: set[str] = set()
+    first = harvest_screen("Guild Street\nAlso here: klymacks.\n", seen)
+    assert any(e.get("kind") == "also_here" for e in first)
+    second = harvest_screen(
+        "Intersection of Guild St. & River St.\nAlso here: klymacks.\n", seen
+    )
+    assert any(e.get("kind") == "also_here" for e in second)
+
+
+def test_guild_street_look_is_not_this_is_a_room() -> None:
+    """Wrapped 'This is a cobblestoned street...' must not overwrite Guild Street."""
+    assert parse_line("Guild Street") == {"kind": "room", "title": "Guild Street"}
+    assert parse_line("This is a cobblestoned street") is None
+    assert parse_line("This is a") is None
+    assert parse_line("Thi") is None
+    blob = (
+        "Guild Street\n"
+        "    This is a cobblestoned street. It is dimly lit by guttering lanterns hung\n"
+        "from tall posts, and continues to the north and south. River street follows\n"
+        "the city wall off to the north.\n"
+        "Also here: small guardsman.\n"
+        "Obvious exits: north, south\n"
+        "[HP=51]:\n"
+    )
+    state = WorldState()
+    for ev in parse_events(blob):
+        state.apply(ev)
+    assert state.room == "Guild Street"
+    assert state.exits == ["n", "s"]
+    assert "small guardsman" in state.mobs
+
+
 if __name__ == "__main__":
     test_prompt_and_room()
     test_kill()
     test_falls_dead_and_combat_off()
     test_combat_and_shop()
+    test_join_call_say()
+    test_party_rest_heal_tags()
     test_backspace_exits()
     test_mana_pool_vs_prompt()
     test_mortal_aid_drag()
     test_train_and_level_forget_maxes()
     test_bless_lucky_and_wear_off()
+    test_owl_strong_willed_and_wear_off()
+    test_starlight_shimmer_and_fade()
     test_inventory_geared()
     test_inventory_wrapped_padded_set()
     test_inventory_stacked_extras()
     test_already_worn_gloves()
+    test_night_vision_kit_rules()
+    test_wealth_and_deposit_lines()
     test_nathaniel_steps_south()
     test_general_store_is_torch_shop()
     test_spell_shop_steps()
     test_silvermere_titles_and_skiff()
     test_learn_scroll_lines()
+    test_spells_command_lists_known()
     test_outgoing_hits_feed_dps()
     test_dps_long_loop_vs_short_trend()
     test_stat_dump_parses_attack_and_ac()
+    test_stat_skill_lines_are_not_rooms()
     test_party_cadence_lines()
+    test_party_invite_lines()
+    test_party_leave_disband_keep_lf()
+    test_already_in_party_invite_lines()
+    test_look_reprint_keeps_pcs()
+    test_new_room_reparses_same_also_here()
+    test_guild_street_look_is_not_this_is_a_room()
     print("ok")
