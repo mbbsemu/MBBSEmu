@@ -2,7 +2,7 @@
 # Build a runnable Finn's Realm folder: self-contained MBBSEmu + client + modules.
 # Usage:
 #   ./scripts/package-finns-realm.sh           # write dist/finns-realm/
-#   ./scripts/package-finns-realm.sh --install # also drop a Desktop shortcut
+#   ./scripts/package-finns-realm.sh --install # also drop DOS folder shortcuts
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
@@ -36,6 +36,9 @@ echo "Copying play client..."
 cp -a "$ROOT/scripts/bbs_client.py" "$DEST/scripts/"
 cp -a "$ROOT/scripts/preflight.py" "$DEST/scripts/"
 cp -a "$ROOT/scripts/PREFLIGHT.md" "$DEST/scripts/"
+cp -a "$ROOT/scripts/vga-face.sh" "$DEST/scripts/"
+cp -a "$ROOT/scripts/xterm-vga.sh" "$DEST/scripts/"
+cp -a "$ROOT/scripts/lock-x11-frame.py" "$DEST/scripts/"
 cp -a "$ROOT/scripts/FinnsRealm" "$DEST/FinnsRealm"
 cp -a "$ROOT/scripts/reboot-board.sh" "$DEST/FinnsRealm-reboot"
 cp -a "$ROOT/scripts/stop-board.sh" "$DEST/FinnsRealm-stop"
@@ -209,7 +212,8 @@ echo "Archive: $ROOT/dist/finns-realm.tar.gz"
 
 if [[ "$INSTALL" == 1 ]]; then
   # This machine's live board is the repo, not the packaged snapshot.
-  mkdir -p "$HOME/.local/share/applications"
+  DOS="$HOME/Desktop/Finn's Realm/DOS"
+  mkdir -p "$HOME/.local/share/applications" "$DOS"
   ICON="$ROOT/config/finns-realm.png"
   [[ -f "$ICON" ]] || ICON="$DEST/share/finns-realm.png"
   install_desk() {
@@ -232,35 +236,35 @@ EOF
     chmod +x "$dest"
     gio set "$dest" metadata::trusted true 2>/dev/null || true
   }
-  install_desk "$HOME/Desktop/Finn's Realm — klymacks.desktop" \
-    "Finn's Realm — klymacks" \
+  install_desk "$DOS/Finn's Realm DOS — klymacks.desktop" \
+    "Finn's Realm DOS — klymacks" \
     "MajorMUD on Finn's Realm — klymacks (sysop login)" \
     "$ROOT/scripts/FinnsRealm --sysop" false FinnsRealmKlymacks
-  cp -a "$HOME/Desktop/Finn's Realm — klymacks.desktop" \
+  cp -a "$DOS/Finn's Realm DOS — klymacks.desktop" \
     "$HOME/.local/share/applications/finns-realm.desktop"
-  echo "Desktop shortcut: $HOME/Desktop/Finn's Realm — klymacks.desktop"
+  echo "DOS shortcut: $DOS/Finn's Realm DOS — klymacks.desktop"
 
-  install_desk "$HOME/Desktop/Reboot Finn's Realm.desktop" \
-    "Reboot Finn's Realm" \
+  install_desk "$DOS/Reboot Finn's Realm DOS.desktop" \
+    "Reboot Finn's Realm DOS" \
     "Stop and restart the Finn's Realm board" \
-    "$ROOT/scripts/reboot-board.sh" true ""
-  cp -a "$HOME/Desktop/Reboot Finn's Realm.desktop" \
+    "$ROOT/scripts/reboot-board.sh" true FinnsRealmDosReboot
+  cp -a "$DOS/Reboot Finn's Realm DOS.desktop" \
     "$HOME/.local/share/applications/finns-realm-reboot.desktop"
-  echo "Desktop shortcut: $HOME/Desktop/Reboot Finn's Realm.desktop"
+  echo "DOS shortcut: $DOS/Reboot Finn's Realm DOS.desktop"
 
-  install_desk "$HOME/Desktop/Stop Finn's Realm.desktop" \
-    "Stop Finn's Realm" \
+  install_desk "$DOS/Stop Finn's Realm DOS.desktop" \
+    "Stop Finn's Realm DOS" \
     "Shut down the Finn's Realm board" \
     "$ROOT/scripts/stop-board.sh" true ""
-  cp -a "$HOME/Desktop/Stop Finn's Realm.desktop" \
+  cp -a "$DOS/Stop Finn's Realm DOS.desktop" \
     "$HOME/.local/share/applications/finns-realm-stop.desktop"
-  echo "Desktop shortcut: $HOME/Desktop/Stop Finn's Realm.desktop"
+  echo "DOS shortcut: $DOS/Stop Finn's Realm DOS.desktop"
 
-  install_desk "$HOME/Desktop/Check Finn's Realm.desktop" \
-    "Check Finn's Realm" \
+  install_desk "$DOS/Check Finn's Realm DOS.desktop" \
+    "Check Finn's Realm DOS" \
     "Preflight: activation, addons, module files" \
     "$ROOT/scripts/check-board.sh" true ""
-  cp -a "$HOME/Desktop/Check Finn's Realm.desktop" \
+  cp -a "$DOS/Check Finn's Realm DOS.desktop" \
     "$HOME/.local/share/applications/finns-realm-check.desktop"
-  echo "Desktop shortcut: $HOME/Desktop/Check Finn's Realm.desktop"
+  echo "DOS shortcut: $DOS/Check Finn's Realm DOS.desktop"
 fi

@@ -141,44 +141,26 @@ fi
 export DISPLAY="${DISPLAY:-:0}"
 title="Finn's Realm"
 wmclass="FinnsRealm"
+export FINNS_DESKTOP="finns-realm-dos-klymacks"
 if [[ " $* " == *" --matt "* ]]; then
   title="Finn's Realm — Matt"
   wmclass="FinnsRealmMatt"
+  export FINNS_DESKTOP="finns-realm-matt"
 elif [[ " $* " == *" --sysop "* ]]; then
   title="Finn's Realm — klymacks"
   wmclass="FinnsRealmKlymacks"
+  export FINNS_DESKTOP="finns-realm-dos-klymacks"
 else
   title="Finn's Realm — klymacks"
   wmclass="FinnsRealmKlymacks"
+  export FINNS_DESKTOP="finns-realm-dos-klymacks"
 fi
 
 client=(python3 "$CLIENT" 127.0.0.1 "$PORT" "$@")
 
-# 80x30: 25-line MajorMUD screen + 5-line HP/MA footer.
-# Px IBM VGA8 is the 8×16 DOS face. Generic "monospace" looks modern/sterile.
-face='monospace'
-size=16
-if fc-list 'Px IBM VGA8' family 2>/dev/null | grep -q 'Px IBM VGA8'; then
-  face='Px IBM VGA8'
-  size=18
-fi
+# 80x30: 25-line MajorMUD screen + 5-line HP/MA footer. Size is locked.
 if [[ -x /usr/bin/xterm ]]; then
-  exec xterm +aw +sb \
-    -class "$wmclass" \
-    -geometry 80x30 \
-    -bg '#0b0e0c' -fg '#c8d2c8' -cr '#3dff9a' \
-    -fa "$face" -fs "$size" \
-    -b 12 \
-    -title "$title" \
-    -n "$title" \
-    -xrm 'XTerm*scrollBar: false' \
-    -xrm 'XTerm*selectToClipboard: true' \
-    -xrm 'XTerm*cursorBlink: true' \
-    -xrm 'XTerm*cursorOnTime: 480' \
-    -xrm 'XTerm*cursorOffTime: 280' \
-    -xrm 'XTerm*XftAntialias: false' \
-    -xrm 'XTerm.VT100.translations: #override <Key>F11: string(0x1b) string("[23~")\\n<Key>F12: string(0x1b) string("[24~")' \
-    -e "${client[@]}"
+  exec "$ROOT/scripts/xterm-vga.sh" "$title" "$wmclass" -- "${client[@]}"
 fi
 if command -v konsole >/dev/null 2>&1; then
   exec konsole --hide-menubar --hide-tabbar --geometry 720x640 \

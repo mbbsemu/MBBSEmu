@@ -6,7 +6,7 @@ This is the gate. The launcher runs `scripts/preflight.py` before it starts the 
 
 Manual check: `./scripts/preflight.py`
 
-Desktop **Check / Reboot / Play** use this repo board (`data/` + `modules/WCCMMUD/`). The packaged `dist/finns-realm/` copy is a snapshot, not a second game.
+**Check / Reboot / Play** in `Desktop/Finn's Realm/DOS` use this repo board (`data/` + `modules/WCCMMUD/`). The packaged `dist/finns-realm/` copy is a snapshot, not a second game.
 
 ---
 

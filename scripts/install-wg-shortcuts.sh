@@ -6,19 +6,49 @@ PLAY_WG="$ROOT/scripts/play-wg.sh"
 PLAY_DOS="$ROOT/scripts/play-dos.sh"
 REBOOT="$ROOT/scripts/reboot-board.sh"
 DESK="${XDG_DESKTOP_DIR:-$HOME/Desktop}"
+REALM="$DESK/Finn's Realm"
+NT="$REALM/NT"
+DOS="$REALM/DOS"
+# Codes/ is registration lists — we never write there.
 APPS="$HOME/.local/share/applications"
-mkdir -p "$DESK" "$APPS"
+mkdir -p "$NT" "$DOS" "$APPS"
 
-# Old DOS names we used to clobber NT with; keep NT + add a DOS test icon.
+python3 "$ROOT/scripts/wg_roster.py" write-configs
+
+install_icons() {
+  local hicolor="$HOME/.local/share/icons/hicolor"
+  local pixmaps="$HOME/.local/share/pixmaps"
+  local src="$ROOT/client/icons"
+  mkdir -p "$pixmaps"
+  cp -a "$src/finns-realm.png" "$pixmaps/finns-realm.png"
+  local size file
+  for size in 16 32 48 256; do
+    file="$src/finns-realm-${size}.png"
+    [[ -f "$file" ]] || file="$src/finns-realm.png"
+    mkdir -p "$hicolor/${size}x${size}/apps"
+    cp -a "$file" "$hicolor/${size}x${size}/apps/finns-realm.png"
+  done
+  # Plasma panel often asks for 22/24.
+  mkdir -p "$hicolor/22x22/apps" "$hicolor/24x24/apps"
+  cp -a "$hicolor/32x32/apps/finns-realm.png" "$hicolor/22x22/apps/finns-realm.png"
+  cp -a "$hicolor/32x32/apps/finns-realm.png" "$hicolor/24x24/apps/finns-realm.png"
+  gtk-update-icon-cache -f "$hicolor" 2>/dev/null || true
+  kbuildsycoca6 --noincremental 2>/dev/null || kbuildsycoca5 --noincremental 2>/dev/null || true
+}
+
+install_icons
+
+# Leftovers from when launchers sat on the Desktop root. Do not touch Codes/
+# or extra files already in NT/ (sysop.old, etc.).
+find "$DESK" -maxdepth 1 \( \
+  -name "Finn's Realm*.desktop" \
+  -o -name "Reboot Finn's Realm*.desktop" \
+  -o -name "Check Finn's Realm.desktop" \
+  -o -name "Stop Finn's Realm.desktop" \
+  -o -name "Start BBS.desktop" \
+  -o -name "Start BBS.lnk" \
+  \) -delete 2>/dev/null || true
 rm -f \
-  "$DESK/Finn's Realm — Matt.desktop" \
-  "$DESK/Check Finn's Realm.desktop" \
-  "$DESK/Stop Finn's Realm.desktop" \
-  "$DESK/Start BBS.desktop" \
-  "$DESK/Start BBS.lnk" \
-  "$DESK/Finn's Realm NT — klymacks.desktop" \
-  "$DESK/Finn's Realm NT — matt.desktop" \
-  "$DESK/Finn's Realm NT — new.desktop" \
   "$APPS/Finn's Realm — Matt.desktop" \
   "$APPS/finns-realm-check.desktop" \
   "$APPS/finns-realm-stop.desktop" \
@@ -35,6 +65,7 @@ Name=$name
 Comment=$comment
 Exec=$exec_line
 Path=$ROOT
+Icon=finns-realm
 Terminal=false
 Categories=Game;
 StartupNotify=true
@@ -44,40 +75,49 @@ EOF
   gio set "$dest" metadata::trusted true 2>/dev/null || true
 }
 
-install_desk "$DESK/Finn's Realm — klymacks.desktop" \
-  "Finn's Realm — klymacks" \
-  "Worldgroup 1.11p NT — sysop / klymacks (VGA 80x30)" \
-  "$PLAY_WG klymacks" \
-  FinnsRealmWGKlymacks
+while IFS=$'\t' read -r profile title wmclass; do
+  [[ -z "$profile" ]] && continue
+  if python3 "$ROOT/scripts/wg_roster.py" auto-play "$profile"; then
+    play_flag="--auto-play"
+  else
+    play_flag="--no-auto-play"
+  fi
+  dest="$NT/${title}.desktop"
+  install_desk "$dest" "$title" \
+    "Worldgroup 1.11p NT — $profile (VGA 80x30)" \
+    "$PLAY_WG $profile $play_flag" \
+    "$wmclass"
+  cp -a "$dest" "$APPS/finns-realm-${profile}.desktop"
+done < <(python3 "$ROOT/scripts/wg_roster.py" desktop)
 
-install_desk "$DESK/Finn's Realm — matt.desktop" \
-  "Finn's Realm — matt" \
-  "Worldgroup 1.11p NT — matt (VGA 80x30)" \
-  "$PLAY_WG matt" \
-  FinnsRealmWGMatt
-
-install_desk "$DESK/Finn's Realm — new.desktop" \
+install_desk "$NT/Finn's Realm — new.desktop" \
   "Finn's Realm — new" \
   "Worldgroup 1.11p NT — type login yourself (VGA 80x30)" \
-  "$PLAY_WG new" \
+  "$PLAY_WG new --no-auto-play" \
   FinnsRealmWGNew
 
-install_desk "$DESK/Finn's Realm DOS — klymacks.desktop" \
+install_desk "$NT/Finn's Realm BBS — klymacks.desktop" \
+  "Finn's Realm BBS — klymacks" \
+  "Worldgroup NT — sysop login, stay on BBS menu (maint)" \
+  "$PLAY_WG maint --no-auto-play" \
+  FinnsRealmWGBBS
+
+install_desk "$DOS/Finn's Realm DOS — klymacks.desktop" \
   "Finn's Realm DOS — klymacks" \
-  "MBBSEmu localhost:2323 — klymacks (VGA 80x30, testing)" \
+  "MBBSEmu localhost:2323 — BBS sysop, mud klymacks (VGA 80x30, testing)" \
   "$PLAY_DOS" \
   FinnsRealmKlymacks
 
-install_desk "$DESK/Reboot Finn's Realm DOS.desktop" \
+install_desk "$DOS/Reboot Finn's Realm DOS.desktop" \
   "Reboot Finn's Realm DOS" \
   "Stop and start local MBBSEmu on 2323" \
   "$REBOOT" \
   FinnsRealmDosReboot
 
-cp -a "$DESK/Finn's Realm — klymacks.desktop" "$APPS/finns-realm.desktop"
-cp -a "$DESK/Finn's Realm — matt.desktop" "$APPS/finns-realm-matt.desktop"
-cp -a "$DESK/Finn's Realm — new.desktop" "$APPS/finns-realm-new.desktop"
-cp -a "$DESK/Finn's Realm DOS — klymacks.desktop" "$APPS/finns-realm-dos-klymacks.desktop"
-cp -a "$DESK/Reboot Finn's Realm DOS.desktop" "$APPS/finns-realm-dos-reboot.desktop"
-echo "Desktop: klymacks/matt/new → Worldgroup VM (play-wg.sh)"
-echo "Desktop: Finn's Realm DOS — klymacks → MBBSEmu 127.0.0.1:2323 (play-dos.sh)"
+cp -a "$NT/Finn's Realm — new.desktop" "$APPS/finns-realm-new.desktop"
+cp -a "$NT/Finn's Realm BBS — klymacks.desktop" "$APPS/finns-realm-bbs.desktop"
+cp -a "$DOS/Finn's Realm DOS — klymacks.desktop" "$APPS/finns-realm-dos-klymacks.desktop"
+cp -a "$DOS/Reboot Finn's Realm DOS.desktop" "$APPS/finns-realm-dos-reboot.desktop"
+echo "NT: $NT  (roster + new + BBS maint)"
+echo "DOS: $DOS  (MBBSEmu play + reboot)"
+echo "Codes: $REALM/Codes  (yours — installer does not write there)"

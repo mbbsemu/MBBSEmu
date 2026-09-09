@@ -3,12 +3,12 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 export DISPLAY="${DISPLAY:-:0}"
-face='monospace'
-size=16
-if fc-list 'Px IBM VGA8' family 2>/dev/null | grep -q 'Px IBM VGA8'; then
-  face='Px IBM VGA8'
-  size=18
-fi
+ROOT="$(cd "$HERE/../.." && pwd)"
+# shellcheck source=../../scripts/vga-face.sh
+source "$ROOT/scripts/vga-face.sh"
+vga_pick_face
+face="$VGA_FACE"
+size="$VGA_SIZE"
 show() {
   local file="$1" title="$2"
   xterm +aw +sb \
