@@ -87,12 +87,44 @@ namespace MBBSEmu.TextVariables
                     continue;
 
                 //If we found a 0x1 -- but it'd take us past the end of the buffer, we're done
-                if (i + 3 >= input.Length)
+                if (i + 1 >= input.Length)
                     break;
 
-                //Look for justification notation in i + 1 = "N, L, C, R", if not found move on
-                if (input[i + 1] != 0x4E && input[i + 1] != 0x4C && input[i + 1] != 0x43 && input[i + 1] != 0x52)
+                var justified = i + 3 < input.Length &&
+                    (input[i + 1] == 0x4E || input[i + 1] == 0x4C || input[i + 1] == 0x43 || input[i + 1] == 0x52);
+
+                if (!justified)
+                {
+                    if (input[i + 1] is < 0x41 or > 0x5A)
+                        continue;
+
+                    var bareStart = i;
+                    i++;
+                    var bareNameStart = i;
+                    while (i < input.Length && input[i] != 0x1)
+                    {
+                        var c = input[i];
+                        if (c is (>= 0x41 and <= 0x5A) or (>= 0x30 and <= 0x39) or 0x5F)
+                        {
+                            i++;
+                            continue;
+                        }
+                        break;
+                    }
+
+                    if (i >= input.Length || input[i] != 0x1)
+                        continue;
+
+                    output.Add(new TextVariableDefinition()
+                    {
+                        Offset = bareStart,
+                        Length = (ushort)(i - bareStart),
+                        Justification = EnumTextVariableJustification.None,
+                        Name = Encoding.ASCII.GetString(input.Slice(bareNameStart, i - bareNameStart)),
+                        Padding = 0
+                    });
                     continue;
+                }
 
                 var startingOffset = i;
 

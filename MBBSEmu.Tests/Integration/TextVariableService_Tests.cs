@@ -125,5 +125,25 @@ namespace MBBSEmu.Tests.Integration
                 Assert.Equal("Random Text ... UNKNOWN VARIABLE ... The End", Encoding.ASCII.GetString(parsedText));
             });
         }
+
+        [Fact]
+        public void TextVariableServiceParseBareWgUserId()
+        {
+            ExecuteTest((session, host) =>
+            {
+                var textVariableService = _serviceResolver.GetService<ITextVariableService>();
+                var sessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
+                {
+                    {"CHANNEL", () => "0"},
+                    {"USERID", () => "sysop"},
+                    {"WCCREQUIREDUSERID", () => "sysop"}
+                };
+
+                var variableText = Encoding.ASCII.GetBytes("\x01WCCREQUIREDUSERID\x01");
+                var parsedText = textVariableService.Parse(variableText, sessionVariables);
+
+                Assert.Equal("sysop", Encoding.ASCII.GetString(parsedText));
+            });
+        }
     }
 }

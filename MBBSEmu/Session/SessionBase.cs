@@ -365,6 +365,10 @@ namespace MBBSEmu.Session
             {
                 {"CHANNEL", () => Channel.ToString()},
                 {"USERID", () => Username},
+                // 1.11p-WG (Worldgroup) user-id vars. Unmapped, they print as
+                // WCCREQUIREDUSERID and the module waits.
+                {"WCCREQUIREDUSERID", () => Username},
+                {"WCCREQUESTEDUSERID", () => Username},
                 {"BAUD", () => UsrPtr.Baud.ToString() },
                 {"TIME_ONLINE", () => SessionTimer.Elapsed.ToString("hh\\:mm\\:ss") },
                 {"CREDITS", () => UsrAcc.creds.ToString() },

@@ -77,6 +77,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private AgentStruct _galacticommClientServerAgent;
 
         private int findtvarValue;
+        private string _lastFindtvarName = "";
 
         /// <summary>
         ///     Stores all active searches created via fnd1st
@@ -7333,6 +7334,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Registers.SetPointer(stringPointerBase);
         }
 
+        private static bool IsWorldgroupUserIdVar(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return false;
+            // Galacticomm textvar names are 16 bytes; WCCREQUIREDUSERID is 17.
+            var n = name.TrimEnd('\0');
+            return n is "USERID" or "WCCREQUIREDUSERID" or "WCCREQUESTEDUSERID"
+                   or "WCCREQUIREDUSERI" or "WCCREQUESTEDUSER";
+        }
+
         /// <summary>
         ///     Find text variable & return number
         ///
@@ -7341,11 +7352,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void findtvar()
         {
             var name = GetParameterString(0, true);
+            _lastFindtvarName = name;
 
-            //It's a system variable, set the pointer in the TXTVARS array to the 1st record,
-            //which will trigger an MBBSEmu only ordinal for variable lookup
-            if (_textVariableService.GetVariableIndex(name) > -1)
+            if (IsWorldgroupUserIdVar(name)
+                || ChannelDictionary.TryGetValue(ChannelNumber, out var session)
+                    && session.SessionVariables.ContainsKey(name)
+                || _textVariableService.GetVariableIndex(name) > -1)
             {
+                // TXTVARS[0] points at txtvars_delegate (MBBSEmu ordinal 9000).
                 Registers.AX = 0;
                 return;
             }
@@ -8266,7 +8280,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void txtvars_delegate()
         {
-            var txtvarValue = _textVariableService.GetVariableByIndex(findtvarValue);
+            string txtvarValue;
+            if (IsWorldgroupUserIdVar(_lastFindtvarName)
+                && ChannelDictionary.TryGetValue(ChannelNumber, out var session)
+                && !string.IsNullOrEmpty(session.Username))
+            {
+                txtvarValue = session.Username;
+            }
+            else if (ChannelDictionary.TryGetValue(ChannelNumber, out session)
+                     && session.SessionVariables.TryGetValue(_lastFindtvarName, out var fromSession))
+            {
+                txtvarValue = fromSession();
+            }
+            else if (_textVariableService.GetVariableIndex(_lastFindtvarName) > -1)
+            {
+                txtvarValue = _textVariableService.GetVariableByName(_lastFindtvarName);
+            }
+            else
+            {
+                txtvarValue = _textVariableService.GetVariableByIndex(findtvarValue);
+            }
 
             var txtvarsReturnPointer = Module.Memory.GetOrAllocateVariablePointer("TXTVARS_DELEGATE", 0xFF);
 

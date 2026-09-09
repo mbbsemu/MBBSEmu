@@ -33,6 +33,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private static readonly byte[] ANSI_ERASE_DISPLAY = { 0x1B, 0x5B, 0x32, 0x4A };
         private static readonly byte[] ANSI_RESET_CURSOR = { 0x1B, 0x5B, 0x48 };
+        // Splash graffiti is rows 1–21. Prompts live in 22–24 so they do not
+        // paint FINNS or run into the client's chrome footer.
+        private static readonly byte[] ANSI_LOGIN_DOCK = Encoding.ASCII.GetBytes("\x1b[22;1H\x1b[0J");
+        private static readonly byte[] ANSI_LOGIN_PASSWORD = Encoding.ASCII.GetBytes("\x1b[24;1H\x1b[K");
 
         public MenuRoutines(IResourceManager resourceManager, IAccountRepository accountRepository,
                             AppSettingsManager configuration, IGlobalCache globalCache,
@@ -140,8 +144,34 @@ namespace MBBSEmu.HostProcess.HostRoutines
                 File.Exists(ansiLoginFileName)
                     ? File.ReadAllBytes(ansiLoginFileName).ToArray()
                     : _resourceManager.GetResource("MBBSEmu.Assets.login.ans").ToArray());
-            session.SendToClient(Encoding.ASCII.GetBytes("\r\n "));
             session.SessionState = EnumSessionState.LoginUsernameDisplay;
+        }
+
+        /// <summary>
+        ///     Home to the prompt band under login.ans and erase that band only.
+        /// </summary>
+        private static void LoginDockClear(SessionBase session)
+        {
+            session.SendToClient(ANSI_LOGIN_DOCK);
+        }
+
+        private static void LoginPrompt(SessionBase session, string notice = null)
+        {
+            LoginDockClear(session);
+            if (string.IsNullOrEmpty(notice))
+            {
+                session.SendToClient(
+                    "|YELLOW|Enter Username or enter \"|B|NEW|RESET||YELLOW|\" to create a new Account\r\n"
+                        .EncodeToANSIArray());
+            }
+            else
+            {
+                session.SendToClient(notice.EncodeToANSIArray());
+                if (!notice.EndsWith("\r\n", StringComparison.Ordinal))
+                    session.SendToClient(Encoding.ASCII.GetBytes("\r\n"));
+            }
+            session.SendToClient("|B||WHITE|Username:|RESET| ".EncodeToANSIArray());
+            session.SessionState = EnumSessionState.LoginUsernameInput;
         }
 
         private void LoginUsernameDisplay(SessionBase session)
@@ -149,19 +179,16 @@ namespace MBBSEmu.HostProcess.HostRoutines
             // Check to see if there is an available channel
             if (_channelDictionary.Count > _configuration.BBSChannels)
             {
+                LoginDockClear(session);
                 session.SendToClient(
-                    $"\r\n|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|"
+                    $"|RED||B|{_configuration.BBSTitle} has reached the maximum number of users: {_configuration.BBSChannels} -- Please try again later.\r\n|RESET|"
                         .EncodeToANSIArray());
                 session.InputBuffer.SetLength(0);
                 session.SessionState = EnumSessionState.LoggedOff;
                 return;
             }
 
-            session.SendToClient(
-                "\r\n|YELLOW|Enter Username or enter \"|B|NEW|RESET||YELLOW|\" to create a new Account\r\n"
-                    .EncodeToANSIArray());
-            session.SendToClient("|B||WHITE|Username:|RESET| ".EncodeToANSIArray());
-            session.SessionState = EnumSessionState.LoginUsernameInput;
+            LoginPrompt(session);
         }
 
         private void LoginUsernameInput(SessionBase session)
@@ -181,10 +208,8 @@ namespace MBBSEmu.HostProcess.HostRoutines
             // Validation for username > 29 characters
             if (inputValue.Length > 29)
             {
-                session.SendToClient(
-                    "\r\n|RED||B|Please enter a Username with less than 30 characters.\r\n|RESET|"
-                        .EncodeToANSIArray());
-                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                LoginPrompt(session,
+                    "|RED||B|Please enter a Username with less than 30 characters.|RESET|");
                 session.InputBuffer.SetLength(0);
                 return;
             }
@@ -210,11 +235,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
                     s => string.Equals(s.Username, inputValue,
                                        StringComparison.CurrentCultureIgnoreCase)))
             {
-                session.SendToClient(
-                    $"\r\n|RED||B|{inputValue} is already logged in -- only 1 connection allowed per user.\r\n|RESET|"
-                        .EncodeToANSIArray());
                 session.InputBuffer.SetLength(0);
-                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                LoginPrompt(session,
+                    $"|RED||B|{inputValue} is already logged in -- only 1 connection allowed per user.|RESET|");
                 return;
             }
 
@@ -225,6 +248,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
         private void LoginPasswordDisplay(SessionBase session)
         {
+            session.SendToClient(ANSI_LOGIN_PASSWORD);
             session.SendToClient("|B||WHITE|Password:|RESET| ".EncodeToANSIArray());
             session.SessionState = EnumSessionState.LoginPasswordInput;
             session.ExtUsrAcc.wid = 0xFF;
@@ -249,10 +273,10 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             if (account == null)
             {
-                session.SendToClient("\r\n|B||RED|Invalid Credentials|RESET|\r\n".EncodeToANSIArray());
                 session.Username = "";
                 session.EchoSecureEnabled = false;
-                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                session.InputBuffer.SetLength(0);
+                LoginPrompt(session, "|B||RED|Invalid Credentials|RESET|");
                 return;
             }
 
@@ -269,12 +293,11 @@ namespace MBBSEmu.HostProcess.HostRoutines
 
             if (!result)
             {
-                session.SendToClient(
-                    "\r\n|B||RED|USER MISMATCH IN BBSUSR.DAT -- PLEASE NOTIFY SYSOP|RESET|\r\n"
-                        .EncodeToANSIArray());
                 session.Username = "";
                 session.EchoSecureEnabled = false;
-                session.SessionState = EnumSessionState.LoginUsernameDisplay;
+                session.InputBuffer.SetLength(0);
+                LoginPrompt(session,
+                    "|B||RED|USER MISMATCH IN BBSUSR.DAT -- PLEASE NOTIFY SYSOP|RESET|");
                 return;
             }
 
@@ -389,7 +412,11 @@ namespace MBBSEmu.HostProcess.HostRoutines
             }
             else
             {
-                session.InputBuffer.SetLength(1);
+                // Keep a NUL so InputCommand.Length-1 is 0. SetLength(1) used to
+                // leave the menu key (M) as MajorMUD's first command, which made
+                // 1.11p-WG print WCCREQUIREDUSERID and wait.
+                session.InputBuffer.SetLength(0);
+                session.InputBuffer.WriteByte(0);
                 session.CurrentModule = selectedMenuItem;
                 session.SessionState = EnumSessionState.EnteringModule;
                 session.SendToClient(new byte[] { 0x1B, 0x5B, 0x32, 0x4A });
