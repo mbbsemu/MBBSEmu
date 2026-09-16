@@ -57,5 +57,54 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedOF, mbbsEmuCpuRegisters.OverflowFlag);
         }
 
+        [Theory]
+        [InlineData(0x00000000u, 0x00000000u, false, false, false)]
+        [InlineData(0x00000001u, 0xFFFFFFFFu, true, true, false)]
+        [InlineData(0x7FFFFFFFu, 0x80000001u, true, true, false)]
+        [InlineData(0x80000000u, 0x80000000u, true, true, true)]
+        [InlineData(0xFFFFFFFFu, 0x00000001u, false, true, false)]
+        public void NEG_32_Register_Test(uint input, uint expectedValue, bool expectedSF, bool expectedCF, bool expectedOF)
+        {
+            Reset();
+            mbbsEmuCpuRegisters.EAX = input;
+
+            var instructions = new Assembler(16);
+            instructions.neg(eax);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(expectedValue, mbbsEmuCpuRegisters.EAX);
+            Assert.Equal(expectedSF, mbbsEmuCpuRegisters.SignFlag);
+            Assert.Equal(expectedCF, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(expectedOF, mbbsEmuCpuRegisters.OverflowFlag);
+        }
+
+        [Theory]
+        [InlineData(0x00000001u, true)] // 0x0 - 0x1 borrows from the low nibble
+        [InlineData(0x0000000Fu, true)]
+        [InlineData(0x00000000u, false)]
+        [InlineData(0x00000010u, false)]
+        public void NEG_AuxiliaryCarryFlag(uint value, bool expectedAuxiliaryCarryFlag)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.AL = (byte)value;
+            mbbsEmuCpuRegisters.BX = (ushort)value;
+            mbbsEmuCpuRegisters.ECX = value;
+
+            var instructions = new Assembler(16);
+            instructions.neg(al);
+            instructions.neg(bx);
+            instructions.neg(ecx);
+            CreateCodeSegment(instructions);
+
+            for (var i = 0; i < 3; i++)
+            {
+                mbbsEmuCpuRegisters.AuxiliaryCarryFlag = !expectedAuxiliaryCarryFlag;
+                mbbsEmuCpuCore.Tick();
+                Assert.Equal(expectedAuxiliaryCarryFlag, mbbsEmuCpuRegisters.AuxiliaryCarryFlag);
+            }
+        }
     }
 }

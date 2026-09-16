@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Iced.Intel;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
@@ -60,6 +60,40 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.DI.Should().Be((ushort)(ptr2.Offset + 16));
             mbbsEmuCpuRegisters.CX.Should().Be(0);
             mbbsEmuCpuRegisters.ZeroFlag.Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData(0x02, 0x01, false, false, false, false, false)]
+        [InlineData(0x01, 0x02, true, false, true, true, false)] // Unsigned below: CF drives JB
+        [InlineData(0x80, 0x01, false, true, false, true, false)] // Signed overflow: 0x80 - 0x01 == 0x7F
+        [InlineData(0x10, 0x01, false, false, false, true, false)]
+        [InlineData(0x41, 0x41, false, false, false, false, true)]
+        public void CMPSB_ArithmeticFlags(byte sourceByte, byte destinationByte, bool expectedCF, bool expectedOF, bool expectedSF, bool expectedAF, bool expectedZF)
+        {
+            Reset();
+
+            var ptr1 = mbbsEmuMemoryCore.Malloc(1);
+            var ptr2 = mbbsEmuMemoryCore.Malloc(1);
+            mbbsEmuMemoryCore.SetByte(ptr1, sourceByte);
+            mbbsEmuMemoryCore.SetByte(ptr2, destinationByte);
+
+            mbbsEmuCpuRegisters.DS = ptr1.Segment;
+            mbbsEmuCpuRegisters.SI = ptr1.Offset;
+            mbbsEmuCpuRegisters.ES = ptr2.Segment;
+            mbbsEmuCpuRegisters.DI = ptr2.Offset;
+
+            var instructions = new Assembler(16);
+            instructions.cmpsb();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            //CMPSB computes [DS:SI] - [ES:DI]
+            mbbsEmuCpuRegisters.CarryFlag.Should().Be(expectedCF);
+            mbbsEmuCpuRegisters.OverflowFlag.Should().Be(expectedOF);
+            mbbsEmuCpuRegisters.SignFlag.Should().Be(expectedSF);
+            mbbsEmuCpuRegisters.AuxiliaryCarryFlag.Should().Be(expectedAF);
+            mbbsEmuCpuRegisters.ZeroFlag.Should().Be(expectedZF);
         }
     }
 }

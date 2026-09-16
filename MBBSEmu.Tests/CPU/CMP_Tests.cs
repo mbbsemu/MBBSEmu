@@ -104,5 +104,24 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.ZF).Should().BeFalse();
             mbbsEmuCpuRegisters.F.IsFlagSet((ushort)EnumFlags.CF).Should().BeFalse();
         }
+
+        [Theory]
+        [InlineData(0x0010, 0x0001, true)]
+        [InlineData(0x001F, 0x0001, false)]
+        public void CMP_AX_IMM16_AuxiliaryCarryFlag(ushort axValue, ushort sourceValue, bool expectedAuxiliaryCarryFlag)
+        {
+            Reset();
+            mbbsEmuCpuRegisters.AX = axValue;
+            mbbsEmuCpuRegisters.AuxiliaryCarryFlag = !expectedAuxiliaryCarryFlag;
+
+            var instructions = new Assembler(16);
+            instructions.cmp(ax, sourceValue);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(axValue, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(expectedAuxiliaryCarryFlag, mbbsEmuCpuRegisters.AuxiliaryCarryFlag);
+        }
     }
 }

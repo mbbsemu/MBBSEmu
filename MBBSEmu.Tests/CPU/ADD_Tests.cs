@@ -658,5 +658,39 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedCarryFlag, mbbsEmuCpuRegisters.CarryFlag);
             Assert.Equal(expectedOverflowFlag, mbbsEmuCpuRegisters.OverflowFlag);
         }
+
+        [Theory]
+        [InlineData(0x00000008u, 0x00000008u, false, true)] // Low nibble carries out of bit 3
+        [InlineData(0x0000000Fu, 0x00000000u, true, true)] // Carry-in alone carries out of bit 3
+        [InlineData(0x00000001u, 0x00000001u, false, false)]
+        [InlineData(0x000000F0u, 0x00000010u, false, false)] // Carry above the low nibble only
+        public void ADD_ADC_16_32_AuxiliaryCarryFlag(uint destination, uint source, bool carryIn, bool expectedAuxiliaryCarryFlag)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.AX = (ushort)destination;
+            mbbsEmuCpuRegisters.EBX = destination;
+
+            var instructions = new Assembler(16);
+            if (carryIn)
+            {
+                instructions.adc(ax, (ushort)source);
+                instructions.adc(ebx, source);
+            }
+            else
+            {
+                instructions.add(ax, (ushort)source);
+                instructions.add(ebx, source);
+            }
+            CreateCodeSegment(instructions);
+
+            for (var i = 0; i < 2; i++)
+            {
+                mbbsEmuCpuRegisters.CarryFlag = carryIn;
+                mbbsEmuCpuRegisters.AuxiliaryCarryFlag = !expectedAuxiliaryCarryFlag;
+                mbbsEmuCpuCore.Tick();
+                Assert.Equal(expectedAuxiliaryCarryFlag, mbbsEmuCpuRegisters.AuxiliaryCarryFlag);
+            }
+        }
     }
 }
