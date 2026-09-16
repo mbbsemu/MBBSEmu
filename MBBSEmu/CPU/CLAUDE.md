@@ -226,7 +226,8 @@ Three method families, each overloaded for byte/ushort/uint:
 - Addition: `(source + destination) > TypeMax` (uses widened arithmetic to detect carry)
 - Subtraction: `result > destination` (unsigned comparison)
 - Shifts: `result != 0` (shifted-out bit)
-- Also sets `AuxiliaryCarryFlag` for 8-bit additions (half-carry on lower nibble)
+- Does not touch `AuxiliaryCarryFlag`; arithmetic handlers set AF themselves as `((destination ^ source ^ result) & 0x10) != 0`
+- INC/DEC never call it — they preserve CF, as on hardware
 
 **`Flags_EvaluateOverflow(EnumArithmeticOperation, result, destination, source)`**
 - Addition: pos+pos=neg or neg+neg=pos (sign mismatch detection via `IsNegative()`)

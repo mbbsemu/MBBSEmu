@@ -236,5 +236,31 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuRegisters.AX.Should().Be(expectedLength);
         }
+
+        [Theory]
+        [InlineData(0x10, 0x01, false, false, false, true)]
+        [InlineData(0x01, 0x02, true, false, true, true)]
+        [InlineData(0x80, 0x01, false, true, false, true)]
+        [InlineData(0x1F, 0x01, false, false, false, false)]
+        public void SCASB_ArithmeticFlags(byte alValue, byte memoryValue, bool expectedCF, bool expectedOF, bool expectedSF, bool expectedAF)
+        {
+            Reset();
+            mbbsEmuProtectedModeMemoryCore.AddSegment(2);
+            mbbsEmuCpuRegisters.AL = alValue;
+            mbbsEmuCpuRegisters.ES = 2;
+            mbbsEmuCpuRegisters.DI = 0;
+            mbbsEmuMemoryCore.SetByte(2, 0, memoryValue);
+
+            var instructions = new Assembler(16);
+            instructions.scasb();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(expectedCF, mbbsEmuCpuRegisters.CarryFlag);
+            Assert.Equal(expectedOF, mbbsEmuCpuRegisters.OverflowFlag);
+            Assert.Equal(expectedSF, mbbsEmuCpuRegisters.SignFlag);
+            Assert.Equal(expectedAF, mbbsEmuCpuRegisters.AuxiliaryCarryFlag);
+        }
     }
 }

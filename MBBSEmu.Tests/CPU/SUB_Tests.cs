@@ -496,5 +496,32 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(overflowFlagValue, mbbsEmuCpuRegisters.OverflowFlag);
             Assert.Equal(carryFlagValue, mbbsEmuCpuRegisters.CarryFlag);
         }
+
+        [Theory]
+        [InlineData(0x00000010u, 0x00000001u, true)] // Borrow into bit 4 (0x0 - 0x1)
+        [InlineData(0x00000000u, 0x0000000Fu, true)]
+        [InlineData(0x0000001Fu, 0x00000001u, false)] // No borrow from the low nibble
+        [InlineData(0x00000000u, 0x00000010u, false)] // Borrow above the low nibble only
+        public void SUB_AuxiliaryCarryFlag(uint destination, uint source, bool expectedAuxiliaryCarryFlag)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.AL = (byte)destination;
+            mbbsEmuCpuRegisters.BX = (ushort)destination;
+            mbbsEmuCpuRegisters.ECX = destination;
+
+            var instructions = new Assembler(16);
+            instructions.sub(al, (byte)source);
+            instructions.sub(bx, (ushort)source);
+            instructions.sub(ecx, source);
+            CreateCodeSegment(instructions);
+
+            for (var i = 0; i < 3; i++)
+            {
+                mbbsEmuCpuRegisters.AuxiliaryCarryFlag = !expectedAuxiliaryCarryFlag;
+                mbbsEmuCpuCore.Tick();
+                Assert.Equal(expectedAuxiliaryCarryFlag, mbbsEmuCpuRegisters.AuxiliaryCarryFlag);
+            }
+        }
     }
 }

@@ -1700,6 +1700,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Neg_8(),
                 2 => Op_Neg_16(),
+                4 => Op_Neg_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -1714,6 +1715,7 @@ namespace MBBSEmu.CPU
             {
                 var result = (byte)-destination;
                 Registers.CarryFlag = destination != 0;
+                Registers.AuxiliaryCarryFlag = ((destination ^ result) & 0x10) != 0;
                 //NEG is 0 - destination, so the operand is the source of the subtraction;
                 //OF is set only for 0x80, the value whose negation doesn't fit
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, source: destination);
@@ -1730,8 +1732,26 @@ namespace MBBSEmu.CPU
             {
                 var result = (ushort)-destination;
                 Registers.CarryFlag = destination != 0;
+                Registers.AuxiliaryCarryFlag = ((destination ^ result) & 0x10) != 0;
                 //NEG is 0 - destination, so the operand is the source of the subtraction;
                 //OF is set only for 0x8000, the value whose negation doesn't fit
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, source: destination);
+                Flags_EvaluateSignZero(result);
+                return result;
+            }
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private uint Op_Neg_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+            unchecked
+            {
+                var result = (uint)-(long)destination;
+                Registers.CarryFlag = destination != 0;
+                Registers.AuxiliaryCarryFlag = ((destination ^ result) & 0x10) != 0;
+                //NEG is 0 - destination, so the operand is the source of the subtraction;
+                //OF is set only for 0x80000000, the value whose negation doesn't fit
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, source: destination);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1764,6 +1784,7 @@ namespace MBBSEmu.CPU
                 var result = (byte)wideResult;
 
                 Registers.CarryFlag = wideResult < 0;
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1783,6 +1804,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)wideResult;
 
                 Registers.CarryFlag = wideResult < 0;
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -1803,6 +1825,7 @@ namespace MBBSEmu.CPU
                 var result = (uint)wideResult;
 
                 Registers.CarryFlag = wideResult < 0;
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2405,7 +2428,8 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination + 1);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
+                //INC leaves CF untouched; AF is set when the low nibble wraps from 0xF to 0x0
+                Registers.AuxiliaryCarryFlag = (result & 0xF) == 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2420,7 +2444,8 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination + 1);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
+                //INC leaves CF untouched; AF is set when the low nibble wraps from 0xF to 0x0
+                Registers.AuxiliaryCarryFlag = (result & 0xF) == 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2435,7 +2460,8 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = destination + 1;
-                Flags_EvaluateCarry(EnumArithmeticOperation.Addition, result, destination);
+                //INC leaves CF untouched; AF is set when the low nibble wraps from 0xF to 0x0
+                Registers.AuxiliaryCarryFlag = (result & 0xF) == 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, 1);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2449,6 +2475,7 @@ namespace MBBSEmu.CPU
             {
                 1 => Op_Dec_8(),
                 2 => Op_Dec_16(),
+                4 => Op_Dec_32(),
                 _ => throw new Exception("Unsupported Operation Size")
             };
 
@@ -2463,7 +2490,8 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (byte)(destination - 1);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                //DEC leaves CF untouched; AF is set when the low nibble borrows from 0x0 to 0xF
+                Registers.AuxiliaryCarryFlag = (result & 0xF) == 0xF;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2478,7 +2506,24 @@ namespace MBBSEmu.CPU
             unchecked
             {
                 var result = (ushort)(destination - 1);
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                //DEC leaves CF untouched; AF is set when the low nibble borrows from 0x0 to 0xF
+                Registers.AuxiliaryCarryFlag = (result & 0xF) == 0xF;
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
+                Flags_EvaluateSignZero(result);
+                return result;
+            }
+        }
+
+        [MethodImpl(OpcodeSubroutineCompilerOptimizations)]
+        private uint Op_Dec_32()
+        {
+            var destination = GetOperandValueUInt32(_currentInstruction.Op0Kind, EnumOperandType.Destination);
+
+            unchecked
+            {
+                var result = destination - 1;
+                //DEC leaves CF untouched; AF is set when the low nibble borrows from 0x0 to 0xF
+                Registers.AuxiliaryCarryFlag = (result & 0xF) == 0xF;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, 1);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2915,6 +2960,7 @@ namespace MBBSEmu.CPU
             {
                 var result = (byte)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2931,6 +2977,7 @@ namespace MBBSEmu.CPU
             {
                 var result = (ushort)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -2947,6 +2994,7 @@ namespace MBBSEmu.CPU
             {
                 var result = destination - source;
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -3004,6 +3052,7 @@ namespace MBBSEmu.CPU
                 var result = (ushort)wideResult;
 
                 Registers.CarryFlag = wideResult > ushort.MaxValue;
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -3023,6 +3072,7 @@ namespace MBBSEmu.CPU
                 var result = (uint)wideResult;
 
                 Registers.CarryFlag = wideResult > uint.MaxValue;
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                 Flags_EvaluateOverflow(EnumArithmeticOperation.Addition, result, destination, source);
                 Flags_EvaluateSignZero(result);
                 return result;
@@ -4059,9 +4109,12 @@ namespace MBBSEmu.CPU
         {
             Repeat(() =>
             {
-                var result = (byte)(Memory.GetByte(Registers.DS, Registers.SI) - Memory.GetByte(Registers.ES, Registers.DI));
-                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result);
-                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result);
+                var destination = Memory.GetByte(Registers.DS, Registers.SI);
+                var source = Memory.GetByte(Registers.ES, Registers.DI);
+                var result = (byte)(destination - source);
+                Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
+                Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                 Flags_EvaluateSignZero(result);
 
                 if (Registers.DirectionFlag)
@@ -4115,6 +4168,7 @@ namespace MBBSEmu.CPU
                 {
                     var result = (byte)(destination - source);
                     Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
+                    Registers.AuxiliaryCarryFlag = ((destination ^ source ^ result) & 0x10) != 0;
                     Flags_EvaluateOverflow(EnumArithmeticOperation.Subtraction, result, destination, source);
                     Flags_EvaluateSignZero(result);
 
@@ -5450,12 +5504,6 @@ namespace MBBSEmu.CPU
             };
 
             Registers.CarryFlag = setFlag;
-
-            // only set AF flag on 8 bit additions, though technically it should be on 16/32 as well
-            if (arithmeticOperation == EnumArithmeticOperation.Addition)
-            {
-                Registers.AuxiliaryCarryFlag = ((((source & 0xF) + (destination & 0xF))) & 0x10) != 0;
-            }
         }
 
         /// <summary>

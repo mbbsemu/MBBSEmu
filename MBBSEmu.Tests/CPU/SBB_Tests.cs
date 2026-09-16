@@ -1,4 +1,4 @@
-using Iced.Intel;
+﻿using Iced.Intel;
 using MBBSEmu.CPU;
 using MBBSEmu.Extensions;
 using Xunit;
@@ -121,6 +121,34 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(0x00000000u, mbbsEmuCpuRegisters.EAX);
             Assert.True(mbbsEmuCpuRegisters.CarryFlag);
             Assert.True(mbbsEmuCpuRegisters.ZeroFlag);
+        }
+
+        [Theory]
+        [InlineData(0x00000010u, 0x00000000u, true, true)] // Borrow-in alone crosses the nibble
+        [InlineData(0x00000010u, 0x00000000u, false, false)]
+        [InlineData(0x0000001Fu, 0x0000000Eu, true, false)] // 0xF - 0xE - 1 == 0, no nibble borrow
+        [InlineData(0x0000001Eu, 0x0000000Eu, true, true)] // 0xE - 0xE - 1 borrows
+        public void SBB_AuxiliaryCarryFlag(uint destination, uint source, bool carryIn, bool expectedAuxiliaryCarryFlag)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.AL = (byte)destination;
+            mbbsEmuCpuRegisters.BX = (ushort)destination;
+            mbbsEmuCpuRegisters.ECX = destination;
+
+            var instructions = new Assembler(16);
+            instructions.sbb(al, (byte)source);
+            instructions.sbb(bx, (ushort)source);
+            instructions.sbb(ecx, source);
+            CreateCodeSegment(instructions);
+
+            for (var i = 0; i < 3; i++)
+            {
+                mbbsEmuCpuRegisters.CarryFlag = carryIn;
+                mbbsEmuCpuRegisters.AuxiliaryCarryFlag = !expectedAuxiliaryCarryFlag;
+                mbbsEmuCpuCore.Tick();
+                Assert.Equal(expectedAuxiliaryCarryFlag, mbbsEmuCpuRegisters.AuxiliaryCarryFlag);
+            }
         }
     }
 }
