@@ -1,6 +1,7 @@
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
+using MBBSEmu.Disassembler;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
@@ -26,6 +27,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 
 namespace MBBSEmu.HostProcess
@@ -1225,6 +1227,35 @@ namespace MBBSEmu.HostProcess
         ///     0x004D == 77, Ordinal for ATOL()
         /// </summary>
         /// <param name="module"></param>
+        /// <summary>
+        ///     Reads a length-prefixed name string from a DLL's Imported Names Table at the given
+        ///     offset. IMPORTNAME relocation records store the imported function name as an offset
+        ///     into this table.
+        /// </summary>
+        private static string GetImportedNameByOffset(NEFile file, ushort offset)
+        {
+            var fileOffset = file.WindowsHeader.ImportedNamesTableOffset + offset;
+            var length = file.FileContent[fileOffset];
+            return Encoding.ASCII.GetString(file.FileContent, fileOffset + 1, length);
+        }
+
+        /// <summary>
+        ///     Resolves an exported function name to its Entry Table ordinal within the given DLL by
+        ///     searching the Resident and Non-Resident Name Tables. Returns 0 if the name is not found.
+        /// </summary>
+        private static ushort ResolveExportedOrdinalByName(NEFile file, string name)
+        {
+            foreach (var residentName in file.ResidentNameTable)
+                if (string.Equals(residentName.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return residentName.IndexIntoEntryTable;
+
+            foreach (var nonResidentName in file.NonResidentNameTable)
+                if (string.Equals(nonResidentName.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return nonResidentName.IndexIntoEntryTable;
+
+            return 0;
+        }
+
         private void PatchRelocation(MbbsModule module)
         {
 
@@ -1338,20 +1369,59 @@ namespace MBBSEmu.HostProcess
                                 {
                                     var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
                                     var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
+                                    var importedModuleName = dll.File.ImportedNameTable[nametableOrdinal].Name;
 
-                                    var newSegment = dll.File.ImportedNameTable[nametableOrdinal].Name switch
+                                    FarPtr relocationPointer;
+                                    switch (importedModuleName)
                                     {
-                                        "MAJORBBS" => Majorbbs.Segment,
-                                        "GALGSBL" => Galgsbl.Segment,
-                                        "PHAPI" => Phapi.Segment,
-                                        "GALME" => Galme.Segment,
-                                        "DOSCALLS" => Doscalls.Segment,
-                                        _ => throw new Exception(
-                                            $"Unknown or Unimplemented Imported Module: {dll.File.ImportedNameTable[nametableOrdinal].Name}")
+                                        case "MAJORBBS":
+                                            relocationPointer = new FarPtr(Majorbbs.Segment, functionOrdinal);
+                                            break;
+                                        case "GALGSBL":
+                                            relocationPointer = new FarPtr(Galgsbl.Segment, functionOrdinal);
+                                            break;
+                                        case "PHAPI":
+                                            relocationPointer = new FarPtr(Phapi.Segment, functionOrdinal);
+                                            break;
+                                        case "GALME":
+                                            relocationPointer = new FarPtr(Galme.Segment, functionOrdinal);
+                                            break;
+                                        case "DOSCALLS":
+                                            relocationPointer = new FarPtr(Doscalls.Segment, functionOrdinal);
+                                            break;
+                                        case "GALMSG":
+                                            relocationPointer = new FarPtr(Galmsg.Segment, functionOrdinal);
+                                            break;
+                                        //Imported by name from another module DLL loaded alongside this one
+                                        //(e.g. MajorMUD Plus (WCCMMPLS) imports functions from MajorMUD (WCCMMUD)).
+                                        //For an IMPORTNAME relocation the target value is an offset into this DLL's
+                                        //imported-names table pointing at the function name; we resolve that name to
+                                        //an exported ordinal in the target DLL and build a pointer into its segments.
+                                        case var importedName
+                                            when module.ModuleDlls.Any(m =>
+                                                m.File.FileName.Split('.')[0].ToUpper() == importedName.ToUpper()):
+                                            {
+                                                var importedDll = module.ModuleDlls.First(m =>
+                                                    m.File.FileName.Split('.')[0].ToUpper() == importedName.ToUpper());
 
-                                    };
+                                                var importedFunctionName = GetImportedNameByOffset(dll.File, functionOrdinal);
+                                                var entryOrdinal = ResolveExportedOrdinalByName(importedDll.File, importedFunctionName);
 
-                                    var relocationPointer = new FarPtr(newSegment, functionOrdinal);
+                                                if (entryOrdinal == 0)
+                                                    throw new Exception(
+                                                        $"({module.ModuleIdentifier}) Unable to resolve imported name '{importedFunctionName}' from module {importedName}");
+
+                                                var importedEntry =
+                                                    importedDll.File.EntryTable.First(x => x.Ordinal == entryOrdinal);
+                                                relocationPointer = new FarPtr(
+                                                    (ushort)(importedEntry.SegmentNumber + importedDll.SegmentOffset),
+                                                    importedEntry.Offset);
+                                                break;
+                                            }
+                                        default:
+                                            throw new Exception(
+                                                $"Unknown or Unimplemented Imported Module: {importedModuleName}");
+                                    }
 
                                     //32-Bit Pointer
                                     if (relocationRecord.SourceType == 3)
