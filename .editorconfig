@@ -1,0 +1,31 @@
+# Codifies the style applied solution-wide in #661 so it is reproducible by
+# `dotnet format` and by any IDE, rather than depending on one editor's defaults.
+root = true
+
+[*]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_size = 4
+
+# Usings are a single alphabetical block; System is not sorted first.
+dotnet_sort_system_directives_first = false
+dotnet_separate_import_directive_groups = false
+
+# Allman braces.
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_else = true
+csharp_new_line_before_catch = true
+csharp_new_line_before_finally = true
+csharp_new_line_before_members_in_object_initializers = true
+csharp_new_line_before_members_in_anonymous_types = true
+csharp_new_line_between_query_expression_clauses = true
+
+[*.{csproj,props,targets}]
+indent_style = tab
+
+[*.{json,yml,yaml}]
+indent_size = 2
