@@ -76,6 +76,17 @@ namespace MBBSEmu.Tests.Session
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("testing");
         }
 
+        [Fact]
+        public void lineFillingScreenWidthBreaksEarly()
+        {
+            // MajorMUD sets btutsw(79) for an 80 column terminal; a line must never fill all 80 columns or
+            // terminals that wrap immediately at the last column will show an extra blank line (#555)
+            testSession.WordWrapWidth = 79;
+            testSession.SendToClient("You are carrying padded pants (Legs), padded gloves (Hands), club (Weapon Hand), padded boots, padded helm, padded vest\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("You are carrying padded pants (Legs), padded gloves (Hands), club (Weapon");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("Hand), padded boots, padded helm, padded vest");
+        }
+
         [Theory]
         [InlineData(4, "test one two three\r\n", "test", "one", "two", "thre", "e")]
         [InlineData(0, "test one two three\r\n", "test one two three")]
