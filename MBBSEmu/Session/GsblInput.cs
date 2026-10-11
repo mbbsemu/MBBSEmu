@@ -224,7 +224,9 @@ namespace MBBSEmu.Session
         /// <param name="c">Raw character received</param>
         /// <param name="translationTable">GSBL input translation table, used when no interceptor is set</param>
         /// <param name="interceptor">btuchi() routine, which replaces the translation table when set</param>
-        public static EnumGsblInputResult ProcessCharacter(SessionBase session, byte c, byte[] translationTable, Func<byte, byte> interceptor)
+        /// <param name="pageKeyHandler">btuhpk() routine, consulted for keys received during a page pause</param>
+        public static EnumGsblInputResult ProcessCharacter(SessionBase session, byte c, byte[] translationTable, Func<byte, byte> interceptor,
+            Func<byte, byte> pageKeyHandler = null)
         {
             var gsbl = session.GsblInput;
 
@@ -237,7 +239,7 @@ namespace MBBSEmu.Session
             if (session.GsblOutput.IsPaused)
             {
                 gsbl.LastCharacter = c;
-                session.GsblOutput.WaitKey(c);
+                session.GsblOutput.WaitKey(c, pageKeyHandler);
                 return EnumGsblInputResult.Dropped;
             }
 

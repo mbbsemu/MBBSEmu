@@ -1,3 +1,4 @@
+using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -83,6 +84,13 @@ namespace MBBSEmu.Session
         public byte[] PausePrompt { get; private set; }
 
         /// <summary>
+        ///     Module routine consulted for keys received during a page pause (btuhpk); null if none.
+        ///     It returns 0 to stay paused, 1 to resume, or anything else to resume without further page
+        ///     pauses.
+        /// </summary>
+        public FarPtr PageKeyRoutine { get; set; }
+
+        /// <summary>
         ///     Lines output on the current page (GSBL pgcnt)
         /// </summary>
         public int PageLineCount { get; set; }
@@ -134,6 +142,7 @@ namespace MBBSEmu.Session
                 XonCharacter = 0;
                 PageLength = 0;
                 PausePrompt = null;
+                PageKeyRoutine = null;
                 PageLineCount = 0;
                 NonStop = false;
             }
@@ -226,8 +235,12 @@ namespace MBBSEmu.Session
         /// <summary>
         ///     A key was received while output is paused (GSBL waitky). The key is consumed either way.
         /// </summary>
+        /// <param name="c">Key received</param>
+        /// <param name="pageKeyHandler">
+        ///     Runs <see cref="PageKeyRoutine"/> for a key received during a page pause, returning its result
+        /// </param>
         /// <returns>TRUE if output resumed</returns>
-        public bool WaitKey(byte c)
+        public bool WaitKey(byte c, Func<byte, byte> pageKeyHandler = null)
         {
             lock (_session.OutputLock)
             {
@@ -235,6 +248,21 @@ namespace MBBSEmu.Session
                     return false;
 
                 c &= 0x7F;
+
+                //A page pause with a handler installed asks the handler; XOFF never does
+                if (Pause == EnumGsblOutputPause.Page && pageKeyHandler != null)
+                {
+                    var result = pageKeyHandler(c);
+                    if (result == 0)
+                        return false;
+
+                    if (result != 1)
+                        NonStop = true;
+
+                    Resume();
+                    return true;
+                }
+
                 if (c != XonCharacter && XonCharacter != 0)
                     return false;
 
