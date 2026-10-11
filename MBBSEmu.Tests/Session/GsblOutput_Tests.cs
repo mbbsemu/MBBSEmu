@@ -1,5 +1,7 @@
 using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.Session;
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Xunit;
@@ -22,10 +24,10 @@ namespace MBBSEmu.Tests.Session
         private void Xmn(string text) =>
             _session.SendToClient(Encoding.Latin1.GetBytes(text), EnumGsblOutputKind.ClearProofText);
 
-        private void Type(string input)
+        private void Type(string input, Func<byte, byte> pageKeyHandler = null)
         {
             foreach (var c in Encoding.Latin1.GetBytes(input))
-                GsblInput.ProcessCharacter(_session, c, _translationTable, null);
+                GsblInput.ProcessCharacter(_session, c, _translationTable, null, pageKeyHandler);
         }
 
         private string Wire() => Encoding.Latin1.GetString(_session.DrainSentData());
@@ -294,6 +296,95 @@ namespace MBBSEmu.Tests.Session
 
             Assert.Equal(10, Output.PageLength);
             Assert.Equal(2, Output.PageLineCount);
+        }
+
+        // --- page-pause key handler (btuhpk) ------------------------------------------------
+
+        [Fact]
+        public void TheHandlerCanKeepThePause()
+        {
+            PagingOn(2);
+            Xmt("1\r\n2\r\n3\r\n");
+            Wire();
+
+            Type(" ", _ => 0);
+
+            Assert.Equal(EnumGsblOutputPause.Page, Output.Pause);
+            Assert.Equal("", Wire());
+        }
+
+        [Fact]
+        public void TheHandlerSeesTheKeyWithoutParity()
+        {
+            var keys = new List<byte>();
+            PagingOn(2);
+            Xmt("1\r\n2\r\n3\r\n");
+
+            Type("\xC1", c =>
+            {
+                keys.Add(c);
+                return 1;
+            });
+
+            Assert.Equal(new[] { (byte)'A' }, keys);
+            Assert.False(Output.IsPaused);
+            Assert.False(Output.NonStop);
+        }
+
+        [Fact]
+        public void TheHandlerCanGoNonstop()
+        {
+            PagingOn(2);
+            Xmt("1\r\n2\r\n3\r\n4\r\n5\r\n6\r\n");
+            Assert.Equal("1\r\n2\r\nMore?", Wire());
+
+            Type(" ", _ => 2);
+
+            Assert.True(Output.NonStop);
+            Assert.Equal("\b\b\b\b\b3\r\n4\r\n5\r\n6\r\n", Wire());
+        }
+
+        [Fact]
+        public void CompletedInputEndsNonstop()
+        {
+            PagingOn(2);
+            Xmt("1\r\n2\r\n3\r\n");
+            Type(" ", _ => 2);
+            Wire();
+
+            Type("x\r");
+            Wire();
+            Xmt("a\r\nb\r\nc\r\n");
+
+            Assert.False(Output.NonStop);
+            Assert.Equal("a\r\nb\r\nMore?", Wire());
+        }
+
+        [Fact]
+        public void TheHandlerIsNotConsultedForXoff()
+        {
+            var consulted = false;
+            Type("\x13");
+            Xmt("abc");
+
+            Type("q", _ =>
+            {
+                consulted = true;
+                return 0;
+            });
+
+            Assert.False(consulted);
+            Assert.Equal("abc", Wire());
+        }
+
+        [Fact]
+        public void ResettingTheSettingsRemovesTheHandler()
+        {
+            Output.PageKeyRoutine = new MBBSEmu.Memory.FarPtr(1, 2);
+
+            Output.ResetSettings();
+
+            Assert.Null(Output.PageKeyRoutine);
         }
 
         // --- XOFF / XON ----------------------------------------------------------------------

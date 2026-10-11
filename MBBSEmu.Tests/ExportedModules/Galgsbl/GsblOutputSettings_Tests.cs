@@ -1,3 +1,4 @@
+using MBBSEmu.Memory;
 using MBBSEmu.Session;
 using System.Collections.Generic;
 using System.Text;
@@ -12,6 +13,7 @@ namespace MBBSEmu.Tests.ExportedModules.Galgsbl
     public class GsblOutputSettings_Tests : ExportedModuleTestBase
     {
         private const ushort BTUCLO_ORDINAL = 7;
+        private const ushort BTUHPK_ORDINAL = 17;
         private const ushort BTUXMN_ORDINAL = 58;
         private const ushort BTUXNF_ORDINAL = 60;
 
@@ -74,6 +76,29 @@ namespace MBBSEmu.Tests.ExportedModules.Galgsbl
             Call(BTUXNF_ORDINAL, 0, 0, 0x141, 0);
 
             Assert.Equal(0x41, Channel.GsblInput.XoffCharacter);
+        }
+
+        [Fact]
+        public void btuhpk_InstallsAndRemovesTheHandler()
+        {
+            Reset();
+
+            Call(BTUHPK_ORDINAL, 0, 0x1234, 0x0002);
+            Assert.Equal(new FarPtr(0x0002, 0x1234), Channel.GsblOutput.PageKeyRoutine);
+            Assert.Equal(0, mbbsEmuCpuRegisters.AX);
+
+            Call(BTUHPK_ORDINAL, 0, 0, 0);
+            Assert.Null(Channel.GsblOutput.PageKeyRoutine);
+        }
+
+        [Fact]
+        public void btuhpk_UndefinedChannel()
+        {
+            Reset();
+
+            Call(BTUHPK_ORDINAL, 99, 0x1234, 0x0002);
+
+            Assert.Equal(unchecked((ushort)-10), mbbsEmuCpuRegisters.AX);
         }
 
         [Fact]

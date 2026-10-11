@@ -154,6 +154,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 4:
                     btuchi();
                     break;
+                case 17:
+                    btuhpk();
+                    break;
                 case 63:
                     chious();
                     break;
@@ -586,6 +589,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Debug($"Assigned Character Interceptor Routine {ChannelDictionary[channel].CharacterInterceptor} to Channel {channel}");
 #endif
 
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Installs a handler for keys received while output is paused for a full page
+        ///
+        ///     The handler returns 0 to stay paused, 1 to resume output, or anything else to resume
+        ///     without further page pauses. It isn't consulted while output is paused by XOFF.
+        ///
+        ///     Signature: int btuhpk(int chan, char (*hpkrou)(int chan, char c))
+        /// </summary>
+        private void btuhpk()
+        {
+            var channelNumber = GetParameter(0);
+            var routinePointer = GetParameterPointer(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            channel.GsblOutput.PageKeyRoutine = routinePointer.IsNull() ? null : new FarPtr(routinePointer.Data);
             Registers.AX = 0;
         }
 

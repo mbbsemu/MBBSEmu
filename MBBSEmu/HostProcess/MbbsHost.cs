@@ -732,6 +732,36 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
+        ///     The routine registered with GSBL->BTUHPK() for this channel, if any, as a handler for keys
+        ///     received during a page pause
+        /// </summary>
+        private Func<byte, byte> PageKeyHandler(SessionBase session) =>
+            session.GsblOutput.PageKeyRoutine == null || session.CurrentModule == null
+                ? null
+                : c => InvokeBTUHPK(session, c);
+
+        /// <summary>
+        ///     Invokes routine registered using GSBL->BTUHPK()
+        ///
+        ///     Signature: char hpkrou(int chn, char c)
+        ///     Returns 0 to stay paused, 1 to resume output, or anything else to resume without further page pauses
+        /// </summary>
+        private byte InvokeBTUHPK(SessionBase session, byte character)
+        {
+            var initialStackValues = new Queue<ushort>(2);
+            initialStackValues.Enqueue(character);
+            initialStackValues.Enqueue(session.Channel);
+
+            var result = Run(session.CurrentModule.ModuleIdentifier,
+                session.GsblOutput.PageKeyRoutine,
+                session.Channel, true,
+                initialStackValues);
+
+            //The routine returns a char, so only AL is meaningful
+            return (byte)(result & 0xFF);
+        }
+
+        /// <summary>
         ///     Invokes routine registered as STSROU during MAJORBBS->REGISTER_MODULE() call
         ///
         ///     The registered STSROU is invoked any time there is a status change or deferred processing
@@ -889,7 +919,8 @@ namespace MBBSEmu.HostProcess
 
             var result = GsblInput.ProcessCharacter(session, session.CharacterReceived,
                 GsblInput.GetTranslationTable(_globalCache),
-                session.CharacterInterceptor == null ? null : c => InvokeBTUCHI(session, c));
+                session.CharacterInterceptor == null ? null : c => InvokeBTUCHI(session, c),
+                PageKeyHandler(session));
 
             return result != EnumGsblInputResult.InterceptorDropped;
         }
@@ -911,7 +942,7 @@ namespace MBBSEmu.HostProcess
             //While output is paused, every key is offered to resume it and is never input
             if (session.GsblOutput.IsPaused)
             {
-                session.GsblOutput.WaitKey(session.CharacterReceived);
+                session.GsblOutput.WaitKey(session.CharacterReceived, PageKeyHandler(session));
                 return false;
             }
 
