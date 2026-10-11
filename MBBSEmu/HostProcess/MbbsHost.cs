@@ -337,17 +337,17 @@ namespace MBBSEmu.HostProcess
                 {
                     //Process a single incoming byte from the client session
                     session.ProcessDataFromClient();
+                    GsblInput.Synchronize(session);
 
-                    //Handle GSBL Chain of Events
-                    if (!ProcessGSBLInputEvents(session))
+                    //Run the character through GSBL input processing (btuchi, translation, echo, line assembly)
+                    if (session.DataToProcess && !ProcessIncomingCharacter(session))
                     {
                         session.DataToProcess = false;
                         continue;
                     }
 
-                    //Handle Character based Events
-                    if (session.DataToProcess)
-                        ProcessIncomingCharacter(session);
+                    //Handle GSBL Chain of Events
+                    ProcessGSBLInputEvents(session);
 
                     //Global Command Handler
                     if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE && DoGlobalsAttribute.Get(session.SessionState))
@@ -413,8 +413,9 @@ namespace MBBSEmu.HostProcess
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
-                                //Did BTUCHI or a previous command cause a status change?
-                                if (session.GetStatus() == EnumUserStatus.CYCLE || session.GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY)
+                                //Did BTUCHI, a trigger block, or a previous command cause a status change?
+                                if (session.GetStatus() == EnumUserStatus.CYCLE || session.GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY ||
+                                    session.GetStatus() == EnumUserStatus.INBLK)
                                 {
                                     ProcessSTSROU(session);
                                     break;
@@ -620,6 +621,10 @@ namespace MBBSEmu.HostProcess
             session.PromptCharacter = 0;
             session.ResetScreenPauseState();
 
+            //Don't let a module's GSBL input settings (echo off, trigger mode, etc.) follow the user out
+            session.GsblInput.Reset();
+            session.GsblInput.ClearInput();
+
             //Reset States
             session.Status.Clear();
             session.UsrPtr.Substt = 0;
@@ -703,17 +708,16 @@ namespace MBBSEmu.HostProcess
         ///     Invokes routine registered using GSBL->BTUCHI()
         ///
         ///     BTUCHI is a character interceptor method which intercepts every incoming character on a channel
-        ///     and processes it before it's sent to the buffer. In the case of MBBSEmu, since the byte is ALREADY in
-        ///     the buffer, we overwrite the last byte received with the result of the registered BTUCHI routine
+        ///     and returns the character to process in its place, or 0 to discard it
         /// </summary>
         /// <param name="session"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort ProcessBTUCHI(SessionBase session)
+        /// <param name="character">Character received</param>
+        /// <returns>The character to process, or 0 if it was discarded</returns>
+        private byte InvokeBTUCHI(SessionBase session, byte character)
         {
             //Create Parameters for BTUCHI Routine
             var initialStackValues = new Queue<ushort>(2);
-            initialStackValues.Enqueue(session.CharacterReceived);
+            initialStackValues.Enqueue(character);
             initialStackValues.Enqueue(session.Channel);
 
             var result = Run(session.CurrentModule.ModuleIdentifier,
@@ -723,20 +727,7 @@ namespace MBBSEmu.HostProcess
 
             //Only Take the low bytes, as it's the return character and not every routine/compiler
             //would clear out AH before assigning AL
-            result &= 0xFF;
-
-            if (result == 0)
-                return result;
-
-            session.CharacterProcessed = (byte)result;
-
-            if (session.CharacterProcessed == 0xD)
-            {
-                session.Status.Clear();
-                session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
-            }
-
-            return result;
+            return (byte)(result & 0xFF);
         }
 
         /// <summary>
@@ -865,48 +856,71 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
-        ///     Processes the incoming character from a channel through the GSBL series of events.
-        ///
-        ///     In an actual MBBS System, these events are all triggered before MBBS even "gets" the character
-        ///     from the serial channel.
+        ///     Invokes the BTUCHI routine when the echo buffer has emptied, if BTUCHE enabled it
+        /// </summary>
+        /// <param name="session"></param>
+        private void ProcessGSBLInputEvents(SessionBase session)
+        {
+            if (session.CharacterInterceptor == null || session.DataToProcess)
+                return;
+
+            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
+            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke)
+                ProcessEchoEmptyInvoke(session);
+        }
+
+        /// <summary>
+        ///     Processes the incoming character from a given channel through GSBL input processing
+        ///     (see <see cref="GsblInput"/>), which handles BTUCHI interception, input translation,
+        ///     line editing and echo.
         /// </summary>
         /// <param name="session"></param>
         /// <returns>
         ///     TRUE == Data Processed, Continue
         ///     FALSE == Data Processed, Halt Processing on Channel
         /// </returns>
-        private bool ProcessGSBLInputEvents(SessionBase session)
+        private bool ProcessIncomingCharacter(SessionBase session)
         {
-            //Quick Exit
-            if (session.CharacterInterceptor == null)
-                return true;
+            //FSD handles its own editing and echo of raw input
+            if (session.SessionState is EnumSessionState.InFullScreenDisplay or EnumSessionState.InFullScreenEditor)
+                return ProcessIncomingFullScreenCharacter(session);
 
-            //Invoke BTUCHI registered routine if one exists
-            if (session.DataToProcess)
-            {
-                return ProcessBTUCHI(session) != 0;
-            }
+            var result = GsblInput.ProcessCharacter(session, session.CharacterReceived,
+                GsblInput.GetTranslationTable(_globalCache),
+                session.CharacterInterceptor == null ? null : c => InvokeBTUCHI(session, c));
 
-            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
-            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke)
-            {
-                ProcessEchoEmptyInvoke(session);
-                return true;
-            }
-
-            return true;
+            return result != EnumGsblInputResult.InterceptorDropped;
         }
 
         /// <summary>
-        ///     Processes the incoming character from a given channel and takes specific action depending on the
-        ///     character and the current state of the channel.
-        ///
-        ///     Echoing of the character back to the channel is also handled within this method
+        ///     Passes raw input through to the Full Screen Display/Editor, which interprets ANSI key
+        ///     sequences and handles its own echo
         /// </summary>
         /// <param name="session"></param>
-        private void ProcessIncomingCharacter(SessionBase session)
+        /// <returns>
+        ///     TRUE == Data Processed, Continue
+        ///     FALSE == Data Processed, Halt Processing on Channel
+        /// </returns>
+        private bool ProcessIncomingFullScreenCharacter(SessionBase session)
         {
-            //Handling Incoming Characters
+            if (session.InputLockout)
+                return false;
+
+            if (session.CharacterInterceptor != null)
+            {
+                var result = InvokeBTUCHI(session, session.CharacterReceived);
+                if (result == 0)
+                    return false;
+
+                session.CharacterProcessed = result;
+
+                if (session.CharacterProcessed == 0xD)
+                {
+                    session.Status.Clear();
+                    session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
+                }
+            }
+
             switch (session.CharacterReceived)
             {
                 //Backspace
@@ -921,37 +935,6 @@ namespace MBBSEmu.HostProcess
                         break;
                     }
 
-                //Enter or Return
-                case 0xD when (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
-                    {
-                        //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
-                        if (!session.TransparentMode && session.CharacterProcessed > 0)
-                            session.SendToClient(new byte[] { 0xD, 0xA });
-
-                        //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
-                        if (session.GetStatus() == EnumUserStatus.CYCLE)
-                        {
-                            //If we're cycling, ignore \r for triggering STTROU and add it to the input buffer for STSROU to handle
-                            if (session.TransparentMode)
-                            {
-                                session.InputBuffer.WriteByte(session.CharacterProcessed);
-                                break;
-                            }
-
-                            //Set Status == 3, which means there is a Command Ready
-                            session.Status.Clear(); //Clear the 240
-                            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE); //Enqueue Status of 3
-                            session.EchoSecureEnabled = false;
-                            break;
-                        }
-
-                        //Always Enqueue Input Ready, if one already not queued (from BTUCHI)
-                        if (session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
-                            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
-
-                        break;
-                    }
-
                 case 0xA: //Ignore Linefeed
                 case 0x0: //Ignore Null
                     break;
@@ -962,35 +945,13 @@ namespace MBBSEmu.HostProcess
                             break;
 
                         if (session.CharacterProcessed > 0)
-                        {
                             session.InputBuffer.WriteByte(session.CharacterProcessed);
-
-                            //If the client is in transparent mode, don't echo
-                            if (session.TransparentMode)
-                                break;
-
-                            //FSD handles its own echo
-                            if (session.SessionState == EnumSessionState.InFullScreenDisplay ||
-                                session.SessionState == EnumSessionState.InFullScreenEditor)
-                                break;
-
-                            if (session.Status.Count == 0 || session.GetStatus() == EnumUserStatus.UNUSED || session.GetStatus() == EnumUserStatus.RINGING ||
-                               session.GetStatus() == EnumUserStatus.POLLING_STATUS)
-                            {
-
-                                {
-                                    //Check for Secure Echo being Enabled
-                                    session.SendToClient(session.EchoSecureEnabled
-                                        ? new[] { session.ExtUsrAcc.ech }
-                                        : new[] { session.CharacterReceived });
-                                }
-                            }
-
-                        }
 
                         break;
                     }
             }
+
+            return true;
         }
 
         /// <summary>

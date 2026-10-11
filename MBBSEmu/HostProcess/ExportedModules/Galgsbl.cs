@@ -35,6 +35,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private const ushort ERROR_CHANNEL_NOT_DEFINED = 0xFFF6;
         private const ushort ERROR_CHANNEL_OUT_OF_RANGE = 0xFFF5;
+        private const ushort ERROR_BTUSHORT = 0xFFFE;
 
         public override void Dispose()
         {
@@ -240,6 +241,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 62:
                     chiinp();
                     break;
+                case 1:
+                    btubse();
+                    break;
+                case 20:
+                    btuict();
+                    break;
+                case 25:
+                    btulfd();
+                    break;
+                case 50:
+                    btutrm();
+                    break;
+                case 57:
+                    btuxlt();
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in GALGSBL: {ordinal}");
             }
@@ -277,6 +293,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Set the input byte trigger quantity (used in conjunction with btuict())
         ///
+        ///     A nonzero count puts the channel in trigger (block) mode: input is buffered raw, without
+        ///     translation, editing or echo, and status 4 is reported for every nbyt bytes received.
+        ///     Switching between line and trigger mode discards buffered input.
+        ///
         ///     Signature: int btutrg(int chan,int nbyt)
         ///     Result: AX == 0 = OK
         /// </summary>
@@ -284,7 +304,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public void btutrg()
         {
             var channelNumber = GetParameter(0);
-            var numBytes = GetParameter(1);
+            var numBytes = (short)GetParameter(1);
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
@@ -292,22 +312,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            if (numBytes == 0)
+            Registers.AX = 0;
+
+            if (channel.GsblInput.Trigger == numBytes)
+                return;
+
+            channel.GsblInput.TriggerCount = 0;
+
+            //Changing the count within trigger mode keeps the input
+            if (channel.GsblInput.Trigger != 0 && numBytes != 0)
             {
-                //Default ASCII mode -- we don't need to do anything
-                channel.TransparentMode = false;
-                Registers.AX = 0;
+                channel.GsblInput.Trigger = numBytes;
                 return;
             }
 
-            if (numBytes >= 1)
-            {
-                channel.TransparentMode = true;
-                Registers.AX = 0;
-                return;
-            }
-
-            throw new ArgumentOutOfRangeException($"Invalid value for numBytes: {numBytes}");
+            channel.GsblInput.Trigger = numBytes;
+            channel.InputBuffer.SetLength(0);
+            channel.GsblInput.ClearInput();
         }
 
         /// <summary>
@@ -349,7 +370,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         public void btuxnf()
         {
-            //Ignore this, we won't deal with XON/XOFF
+            var channelNumber = GetParameter(0);
+            var xoff = (byte)GetParameter(2);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            //Output isn't paused, but the XOFF character is still never delivered as input
+            channel.GsblInput.XoffCharacter = xoff;
             Registers.AX = 0;
         }
 
@@ -426,25 +457,60 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            //Nothing to Input?
-            if (channel.InputBuffer.Length == 0)
+            var bytesRead = ReadInput(channel, Math.Min(max, (int)channel.InputBuffer.Length));
+            channel.GsblInput.TriggerCount = 0;
+
+            Module.Memory.SetArray(destinationSegment, destinationOffset, bytesRead);
+            Registers.AX = (ushort)bytesRead.Length;
+        }
+
+        /// <summary>
+        ///     Read a block of input in trigger mode (see btutrg())
+        ///
+        ///     Copies exactly one trigger-sized block. If fewer bytes are waiting, they're copied but
+        ///     left in the buffer, and BTUSHORT (-2) is returned.
+        ///
+        ///     Signature: int btuict(int chan,char *rdbptr)
+        ///     Result: AX == Number of input characters retrieved, or -2 if fewer than the trigger count
+        /// </summary>
+        public void btuict()
+        {
+            var channelNumber = GetParameter(0);
+            var destinationPointer = GetParameterPointer(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
-                Registers.AX = 0;
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
                 return;
             }
 
-            int bytesToRead;
-            if (max > channel.InputBuffer.Length)
-                bytesToRead = (int)channel.InputBuffer.Length;
-            else
-                bytesToRead = max;
+            var trigger = channel.GsblInput.Trigger;
+            if (channel.InputBuffer.Length < trigger)
+            {
+                Module.Memory.SetArray(destinationPointer, channel.InputBuffer.ToArray());
+                Registers.AX = ERROR_BTUSHORT;
+                return;
+            }
 
-            var bytesRead = new byte[bytesToRead];
-            channel.InputBuffer.Position = 0;
-            channel.InputBuffer.Read(bytesRead, 0, bytesToRead);
+            var bytesRead = ReadInput(channel, trigger);
+            channel.GsblInput.TriggerCount = 0;
 
-            Module.Memory.SetArray(destinationSegment, destinationOffset, bytesRead);
-            Registers.AX = (ushort)bytesToRead;
+            Module.Memory.SetArray(destinationPointer, bytesRead);
+            Registers.AX = (ushort)bytesRead.Length;
+        }
+
+        /// <summary>
+        ///     Removes and returns up to count bytes from the front of the channel's input buffer
+        /// </summary>
+        private static byte[] ReadInput(SessionBase channel, int count)
+        {
+            var input = channel.InputBuffer.ToArray();
+            count = Math.Min(count, input.Length);
+
+            channel.InputBuffer.SetLength(0);
+            channel.InputBuffer.Write(input, count, input.Length - count);
+
+            return input[..count];
         }
 
         /// <summary>
@@ -467,6 +533,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             channel.InputBuffer.SetLength(0);
+            channel.GsblInput.ClearInput();
 
             Registers.AX = 0;
         }
@@ -537,7 +604,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            Registers.AX = (ushort)channel.InputBuffer.Length;
+            Registers.AX = (ushort)(channel.InputBuffer.Length + channel.GsblInput.PendingLine.Count);
         }
 
         /// <summary>
@@ -601,10 +668,37 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     any bytes input past this limit should be ignored, but will generate
         ///     a status of 251
         ///
+        ///     A negative maxinl enables word wrap: the last word of a full line moves onto a new line,
+        ///     and the full line is reported as complete. 0 removes the limit.
+        ///
         ///     Signature: int err=btumil(int chan, int maxinl)
         /// </summary>
         private void btumil()
         {
+            var channelNumber = GetParameter(0);
+            var maxinl = (int)(short)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            if (maxinl < 0)
+            {
+                maxinl = -maxinl;
+                channel.GsblInput.WordWrap = true;
+            }
+            else if (maxinl > 0)
+            {
+                channel.GsblInput.WordWrap = false;
+            }
+            else
+            {
+                maxinl = GsblChannelInput.UnlimitedLineLength;
+            }
+
+            channel.GsblInput.MaxInputLength = maxinl;
             Registers.AX = 0;
         }
 
@@ -672,7 +766,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btutru()
         {
-            //TODO -- not sure the functionality here, need to research
+            var channelNumber = GetParameter(0);
+            var character = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            //Never delivered as input. Output is sent as it's written, so there's nothing to abort.
+            channel.GsblInput.OutputAbortCharacter = character;
             Registers.AX = 0;
         }
 
@@ -721,7 +825,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"Setting ECHO to: {mode} for channel {channelNumber}");
 #endif
-            channel.TransparentMode = mode == 0;
+            channel.GsblInput.EchoEnabled = mode != 0;
             Registers.AX = 0;
         }
 
@@ -805,9 +909,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (MonitoredChannel2 == 0xFFFF)
                 return;
 
-            ChannelDictionary[MonitoredChannel2].CharacterReceived = (byte)character;
-            ChannelDictionary[MonitoredChannel2].InputBuffer.WriteByte((byte)character);
-            ChannelDictionary[MonitoredChannel2].DataToProcess = true;
+            //Processed as if the user typed it
+            ChannelDictionary[MonitoredChannel2].DataFromClient.Add((byte)character);
         }
 
         private ReadOnlySpan<byte> ticker => Module.Memory.GetVariablePointer("TICKER").Data;
@@ -854,9 +957,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         /// <summary>
         ///     Resets A Channel
+        ///
+        ///     Restores the channel's GSBL input settings to their defaults and discards buffered input
+        ///
+        ///     Signature: int bturst(int chan)
         /// </summary>
         private void bturst()
         {
+            var channelNumber = GetParameter(0);
+
+            if (ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                channel.GsblInput.Reset();
+                channel.GsblInput.ClearInput();
+                channel.InputBuffer.SetLength(0);
+            }
+
             Registers.AX = 0;
         }
 
@@ -1010,7 +1126,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             _logger.Debug($"Set InputLockout on channel {channelNumber} to {onoff == 1}");
 #endif
 
-            channel.InputLockout = onoff == 1;
+            channel.InputLockout = onoff != 0;
+            Registers.AX = 0;
 
         }
 
@@ -1046,7 +1163,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Takes the specified character and adds it directly to the channel input buffer
+        ///     Takes the specified character and adds it directly to the channel's input line, as a channel
+        ///     driver would: backspace and the line terminator are handled, but there's no translation or echo
         ///
         ///     Signature: void chiinp(int chan,char c);
         /// </summary>
@@ -1061,8 +1179,83 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            if (character != 0xD)
-                channel.InputBuffer.WriteByte(character);
+            GsblInput.ProcessDriverCharacter(channel, character);
+        }
+
+        /// <summary>
+        ///     Sets the backspace echo character. A backspace erases the last input character and is
+        ///     echoed as this character (followed by space, backspace if it is a backspace); 0 disables
+        ///     backspace handling, storing backspaces as input.
+        ///
+        ///     Signature: int btubse(int chan,char bschar);
+        /// </summary>
+        private void btubse()
+        {
+            var channelNumber = GetParameter(0);
+            var character = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            channel.GsblInput.BackspaceCharacter = character;
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Sets the character echoed after the line terminator; 0 disables it
+        ///
+        ///     Signature: int btulfd(int chan,char lfchar);
+        /// </summary>
+        private void btulfd()
+        {
+            var channelNumber = GetParameter(0);
+            var character = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            channel.GsblInput.LinefeedCharacter = character;
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Sets the input line terminator character
+        ///
+        ///     Signature: int btutrm(int chan,char crchar);
+        /// </summary>
+        private void btutrm()
+        {
+            var channelNumber = GetParameter(0);
+            var character = (byte)GetParameter(1);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            channel.GsblInput.LineTerminator = character;
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Changes an entry in the input translation table, which applies to every channel without
+        ///     a btuchi() interceptor. Received oldchr is processed as newchr; 0 discards it.
+        ///
+        ///     Signature: void btuxlt(char oldchr,char newchr);
+        /// </summary>
+        private void btuxlt()
+        {
+            var oldCharacter = (byte)GetParameter(0);
+            var newCharacter = (byte)GetParameter(1);
+
+            GsblInput.GetTranslationTable(_globalCache)[oldCharacter] = newCharacter;
         }
 
         /// <summary>

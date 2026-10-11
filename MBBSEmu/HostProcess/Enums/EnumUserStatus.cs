@@ -61,5 +61,7 @@ namespace MBBSEmu.HostProcess.Enums
         POLLING_STATUS = 192,
         /// <summary>Cycle status</summary>
         CYCLE = 240,
+        /// <summary>data input buffer overflow</summary>
+        INPUT_BUFFER_OVERFLOW = 251,
     };
 }

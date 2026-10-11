@@ -4653,7 +4653,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void echon()
         {
-            ChannelDictionary[ChannelNumber].TransparentMode = false;
+            ChannelDictionary[ChannelNumber].GsblInput.EchoEnabled = true;
         }
 
         /// <summary>
@@ -7438,7 +7438,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
 
             ChannelDictionary[channelNumber].CharacterInterceptor = null;
-            ChannelDictionary[channelNumber].TransparentMode = false;
+            ChannelDictionary[channelNumber].GsblInput.EchoEnabled = true;
         }
 
         /// <summary>
