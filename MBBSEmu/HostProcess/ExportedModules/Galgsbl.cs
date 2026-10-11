@@ -364,14 +364,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Set XON/XOFF characters, select page mode
         ///
-        ///     Signature: int btuxnf(int chan,int xon,int xoff,...)
+        ///     A negative xoff turns paging on, with -xoff as the XOFF character, cnt lines per page
+        ///     and stg as the page-pause prompt. A positive xoff turns paging off.
+        ///
+        ///     Signature: int btuxnf(int chan,char xon,int xoff,int cnt,char *stg)
         ///     Result: AX == 0 = OK
         /// </summary>
         /// <returns></returns>
         public void btuxnf()
         {
             var channelNumber = GetParameter(0);
-            var xoff = (byte)GetParameter(2);
+            var xon = (byte)GetParameter(1);
+            var xoff = (int)(short)GetParameter(2);
 
             if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
             {
@@ -379,8 +383,21 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            //Output isn't paused, but the XOFF character is still never delivered as input
-            channel.GsblInput.XoffCharacter = xoff;
+            var paging = xoff < 0;
+            var pageLength = 0;
+            byte[] prompt = null;
+            if (paging)
+            {
+                xoff = -xoff;
+                pageLength = (short)GetParameter(3);
+
+                var promptPointer = GetParameterPointer(4);
+                if (!promptPointer.IsNull())
+                    prompt = Module.Memory.GetString(promptPointer, true).ToArray();
+            }
+
+            channel.GsblOutput.SetFlowControl(xon, paging, pageLength, prompt);
+            channel.GsblInput.XoffCharacter = (byte)xoff;
             Registers.AX = 0;
         }
 
@@ -657,6 +674,16 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void btuclo()
         {
+            var channelNumber = GetParameter(0);
+
+            if (!ChannelDictionary.TryGetValue(channelNumber, out var channel))
+            {
+                Registers.AX = ERROR_CHANNEL_NOT_DEFINED;
+                return;
+            }
+
+            //Output is only queued while the channel is paused, so that's all there is to discard
+            channel.GsblOutput.Clear();
             Registers.AX = 0;
         }
 
@@ -866,7 +893,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             var messageToSend = Module.Memory.GetString(messagePointer);
-            channel.SendToClient(messageToSend.ToArray());
+            channel.SendToClient(messageToSend.ToArray(), EnumGsblOutputKind.ClearProofText);
+            Registers.AX = 0;
         }
 
         private void btumon2()

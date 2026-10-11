@@ -27,6 +27,12 @@ namespace MBBSEmu.Session
         /// </summary>
         public int WordWrapWidth { get; set; }
 
+        /// <summary>
+        /// Characters that are sent on but take no column, such as GSBL screen-pause markers,
+        /// which are consumed before they reach the client.
+        /// </summary>
+        public Func<byte, bool> IsZeroWidth { get; set; }
+
         private enum ParseState
         {
             NORMAL,
@@ -156,6 +162,9 @@ namespace MBBSEmu.Session
                                 _lineBufferLength = Math.Max(0, _lineBufferLength - 1);
                                 break;
                             default:
+                                if (IsZeroWidth != null && IsZeroWidth(b))
+                                    break;
+
                                 _lineBuffer[_lineBufferLength] = b;
                                 _lineBufferToRawBuffer[_lineBufferLength++] = _rawBufferLength - 1;
                                 // overflow to the next line

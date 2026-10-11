@@ -48,7 +48,7 @@ namespace MBBSEmu.Session
         public bool WordWrap { get; set; }
 
         /// <summary>
-        ///     XOFF character, never delivered as input; 0 disables it (btuxnf)
+        ///     XOFF character, which pauses output and is never delivered as input; 0 disables it (btuxnf)
         /// </summary>
         public byte XoffCharacter { get; set; }
 
@@ -233,6 +233,14 @@ namespace MBBSEmu.Session
 
             Synchronize(session);
 
+            //While output is paused, every key is offered to resume it and is never input (GSBL chnodn, waitky)
+            if (session.GsblOutput.IsPaused)
+            {
+                gsbl.LastCharacter = c;
+                session.GsblOutput.WaitKey(c);
+                return EnumGsblInputResult.Dropped;
+            }
+
             var previous = gsbl.LastCharacter;
             gsbl.LastCharacter = c;
             if (c == '\n' && previous == '\r')
@@ -254,13 +262,16 @@ namespace MBBSEmu.Session
             var x = (byte)(c & 0x7F);
             if (x == gsbl.XoffCharacter)
             {
-                //MBBSEmu doesn't pause output, but XOFF is still never delivered as input
                 if (x != 0)
+                {
+                    session.GsblOutput.PauseForXoff();
                     return EnumGsblInputResult.Dropped;
+                }
             }
             else if (x == gsbl.OutputAbortCharacter)
             {
-                //Output is sent as it's written, so there's nothing queued to abort
+                //Output is only queued while paused, and then every key goes to WaitKey, so there's
+                //never queued output to abort here
                 c = 0;
             }
 
@@ -287,7 +298,7 @@ namespace MBBSEmu.Session
             finally
             {
                 if (echo.Length > 0)
-                    session.SendToClient(echo.ToArray());
+                    session.SendEchoToClient(echo.ToArray());
             }
         }
 
@@ -354,7 +365,7 @@ namespace MBBSEmu.Session
 
             //Only word wrap echoes here
             if (echo.Length > 0)
-                session.SendToClient(echo.ToArray());
+                session.SendEchoToClient(echo.ToArray());
         }
 
         private static void ProcessDriverCharacter(SessionBase session, byte c, MemoryStream echo)
@@ -402,7 +413,12 @@ namespace MBBSEmu.Session
             }
 
             if (!TerminateLine(session))
+            {
                 Overflow(session);
+                return;
+            }
+
+            session.GsblOutput.LineCompleted();
         }
 
         /// <summary>
@@ -422,6 +438,8 @@ namespace MBBSEmu.Session
 
             if (!TerminateLine(session))
                 return Overflow(session);
+
+            session.GsblOutput.LineCompleted();
 
             if (gsbl.EchoEnabled)
             {

@@ -232,9 +232,10 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void XoffIsNeverInput()
         {
-            Type("a\x13" + "b\r", c => c);
+            //XOFF pauses output, and the key that resumes it ("b") is swallowed too
+            Type("a\x13" + "bc\r", c => c);
 
-            Assert.Equal("ab", Line());
+            Assert.Equal("ac", Line());
         }
 
         [Fact]
