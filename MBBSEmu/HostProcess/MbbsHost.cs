@@ -624,6 +624,7 @@ namespace MBBSEmu.HostProcess
             //Don't let a module's GSBL input settings (echo off, trigger mode, etc.) follow the user out
             session.GsblInput.Reset();
             session.GsblInput.ClearInput();
+            session.GsblOutput.ResetSettings();
 
             //Reset States
             session.Status.Clear();
@@ -864,8 +865,9 @@ namespace MBBSEmu.HostProcess
             if (session.CharacterInterceptor == null || session.DataToProcess)
                 return;
 
-            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
-            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke)
+            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met.
+            //Nothing is echoed while output is paused, so it waits until output resumes.
+            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke && !session.GsblOutput.IsPaused)
                 ProcessEchoEmptyInvoke(session);
         }
 
@@ -905,6 +907,13 @@ namespace MBBSEmu.HostProcess
         {
             if (session.InputLockout)
                 return false;
+
+            //While output is paused, every key is offered to resume it and is never input
+            if (session.GsblOutput.IsPaused)
+            {
+                session.GsblOutput.WaitKey(session.CharacterReceived);
+                return false;
+            }
 
             if (session.CharacterInterceptor != null)
             {

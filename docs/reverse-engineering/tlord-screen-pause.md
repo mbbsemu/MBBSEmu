@@ -161,6 +161,32 @@ Wire-invariant tests (`Tlord_ScreenPause_Tests`, `Mmud_GlyphPassthrough_Tests`,
 gated on `MBBSEMU_TEST_MODULE_PATH`) lock in both sides: zero 0x11–0x14 on the
 T-LORD journey, glyphs intact on MajorMUD's FSD worksheet.
 
+## Update: GSBL output processing (`GsblChannelOutput`)
+
+The strip-only consumption in `SessionBase` was later replaced by a port of
+GALGSBL's transmit state machine (`MBBSEmu/Session/GsblOutput.cs`, from the
+reconstructed `galgsbl.c`: `st_xmit`, `st_lf`, `st_more`, `st_ers`, `st_wait`,
+`waitky`, `btuclo`). It sits after text variables and line breaking, and:
+
+- consumes the pause and clear-pause-counter characters from ASCII-mode output
+  as before (binary mode still passes them through as glyphs), and the line
+  breaker treats them as zero-width;
+- counts output lines per page, and resets the count on the clear-pause-counter
+  character, a completed input line, and `btuclo()`;
+- inserts the pause character before a form feed or `ESC[2J` (GSBL `btuxmt`,
+  #684);
+- pauses when the pause character arrives with lines on the page, or when the
+  page fills, sending the page-pause prompt and erasing it on resume, but only
+  when a prompt has been set through `btuxnf()` paging. The Major BBS's host
+  defaults for paging (page length, prompt, `btuhpk` handler) aren't known, so
+  with no prompt the pause character just starts a new page;
+- implements XON/XOFF: the XOFF character pauses output, the XON character (or
+  any key when none is set) resumes it, and the key is never input. MajorMUD
+  calls `btuxnf(chan, 0, 0x13, ...)`, so Control-S pauses its output;
+- holds output and echo while paused, defers the output-empty status until held
+  output is sent, and makes `btuclo()` discard held `btuxmt()` output while
+  keeping `btuxmn()` output.
+
 ## Cross-refs
 
 - The MajorMUD glyph side of DC1–DC4 (0x11–0x14 rendered as ◄↕‼¶) is handled by

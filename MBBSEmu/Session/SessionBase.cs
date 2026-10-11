@@ -33,15 +33,26 @@ namespace MBBSEmu.Session
 
         private SendToClientDelegate _sendToClientMethod;
 
+        /// <summary>
+        ///     Transport for output that has been through text variables, line breaking and GSBL
+        ///     output processing (<see cref="GsblOutput"/>)
+        /// </summary>
         protected SendToClientDelegate SendToClientMethod
         {
             get => _sendToClientMethod;
-            set
-            {
-                _sendToClientMethod = value;
-                _lineBreaker.SendToClientMethod = value.Invoke;
-            }
+            set => _sendToClientMethod = value;
         }
+
+        /// <summary>
+        ///     Serializes output to this channel, which may be written from more than one thread
+        /// </summary>
+        public object OutputLock { get; } = new object();
+
+        /// <summary>
+        ///     Kind and output mode of the output currently passing through the line breaker
+        /// </summary>
+        private EnumGsblOutputKind _outputKind;
+        private bool _outputBinary;
 
         /// <summary>
         ///     Specifies the Type of Session the user is currently using
@@ -146,8 +157,8 @@ namespace MBBSEmu.Session
         ///     btupbc/btucpc override the defaults per channel (0 disables). Both
         ///     markers are consumed from ASCII-mode output, never transmitted; FSD
         ///     full-screen output is binary mode, where the same byte values pass
-        ///     through as CP437 display glyphs (e.g. MajorMUD, see
-        ///     ConsumeScreenPauseMarkers). See docs/reverse-engineering/tlord-screen-pause.md.
+        ///     through as CP437 display glyphs (e.g. MajorMUD, see IsBinaryOutput).
+        ///     GsblOutput consumes them. See docs/reverse-engineering/tlord-screen-pause.md.
         /// </summary>
         public const byte DefaultPauseCharacter = 0x14;
         public const byte DefaultClearPauseCounterCharacter = 0x13;
@@ -180,6 +191,11 @@ namespace MBBSEmu.Session
         ///     terminator, backspace, line length, trigger mode, etc.)
         /// </summary>
         public GsblChannelInput GsblInput { get; } = new GsblChannelInput();
+
+        /// <summary>
+        ///     GSBL output processing for this channel: screen pause, paging, XON/XOFF and btuclo()
+        /// </summary>
+        public GsblChannelOutput GsblOutput { get; }
 
         /// <summary>
         ///     Specifies if a channel is monitored or not, specifically via BTUMON
@@ -293,38 +309,66 @@ namespace MBBSEmu.Session
             }
             else
             {
-                SendToClientMethod(buffer);
+                WriteToGsblOutput(buffer);
             }
         }
+
+        private void WriteToGsblOutput(byte[] buffer) => GsblOutput.Write(buffer, _outputKind, _outputBinary);
 
         /// <summary>
         ///     Helper Method to send data to the client synchronously
         /// </summary>
         /// <param name="dataToSend"></param>
-        public void SendToClient(byte[] dataToSend)
+        public void SendToClient(byte[] dataToSend) => SendToClient(dataToSend, EnumGsblOutputKind.Text);
+
+        /// <summary>
+        ///     Helper Method to send data to the client synchronously
+        /// </summary>
+        /// <param name="dataToSend"></param>
+        /// <param name="kind">btuxmt(), btuxmn() or echo output</param>
+        public void SendToClient(byte[] dataToSend, EnumGsblOutputKind kind)
         {
             if (!OutputEnabled) return;
 
-            dataToSend = ConsumeScreenPauseMarkers(dataToSend);
-
-            if (_textVariableService == null)
+            lock (OutputLock)
             {
-                SendBreakingIntoLines(dataToSend.Where(shouldSendToClient).ToArray());
-            }
-            else
-            {
-                var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
-                var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
+                _outputKind = kind;
+                _outputBinary = IsBinaryOutput;
 
-                SendBreakingIntoLines(dataToSendProcessed.Where(shouldSendToClient).ToArray());
-            }
+                if (_textVariableService == null)
+                {
+                    SendBreakingIntoLines(dataToSend.Where(shouldSendToClient).ToArray());
+                }
+                else
+                {
+                    var dataToSendSpan = new ReadOnlySpan<byte>(dataToSend);
+                    var dataToSendProcessed = _textVariableService?.Parse(dataToSendSpan, SessionVariables).ToArray();
 
-            if (OutputEmptyStatus && DataToClient.Count == 0)
-            {
-                //Only queue up the event if there's not one already in the buffer
-                if (!Status.Contains(EnumUserStatus.OUTPUT_BUFFER_EMPTY) || GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY && Status.Count(x => x == EnumUserStatus.OUTPUT_BUFFER_EMPTY) == 1)
-                    Status.Enqueue(EnumUserStatus.OUTPUT_BUFFER_EMPTY);
+                    SendBreakingIntoLines(dataToSendProcessed.Where(shouldSendToClient).ToArray());
+                }
+
+                //Output held while the channel is paused isn't sent yet
+                if (!GsblOutput.IsPaused && !GsblOutput.HasHeldOutput)
+                    ReportOutputEmpty();
             }
+        }
+
+        /// <summary>
+        ///     Echoes typed input to the client
+        /// </summary>
+        public void SendEchoToClient(byte[] dataToSend) => SendToClient(dataToSend, EnumGsblOutputKind.Echo);
+
+        /// <summary>
+        ///     Posts the output-empty status (5) if it's enabled (btuoes) and everything has been sent
+        /// </summary>
+        public void ReportOutputEmpty()
+        {
+            if (!OutputEmptyStatus || DataToClient.Count != 0)
+                return;
+
+            //Only queue up the event if there's not one already in the buffer
+            if (!Status.Contains(EnumUserStatus.OUTPUT_BUFFER_EMPTY) || GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY && Status.Count(x => x == EnumUserStatus.OUTPUT_BUFFER_EMPTY) == 1)
+                Status.Enqueue(EnumUserStatus.OUTPUT_BUFFER_EMPTY);
         }
 
         public void SendToClient(string dataToSend) => SendToClient(Encoding.ASCII.GetBytes(dataToSend));
@@ -337,8 +381,15 @@ namespace MBBSEmu.Session
         /// <param name="dataToSend"></param>
         public void SendToClientRaw(byte[] dataToSend)
         {
-            if (OutputEnabled)
+            if (!OutputEnabled)
+                return;
+
+            lock (OutputLock)
+            {
+                _outputKind = EnumGsblOutputKind.Text;
+                _outputBinary = IsBinaryOutput;
                 SendBreakingIntoLines(dataToSend.Where(shouldSendToClient).ToArray());
+            }
         }
 
         public abstract void Stop();
@@ -371,6 +422,7 @@ namespace MBBSEmu.Session
             GsblInput.Reset();
             GsblInput.ClearInput();
             GsblInput.LastCharacter = 0;
+            GsblOutput.Reset();
             Monitored = false;
             Monitored2 = false;
             Password = string.Empty;
@@ -408,6 +460,9 @@ namespace MBBSEmu.Session
             InputCommand = new byte[] { 0x0 };
             VDA = new byte[Majorbbs.VOLATILE_DATA_SIZE];
             _enumSessionState = startingSessionState;
+            GsblOutput = new GsblChannelOutput(this, data => _sendToClientMethod(data));
+            _lineBreaker.SendToClientMethod = WriteToGsblOutput;
+            _lineBreaker.IsZeroWidth = b => !_outputBinary && GsblOutput.IsScreenPauseMarker(b);
             SessionVariables = new Dictionary<string, TextVariableValue.TextVariableValueDelegate>
             {
                 {"CHANNEL", () => Channel.ToString()},
@@ -453,7 +508,7 @@ namespace MBBSEmu.Session
             // DC1-DC4 (0x11-0x14) are intentionally left printable. In binary-mode
             // (FSD) output they are CP437 display glyphs (◄↕‼¶, e.g. MajorMUD); in
             // ASCII-mode output the armed pause/counter markers among them are
-            // consumed per session by ConsumeScreenPauseMarkers, not filtered
+            // consumed per session by GsblOutput, not filtered
             // globally. See docs/reverse-engineering/tlord-screen-pause.md.
             printableCharacters[255] = false; // 0xFF, make Telnet happier
 
@@ -463,41 +518,18 @@ namespace MBBSEmu.Session
         public static bool shouldSendToClient(byte b) => IS_CHARACTER_PRINTABLE[b];
 
         /// <summary>
-        ///     Consumes GSBL screen-pause markers from ASCII-mode output. The pause
-        ///     character is active while screen pause is enabled; a nonzero
-        ///     clear-pause-counter character is active independently. Full-screen
-        ///     (FSD) output is GSBL binary mode, where these byte values are CP437
-        ///     display glyphs and must pass through untouched — MBBSEmu doesn't model
-        ///     per-channel output mode yet, so the session's full-screen states stand
-        ///     in for it (the FSD background template itself is sent raw by fsdbkg).
+        ///     Output is GSBL binary mode, where the screen-pause markers are CP437 display glyphs
+        ///     that pass through untouched and lines aren't counted for paging. MBBSEmu doesn't model
+        ///     per-channel output mode yet, so the session's full-screen (FSD) states stand in for it
+        ///     (the FSD background template itself is sent with BinaryOutputMode by fsdbkg).
         /// </summary>
-        private byte[] ConsumeScreenPauseMarkers(byte[] dataToSend)
-        {
-            if (BinaryOutputMode)
-                return dataToSend;
-
-            switch (SessionState)
-            {
-                case EnumSessionState.EnteringFullScreenDisplay:
-                case EnumSessionState.InFullScreenDisplay:
-                case EnumSessionState.EnteringFullScreenEditor:
-                case EnumSessionState.InFullScreenEditor:
-                case EnumSessionState.ExitingFullScreenDisplay:
-                case EnumSessionState.ExitingFullScreenEditor:
-                    return dataToSend;
-            }
-
-            var consumePauseCharacter = ScreenPauseEnabled && PauseCharacter != 0;
-            var consumeClearCharacter = ClearPauseCounterCharacter != 0;
-
-            if (!consumePauseCharacter && !consumeClearCharacter)
-                return dataToSend;
-
-            return dataToSend
-                .Where(b => (!consumePauseCharacter || b != PauseCharacter) &&
-                            (!consumeClearCharacter || b != ClearPauseCounterCharacter))
-                .ToArray();
-        }
+        public bool IsBinaryOutput =>
+            BinaryOutputMode || SessionState is EnumSessionState.EnteringFullScreenDisplay
+                or EnumSessionState.InFullScreenDisplay
+                or EnumSessionState.EnteringFullScreenEditor
+                or EnumSessionState.InFullScreenEditor
+                or EnumSessionState.ExitingFullScreenDisplay
+                or EnumSessionState.ExitingFullScreenEditor;
 
         /// <summary>
         ///     Restores the Major BBS default screen-pause arming. Called when a module
