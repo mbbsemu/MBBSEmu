@@ -176,9 +176,10 @@ namespace MBBSEmu.Session
         public bool DataToProcess { get; set; }
 
         /// <summary>
-        ///     Specifies if User Input should be Echo'd back or not
+        ///     GSBL input settings and line assembly state for this channel (echo, line
+        ///     terminator, backspace, line length, trigger mode, etc.)
         /// </summary>
-        public bool TransparentMode { get; set; }
+        public GsblChannelInput GsblInput { get; } = new GsblChannelInput();
 
         /// <summary>
         ///     Specifies if a channel is monitored or not, specifically via BTUMON
@@ -367,7 +368,9 @@ namespace MBBSEmu.Session
             PollingRoutine = default;
             PromptCharacter = 0;
             DataToProcess = false;
-            TransparentMode = false;
+            GsblInput.Reset();
+            GsblInput.ClearInput();
+            GsblInput.LastCharacter = 0;
             Monitored = false;
             Monitored2 = false;
             Password = string.Empty;

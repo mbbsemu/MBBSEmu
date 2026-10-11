@@ -51,7 +51,7 @@ namespace MBBSEmu.Session.Rlogin
         {
             base.Stop();
 
-            TransparentMode = false;
+            GsblInput.EchoEnabled = true;
         }
 
         /// <summary>
