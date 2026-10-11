@@ -8406,25 +8406,23 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var answersString = new StringBuilder($"TOPIC={Encoding.ASCII.GetString(Module.Memory.GetString(topicPointer))}", topicLength + textLength);
 
             //Take the input text and split it out on new lines so we can hydrate the individual lines on the template
+            //Lines are normally separated by CR, but text read from files (e.g. MajorMUD's WCCMMUD.INI) can contain CRLF or LF
             var rawText = Encoding.ASCII.GetString(Module.Memory.GetString(textPointer, true));
-            var split = rawText.Split('\r');
+            var split = rawText.Replace("\r\n", "\r").Split('\r', '\n');
             var lineNumber = 0;
-            for (var i = 0; i < split.Length; i++)
+            foreach (var line in split)
             {
-                if (split[i].Length < 79)
+                //Too much data for one line, we need to "word wrap."
+                var remaining = line;
+                while (remaining.Length > 79)
                 {
-                    answersString.Append($"LINE{i}={split[i]}\0");
+                    answersString.Append($"LINE{lineNumber}={remaining[..79]}\0");
+                    remaining = remaining[79..];
                     lineNumber++;
-                    continue;
                 }
 
-                //Too much data for one line, we need to "word wrap."
-                while (split[i].Length > 79)
-                {
-                    answersString.Append($" LINE{lineNumber}={split[i].Substring(0, 79)}\0");
-                    split[i] = split[i][79..];
-                    lineNumber++;
-                }
+                answersString.Append($"LINE{lineNumber}={remaining}\0");
+                lineNumber++;
             }
 
             //Double Null Terminated
