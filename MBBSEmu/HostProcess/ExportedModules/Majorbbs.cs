@@ -70,6 +70,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         public const ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
+        /// <summary>
+        ///     Free memory reported to modules by coreleft()/farcoreleft(), in bytes (16MB)
+        ///
+        ///     Modules treat the result as a signed long, so it must stay below 0x80000000. 16MB is
+        ///     a realistic figure for a DOS-extended MajorBBS/Worldgroup host, is well within the
+        ///     256MB emulated heap, and leaves headroom for arithmetic modules perform on it.
+        /// </summary>
+        public const uint CORELEFT_BYTES = 0x1000000;
+
         private readonly Stopwatch _highResolutionTimer = new Stopwatch();
 
         private readonly Random _random = new Random(Guid.NewGuid().GetHashCode());
@@ -1125,6 +1134,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 201:
                     farcoreleft();
+                    break;
+                case 138:
+                    coreleft();
                     break;
                 case 173:
                     dostounix();
@@ -6278,16 +6290,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
 
         /// <summary>
-        ///     Returns the amount of memory left
-        ///     TODO: This returns MAX always -- should it not?
+        ///     Returns the amount of memory left on the far heap
         ///
-        ///     Signature: long farcoreleft(void);
+        ///     MBBSEmu's heap grows on demand, so this always reports CORELEFT_BYTES. Modules commonly
+        ///     store the result in a signed long (e.g. MajorMUD's allocate_buffers()), so returning
+        ///     0xFFFFFFFF would read as -1 bytes free and make them shrink or refuse allocations.
+        ///
+        ///     Signature: unsigned long farcoreleft(void);
         /// </summary>
         private void farcoreleft()
         {
-            Registers.DX = (ushort)(uint.MaxValue >> 16);
-            Registers.AX = (ushort)(uint.MaxValue & 0xFFFF);
+            Registers.DX = (ushort)(CORELEFT_BYTES >> 16);
+            Registers.AX = (ushort)(CORELEFT_BYTES & 0xFFFF);
         }
+
+        /// <summary>
+        ///     Returns the amount of unused memory
+        ///
+        ///     Modules are built with the large memory model, where coreleft() returns an unsigned
+        ///     long in DX:AX just like farcoreleft()
+        ///
+        ///     Signature: unsigned long coreleft(void);
+        /// </summary>
+        private void coreleft() => farcoreleft();
 
         /// <summary>
         ///     Converts date and time to UNIX time format
