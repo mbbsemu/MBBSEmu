@@ -2716,8 +2716,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #endif
         }
 
+        /// <summary>
+        ///     Updates BB after a successful PerformOperation, using the record/key it returned.
+        ///     Re-reading the record with GetRecord() would be a Get Direct, which destroys the
+        ///     logical currency a following anpbtv/qnpbtv needs.
+        /// </summary>
         private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, EnumBtrieveOperationCodes operationCode, short keyNumber = -1) =>
-            UpdateBB(currentBtrieveFile, destinationRecordBuffer, currentBtrieveFile.Position, operationCode.AcquiresData(), keyNumber);
+            UpdateBB(currentBtrieveFile, destinationRecordBuffer, currentBtrieveFile.CurrentRecord, operationCode.AcquiresData(), keyNumber);
 
         private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, uint position, bool acquiresData, short keyNumber = -1, bool setLogicalPosition = false)
         {
@@ -2727,6 +2732,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (record == null)
                 return false;
 
+            return UpdateBB(currentBtrieveFile, destinationRecordBuffer, record.Data, acquiresData, keyNumber);
+        }
+
+        private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, byte[] record, bool acquiresData, short keyNumber)
+        {
             var bbPointer = Module.Memory.GetPointer("BB");
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bbPointer, BtvFileStruct.Size));
             if (keyNumber >= 0)
@@ -2744,11 +2754,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (destinationRecordBuffer.IsNull())
                     destinationRecordBuffer = btvStruct.data;
 
-                Module.Memory.SetArray(destinationRecordBuffer, record.Data);
+                Module.Memory.SetArray(destinationRecordBuffer, record);
             }
 
             if (keyNumber >= 0 && currentBtrieveFile.Keys.Count > 0)
-                Module.Memory.SetArray(btvStruct.key, currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record.Data));
+                Module.Memory.SetArray(btvStruct.key, record != null
+                    ? currentBtrieveFile.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(record)
+                    : currentBtrieveFile.GetCurrentKeyData((ushort)keyNumber));
 
             return true;
         }

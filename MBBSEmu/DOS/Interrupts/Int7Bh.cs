@@ -428,7 +428,9 @@ namespace MBBSEmu.DOS.Interrupts
                 return (command.operation.RequiresKey() ? BtrieveError.KeyValueNotFound : BtrieveError.EOF,
                         length);
 
-            var data = db.GetRecord();
+            // use the record the operation returned, since re-reading it with GetRecord() would
+            // be a Get Direct, which destroys logical currency for a following Get Next/Previous
+            var data = db.CurrentRecord;
 
             if (keyNumber >= 0 && db.Keys[(ushort)keyNumber].Length > command.key_buffer_length)
                 return (BtrieveError.KeyBufferTooShort, length);
@@ -446,7 +448,7 @@ namespace MBBSEmu.DOS.Interrupts
             // copy key, if this operation is keyed
             if (keyNumber >= 0)
                 _memory.SetArray(command.key_buffer_segment, command.key_buffer_offset,
-                                 db.Keys[(ushort)keyNumber].ExtractKeyDataFromRecord(data));
+                                 db.GetCurrentKeyData((ushort)keyNumber));
 
             return (BtrieveError.Success, length);
         }

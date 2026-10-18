@@ -53,6 +53,26 @@ namespace MBBSEmu.Btrieve
         public byte[] LastUsedKeyData { get; set; }
 
         /// <summary>
+        ///     The record returned by the last successful PerformOperation that acquires data
+        ///     (Acquire*/Step*), or null if the last operation didn't return one (Query*/Delete).
+        ///
+        ///     Callers should read the record from here rather than via GetRecord(), since
+        ///     GetRecord() is a Get Direct, which destroys logical currency and breaks a following
+        ///     AcquireNext/QueryNext.
+        /// </summary>
+        public byte[] CurrentRecord { get; private set; }
+
+        /// <summary>
+        ///     Returns keyNumber's value for the record the last PerformOperation positioned on.
+        ///     Query* operations don't return the record, but wbtrv32.dll writes its key back into
+        ///     the key buffer, so that's used instead.
+        /// </summary>
+        public ReadOnlySpan<byte> GetCurrentKeyData(ushort keyNumber) =>
+            CurrentRecord != null
+                ? Keys[keyNumber].ExtractKeyDataFromRecord(CurrentRecord)
+                : LastUsedKeyData.AsSpan(0, Keys[keyNumber].Length);
+
+        /// <summary>
         ///     Closes all long lived resources, such as the Sqlite connection.
         /// </summary>
         public void Dispose()
@@ -493,8 +513,18 @@ namespace MBBSEmu.Btrieve
                 LastUsedKeyData = key.ToArray();
             }
 
-            return Wbtrv32.managedBtrcall((ushort)btrieveOperationCode, unmanagedPosBlock, data,
-                                          ref dwDataBufferLength, LastUsedKeyData, (byte)keyNumber) == 0;
+            CurrentRecord = null;
+            if (Wbtrv32.managedBtrcall((ushort)btrieveOperationCode, unmanagedPosBlock, data,
+                                       ref dwDataBufferLength, LastUsedKeyData, (byte)keyNumber) != 0)
+                return false;
+
+            if (btrieveOperationCode.AcquiresData())
+            {
+                Array.Resize(ref data, dwDataBufferLength);
+                CurrentRecord = data;
+            }
+
+            return true;
         }
     }
 }
