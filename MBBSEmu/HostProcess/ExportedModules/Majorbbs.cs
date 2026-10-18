@@ -1461,12 +1461,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return false;
 
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bb, BtvFileStruct.Size));
-            var lastKeyAsString = Encoding.ASCII.GetString(
-                Module.Memory.GetString(btvStruct.key, stripNull: true));
+            var currentBtrieveFile = BtrieveGetProcessor(bb);
+
+            // The previous key is saved in BB's data buffer and compared against from there, so
+            // when recptr is NULL the record read into that buffer replaces it, and the comparison
+            // is against the start of the new record instead.
+            var keyLength = (ushort)currentBtrieveFile.Keys[btvStruct.lastkn].Length;
+            Module.Memory.SetArray(btvStruct.data, Module.Memory.GetArray(btvStruct.key, keyLength));
 
             var ret = false;
             if (obtainBtv(recordPointer, FarPtr.Empty, 0xFFFF, operationCodes))
             {
+                var lastKeyAsString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.data, stripNull: true));
                 var nextKeyAsString = Encoding.ASCII.GetString(Module.Memory.GetString(btvStruct.key, stripNull: true));
 
                 ret = string.Compare(lastKeyAsString, nextKeyAsString, ignoreCase: !caseSensitive) == 0;
@@ -2722,7 +2728,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     logical currency a following anpbtv/qnpbtv needs.
         /// </summary>
         private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, EnumBtrieveOperationCodes operationCode, short keyNumber = -1) =>
-            UpdateBB(currentBtrieveFile, destinationRecordBuffer, currentBtrieveFile.CurrentRecord, operationCode.AcquiresData(), keyNumber);
+            UpdateBB(currentBtrieveFile, destinationRecordBuffer, currentBtrieveFile.CurrentRecord, operationCode.AcquiresData(), keyNumber,
+                     // Step* passes no key buffer, so it leaves BB's key and lastkn untouched
+                     updateKey: !operationCode.IgnoresKeyNumber());
 
         private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, uint position, bool acquiresData, short keyNumber = -1, bool setLogicalPosition = false)
         {
@@ -2735,11 +2743,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return UpdateBB(currentBtrieveFile, destinationRecordBuffer, record.Data, acquiresData, keyNumber);
         }
 
-        private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, byte[] record, bool acquiresData, short keyNumber)
+        private bool UpdateBB(BtrieveFileProcessor currentBtrieveFile, FarPtr destinationRecordBuffer, byte[] record, bool acquiresData, short keyNumber, bool updateKey = true)
         {
             var bbPointer = Module.Memory.GetPointer("BB");
             var btvStruct = new BtvFileStruct(Module.Memory.GetArray(bbPointer, BtvFileStruct.Size));
-            if (keyNumber >= 0)
+            if (!updateKey)
+            {
+                keyNumber = -1;
+            }
+            else if (keyNumber >= 0)
             {
                 btvStruct.lastkn = (ushort)keyNumber;
                 Module.Memory.SetArray(bbPointer, btvStruct.Data);
@@ -6061,16 +6073,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Query Next/Previous Btrieve utility, should only take query next/previous argument
         ///
+        ///     Despite the name, this performs the matching Get operation (query option - 50), so
+        ///     the record is read into BB's data buffer as well as its key.
+        ///
         ///     Signature: int qnpbtv (int getopt)
         /// </summary>
         private void qnpbtv()
         {
-            var queryOption = (EnumBtrieveOperationCodes)GetParameter(0);
+            var getOption = (EnumBtrieveOperationCodes)(GetParameter(0) - 50);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
-            var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.LastUsedKey, currentBtrieveFile.LastUsedKeyData, queryOption);
+            var result = currentBtrieveFile.PerformOperation(currentBtrieveFile.LastUsedKey, currentBtrieveFile.LastUsedKeyData, getOption);
             if (result)
-                UpdateBB(currentBtrieveFile, FarPtr.Empty, queryOption, keyNumber: -1);
+                UpdateBB(currentBtrieveFile, FarPtr.Empty, getOption, keyNumber: -1);
 
             Registers.AX = result ? (ushort)1 : (ushort)0;
         }
