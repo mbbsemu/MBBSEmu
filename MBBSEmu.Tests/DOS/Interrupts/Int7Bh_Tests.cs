@@ -145,6 +145,11 @@ namespace MBBSEmu.DOS.Interrupts
             return positionBlock;
         }
 
+        private void StepFirst(FarPtr positionBlock) =>
+            GetBtrieveFileProcessor(positionBlock)
+                .PerformOperation(-1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.StepFirst)
+                .Should().BeTrue();
+
         [Fact]
         public void OpenStatLengthOverrunAndSpanSupport()
         {
@@ -448,6 +453,48 @@ namespace MBBSEmu.DOS.Interrupts
         }
 
         [Fact]
+        public void QueryEqualThenAcquireNext()
+        {
+            var positionBlock = OpenDatabase();
+            var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
+            var keyBuffer = _memory.Malloc(32);
+
+            var command = new DOSInterruptBtrieveCommand()
+            {
+                operation = EnumBtrieveOperationCodes.QueryEqual,
+                interface_id = Int7Bh.EXPECTED_INTERFACE_ID,
+                position_block_segment = positionBlock.Segment,
+                position_block_offset = positionBlock.Offset,
+                status_code_pointer_segment = _statusCodePointer.Segment,
+                status_code_pointer_offset = _statusCodePointer.Offset,
+                data_buffer_segment = dataBuffer.Segment,
+                data_buffer_offset = dataBuffer.Offset,
+                data_buffer_length = MBBSEmuRecordStruct.RECORD_LENGTH,
+                key_buffer_segment = keyBuffer.Segment,
+                key_buffer_offset = keyBuffer.Offset,
+                key_buffer_length = 32,
+                key_number = 1
+            };
+
+            _memory.SetDWord(keyBuffer, 3444);
+
+            Handle(command);
+
+            _memory.GetWord(_statusCodePointer).Should().Be((ushort)BtrieveError.Success);
+            _memory.GetDWord(keyBuffer).Should().Be(3444);
+
+            // the query's logical currency must survive, so Get Next continues on key 1
+            command.operation = EnumBtrieveOperationCodes.AcquireNext;
+
+            Handle(command);
+
+            _memory.GetWord(_statusCodePointer).Should().Be((ushort)BtrieveError.Success);
+            new MBBSEmuRecordStruct(_memory.GetArray(dataBuffer,
+        MBBSEmuRecordStruct.RECORD_LENGTH).ToArray()).Key1.Should().Be(7776);
+            _memory.GetDWord(keyBuffer).Should().Be(7776);
+        }
+
+        [Fact]
         public void Insert()
         {
             // StepLast
@@ -559,8 +606,9 @@ namespace MBBSEmu.DOS.Interrupts
         [Fact]
         public void Delete()
         {
-            // StepLast
             var positionBlock = OpenDatabase();
+            // Open leaves no current record, so read one to act on
+            StepFirst(positionBlock);
 
             var command = new DOSInterruptBtrieveCommand()
             {
@@ -608,8 +656,9 @@ namespace MBBSEmu.DOS.Interrupts
         [Fact]
         public void UpdateNonModifiableFailure()
         {
-            // StepLast
             var positionBlock = OpenDatabase();
+            // Open leaves no current record, so read one to act on
+            StepFirst(positionBlock);
             var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
             var keyBuffer = _memory.Malloc(32);
 
@@ -649,8 +698,9 @@ namespace MBBSEmu.DOS.Interrupts
         [Fact]
         public void UpdateKeyConstraintFailure()
         {
-            // StepLast
             var positionBlock = OpenDatabase();
+            // Open leaves no current record, so read one to act on
+            StepFirst(positionBlock);
             var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
             var keyBuffer = _memory.Malloc(32);
 
@@ -689,8 +739,9 @@ namespace MBBSEmu.DOS.Interrupts
         [Fact]
         public void UpdateKeyBufferTooShort()
         {
-            // StepLast
             var positionBlock = OpenDatabase();
+            // Open leaves no current record, so read one to act on
+            StepFirst(positionBlock);
             var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
             var keyBuffer = _memory.Malloc(32);
 
@@ -729,8 +780,9 @@ namespace MBBSEmu.DOS.Interrupts
         [Fact]
         public void Update()
         {
-            // StepLast
             var positionBlock = OpenDatabase();
+            // Open leaves no current record, so read one to act on
+            StepFirst(positionBlock);
             var dataBuffer = _memory.Malloc(MBBSEmuRecordStruct.RECORD_LENGTH);
             var keyBuffer = _memory.Malloc(32);
 
@@ -933,11 +985,13 @@ namespace MBBSEmu.DOS.Interrupts
 
             // now we need to validate logical currency by stepping through based on key_number == 1, there is one previous record, and then nothing
             var btrieve = GetBtrieveFileProcessor(positionBlock);
+            // check Position rather than GetRecord(), since GetRecord() is a Get Direct, which
+            // would destroy the logical currency being tested
             btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(1);
+            btrieve.Position.Should().Be(1);
 
             btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeTrue();
-            btrieve.GetRecord(btrieve.Position)?.Offset.Should().Be(4);
+            btrieve.Position.Should().Be(4);
 
             btrieve.PerformOperation(1, ReadOnlySpan<byte>.Empty, EnumBtrieveOperationCodes.QueryPrevious).Should().BeFalse();
         }
