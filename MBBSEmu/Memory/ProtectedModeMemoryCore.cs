@@ -53,7 +53,12 @@ namespace MBBSEmu.Memory
 
             _nextHeapPointer.Segment++;
 
-            return memoryAllocator.Malloc(size);
+            var allocatedPointer = memoryAllocator.Malloc(size);
+
+            if (allocatedPointer.IsNull())
+                _logger.Warn($"Failed to allocate {size} bytes: a single allocation cannot exceed the {0xFFFE} bytes available in one heap segment.");
+
+            return allocatedPointer;
         }
 
         public override void Free(FarPtr ptr)
