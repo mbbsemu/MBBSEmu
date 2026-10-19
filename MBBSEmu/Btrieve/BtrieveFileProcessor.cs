@@ -40,6 +40,11 @@ namespace MBBSEmu.Btrieve
 
         public uint RecordLength { get; private set; }
 
+        /// <summary>
+        ///     Name of the Btrieve file opened by this processor
+        /// </summary>
+        public string FileName { get; private set; }
+
         public uint PageLength { get => 512; }
 
         public bool VariableLengthRecords { get; private set; }
@@ -98,6 +103,7 @@ namespace MBBSEmu.Btrieve
             // wbtrv32.dll resolves relative filenames against its own process's current
             // directory, not the module path, so we must hand it a fully qualified path.
             var fullPath = Path.Combine(path, fileUtility.FindFile(path, fileName));
+            FileName = fileName;
 
             // wbtrv32.dll's Open treats the key buffer as a null-terminated C string, not
             // fixed-length key data like every other operation, so it must be null-terminated.
@@ -441,9 +447,15 @@ namespace MBBSEmu.Btrieve
         public uint Insert(byte[] record)
         {
             int dwDataBufferLength = record.Length;
-            if (Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Insert, unmanagedPosBlock, record,
-                                       ref dwDataBufferLength, null, 0xFF) != 0)
+            var status = (BtrieveError)Wbtrv32.managedBtrcall(
+                (int)EnumBtrieveOperationCodes.Insert, unmanagedPosBlock, record,
+                ref dwDataBufferLength, null, 0xFF);
+
+            if (status != BtrieveError.Success)
             {
+                _logger.Warn(
+                    $"(BTRIEVE-INSERT-FAIL) File={FileName} status={status} ({(ushort)status}) " +
+                    $"recordLength={record.Length} -- record NOT inserted.");
                 return 0;
             }
 
