@@ -56,7 +56,9 @@ namespace MBBSEmu.Session
             }
             catch (ObjectDisposedException)
             {
-                _logger.Warn($"Channel {Channel}: Attempted to write on a disposed socket");
+                //Closing moves the session to LoggedOff so the host reclaims the channel
+                _logger.Warn($"Channel {Channel}: write on a disposed socket -- closing session");
+                CloseSocket("write on disposed socket");
             }
             catch (Exception ex)
             {
