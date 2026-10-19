@@ -426,29 +426,53 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (channel == ushort.MaxValue)
                 return;
 
-            //Set the Channel Status
-            var resultStatus = (EnumUserStatus)Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+            //Modules aren't required to curusr() back to the original channel before returning,
+            //so the active channel can differ from the channel this run was started for
+            if (ChannelNumber != channel)
+            {
+#if DEBUG
+                _logger.Debug($"({Module.ModuleIdentifier}) Active channel {ChannelNumber} differs from run channel {channel}, saving both");
+#endif
+                SaveChannelState(ChannelNumber);
+            }
 
-            //If STATUS was changed programatically, queue it up
-            if (resultStatus != ChannelDictionary[ChannelNumber].GetStatus())
-                ChannelDictionary[ChannelNumber].Status
-                    .Enqueue(resultStatus);
+            SaveChannelState(channel);
 
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->status == {ChannelDictionary[channel].GetStatus()}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->state == {ChannelDictionary[channel].UsrPtr.State}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->substt == {ChannelDictionary[channel].UsrPtr.Substt}");
+#endif
+        }
+
+        /// <summary>
+        ///     Saves the specified channel's state from memory back to its Session
+        /// </summary>
+        /// <param name="channel"></param>
+        private void SaveChannelState(ushort channel)
+        {
+            if (channel == ushort.MaxValue || !ChannelDictionary.ContainsKey(channel))
+                return;
+
+            //STATUS only holds the active channel's status
+            if (channel == ChannelNumber)
+            {
+                var resultStatus = (EnumUserStatus)Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+
+                //If STATUS was changed programatically, queue it up
+                if (resultStatus != ChannelDictionary[channel].GetStatus())
+                    ChannelDictionary[channel].Status
+                        .Enqueue(resultStatus);
+            }
 
             //Save off the USRPTR area to the Channel
             var userPointer = Module.Memory.GetVariablePointer("USER");
-            ChannelDictionary[ChannelNumber].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
+            ChannelDictionary[channel].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
                 (ushort)(userPointer.Offset + (User.Size * channel)), User.Size).ToArray();
 
             //We Verify it exists as Unit Tests won't call SetState() which would establish the VDA for that Channel
-            if (Module.Memory.TryGetVariablePointer($"VDA-{ChannelNumber}", out var vdaPointer))
-                ChannelDictionary[ChannelNumber].VDA = Module.Memory.GetArray(vdaPointer, VOLATILE_DATA_SIZE).ToArray();
-
-#if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->status == {ChannelDictionary[ChannelNumber].GetStatus()}");
-            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->state == {ChannelDictionary[ChannelNumber].UsrPtr.State}");
-            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->substt == {ChannelDictionary[ChannelNumber].UsrPtr.Substt}");
-#endif
+            if (Module.Memory.TryGetVariablePointer($"VDA-{channel}", out var vdaPointer))
+                ChannelDictionary[channel].VDA = Module.Memory.GetArray(vdaPointer, VOLATILE_DATA_SIZE).ToArray();
         }
 
         /// <summary>
