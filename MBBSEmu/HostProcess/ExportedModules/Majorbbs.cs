@@ -6796,8 +6796,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void clock()
         {
-            Registers.DX = (ushort)((int)_highResolutionTimer.ElapsedMilliseconds & 0xFFFF);
-            Registers.AX = (ushort)(((int)_highResolutionTimer.ElapsedMilliseconds & 0xFFFF0000) >> 16);
+            var elapsedMilliseconds = (uint)_highResolutionTimer.ElapsedMilliseconds;
+            Registers.DX = (ushort)(elapsedMilliseconds >> 16);
+            Registers.AX = (ushort)(elapsedMilliseconds & 0xFFFF);
         }
 
         /// <summary>
