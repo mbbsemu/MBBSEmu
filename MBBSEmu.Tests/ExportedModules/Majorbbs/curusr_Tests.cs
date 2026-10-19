@@ -55,6 +55,23 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(9, testSessions[1].UsrPtr.Substt);
         }
 
+        [Fact]
+        public void CURUSR_inactive_Test()
+        {
+            //Reset State
+            Reset();
+
+            //Execute Test
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, CURUSR_ORDINAL, new List<ushort> { 3 });
+
+            //Verify Results
+            var userPointer = new FarPtr(mbbsEmuMemoryCore.GetVariablePointer("USER").Data);
+            userPointer.Offset += (ushort)(User.Size * 3);
+
+            Assert.Equal(3, mbbsEmuMemoryCore.GetWord("USRNUM"));
+            Assert.Equal(userPointer, mbbsEmuMemoryCore.GetPointer("*USRPTR"));
+            Assert.Equal(0, mbbsEmuMemoryCore.GetWord(userPointer.Segment, (ushort)(userPointer.Offset + 6)));
+        }
 
         private void SetSubstt(ushort channel, ushort value)
         {

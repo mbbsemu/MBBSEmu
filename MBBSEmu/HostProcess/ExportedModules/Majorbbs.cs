@@ -4885,9 +4885,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
             {
-#if DEBUG
-                _logger.Debug($"({Module.ModuleIdentifier}) Invalid Channel: {newUserNumber}");
-#endif
+                //MajorBBS allocates user[] for every channel, so modules curusr() to idle channels
+                //to enumerate them and expect to find state == 0
+                if (newUserNumber < _configuration.BBSChannels + 1)
+                {
+                    PointAtInactiveChannel(newUserNumber);
+                    return;
+                }
+
+                _logger.Warn(
+                    $"(CURUSR-OUTOFRANGE) ({Module.ModuleIdentifier}) channel {ChannelNumber} called " +
+                    $"curusr({newUserNumber}) which exceeds the configured channel count -- ignoring.");
+
                 return;
             }
 
@@ -4900,6 +4909,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"Setting Current User to {newUserNumber}");
 #endif
+        }
+
+        /// <summary>
+        ///     Points the current user at a channel with no Session
+        ///
+        ///     STATUS and ChannelNumber are left unchanged since the run still belongs to the
+        ///     calling channel
+        /// </summary>
+        /// <param name="channel"></param>
+        private void PointAtInactiveChannel(ushort channel)
+        {
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channel);
+
+            var userPointer = new FarPtr(Module.Memory.GetVariablePointer("USER").Data);
+            userPointer.Offset += (ushort)(User.Size * channel);
+            Module.Memory.SetArray(userPointer, new byte[User.Size]);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), userPointer.Data);
+
+            var userAccPointer = new FarPtr(Module.Memory.GetVariablePointer("USRACC").Data);
+            userAccPointer.Offset += (ushort)(UserAccount.Size * channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), userAccPointer.Data);
+
+            var extUserPointer = new FarPtr(Module.Memory.GetVariablePointer("EXTUSR").Data);
+            extUserPointer.Offset += (ushort)(ExtUser.Size * channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), extUserPointer.Data);
+
+            //Nothing written to an idle channel's VDA is kept, so all idle channels share one
+            var scratchVdaPointer = Module.Memory.GetOrAllocateVariablePointer("VDA-INACTIVE", VOLATILE_DATA_SIZE);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), scratchVdaPointer.Data);
         }
 
         /// <summary>
