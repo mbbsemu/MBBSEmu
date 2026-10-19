@@ -8,7 +8,8 @@ This directory contains the C# implementations of the MajorBBS/Worldgroup SDK li
 |---|---|---|
 | `Majorbbs.cs` | ~8,400 | Core BBS API: user management, I/O, string/memory ops, file I/O, config, date/time, Btrieve, module registration |
 | `Ordinals.cs` | ~1,245 | Dictionary mapping ordinal numbers to function names (1,300+ entries for MAJORBBS) |
-| `ExportedModuleBase.cs` | ~1,230 | Abstract base class with parameter access, printf, output formatting, Btrieve helpers |
+| `ExportedModuleBase.cs` | ~760 | Abstract base class with parameter access, printf adapter, output formatting, Btrieve helpers |
+| `PrintfFormatter.cs` | ~530 | Borland C++ compatible printf formatting (`PrintfFormatter`) and va_arg-style argument reader (`PrintfArgumentReader`) |
 | `Galgsbl.cs` | ~1,030 | Galacticomm Global Software Breakout Library: screen/keyboard/ANSI, session I/O (BTUXMT, BTUCHI, etc.) |
 | `Phapi.cs` | ~250 | Protected-mode hardware API: DosAllocRealSeg, DosRealIntr |
 | `Doscalls.cs` | ~175 | OS/2-style DOS calls: DosAllocSeg, DosLoadModule, DosGetProcAddr, DosGetModHandle |
@@ -16,7 +17,7 @@ This directory contains the C# implementations of the MajorBBS/Worldgroup SDK li
 | `Galmsg.cs` | ~60 | Galacticomm Message database routines (stub — no ordinals implemented yet) |
 | `IExportedModule.cs` | 13 | Interface: `Invoke()`, `SetState()`, `SetRegisters()`, `UpdateSession()` |
 | `ExportAttribute.cs` | 17 | `[Export("NAME", ordinal)]` attribute (defined but not currently used in dispatch) |
-| `EnumPrintfFlags.cs` | 20 | Flags enum for printf formatting: LeftJustify, Signed, Space, DecimalOrHex, LeftPadZero |
+| `EnumPrintfFlags.cs` | 20 | Flags enum for printf formatting: LeftJustify, Signed, Space, AlternateForm, LeftPadZero |
 
 ## Virtual Segment Mapping
 
@@ -76,7 +77,9 @@ SetParameterPointer(0, ptr)  // write FarPtr back to stack
 
 ### Printf/Sprintf Implementation
 
-`FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal, bool isVsPrintf)` — Full C-style printf parsing supporting `%d`, `%u`, `%s`, `%c`, `%f`, `%ld`, `%lu`, with flags (`-`, `+`, `0`, `#`), width, and precision. Handles `%%` escaping and edge cases like trailing `%`.
+`FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal, bool isVsPrintf)` — adapter that reads the variable arguments (from the stack, or from the va_list when `isVsPrintf`) and delegates to `PrintfFormatter.Format()`.
+
+`PrintfFormatter` follows the Borland C++ Library Reference: `%[flags][width][.prec][F|N|h|l|L]type` with flags `- + space # 0`, `*` width/precision, types `d i o u x X f e E g G c s % n p`. Borland specifics: `.0` precision on integers means the default of 1, exponents have at least 2 digits (`1.5e+01`), NULL `%s` prints `(null)`, infinities/NaN print `+INF`/`-INF`/`+NAN`/`-NAN`, `%p` prints `SSSS:OOOO`. Unknown conversions and a trailing `%` are output as-is. Backslashes have no special meaning at runtime (C escapes are compile-time only). If the input is NUL terminated, so is the result.
 
 ### Output Formatting Pipeline
 
@@ -87,7 +90,6 @@ SetParameterPointer(0, ptr)  // write FarPtr back to stack
 
 ### Other Helpers
 
-- `ProcessEscapeCharacters()` — converts C escape sequences (`\n`, `\t`, `\xHH`, etc.) in byte spans
 - `RealignStack(bytesToRealign)` — for stdcall functions that need manual stack cleanup
 - `StringFromArray()` — extracts null-terminated string from a byte span
 - `GetLocalVariableName()` / `GetLocalVariableOrdinal()` — generates unique memory variable names for return buffers so concurrent calls don't clobber each other
