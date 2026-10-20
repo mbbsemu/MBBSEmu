@@ -253,9 +253,22 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
-            //Load Modules
-            foreach (var m in moduleConfigurations)
+            // Each enabled module keeps its own memory. An Internal module (MajorMUD Plus)
+            // is not a menu module on Worldgroup; it is attached to the host already loaded.
+            var plan = ModuleLoadPlan.Build(moduleConfigurations, _fileUtility, Logger);
+            foreach (var m in plan.HostModules)
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, null, _messagingCenter));
+
+            foreach (var companion in plan.Companions)
+            {
+                if (!_modules.TryGetValue(companion.ParentIdentifier, out var parent))
+                {
+                    Logger.Error($"({companion.CompanionIdentifier}) Cannot attach; host {companion.ParentIdentifier} is not loaded");
+                    continue;
+                }
+
+                AttachCompanion(parent, companion.CompanionIdentifier);
+            }
 
             //Remove any modules that did not properly initialize
             var modulesToRemove = _modules.Values
@@ -493,22 +506,31 @@ namespace MBBSEmu.HostProcess
             _globalCache.Dispose();
         }
 
+        /// <summary>
+        ///     Broadcast routines (lonrou, huprou, finrou, mcurou). MajorBBS calls these
+        ///     for every module that register_module'd, including an Internal DLL sharing
+        ///     the host's memory. A module with one DLL is unchanged. The module the user
+        ///     is inside still runs through its main DLL (sttrou / stsrou).
+        /// </summary>
         private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
         {
             foreach (var m in _modules.Values.Where(x => (bool)x.ModuleConfig.ModuleEnabled))
             {
-                if (!m.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
-
-                if (routineEntryPoint.Segment != 0 &&
-                    routineEntryPoint.Offset != 0)
+                foreach (var dll in m.ModuleDlls)
                 {
+                    if (!dll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
+
+                    if (routineEntryPoint.Segment != 0 &&
+                        routineEntryPoint.Offset != 0)
+                    {
 #if DEBUG
-                    Logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
+                        Logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
 #endif
 
-                    preRunCallback?.Invoke(m);
+                        preRunCallback?.Invoke(m);
 
-                    Run(m.ModuleIdentifier, routineEntryPoint, channel);
+                        Run(m.ModuleIdentifier, routineEntryPoint, channel);
+                    }
                 }
             }
         }
@@ -1054,21 +1076,11 @@ namespace MBBSEmu.HostProcess
             //Run Segments through AOT Decompiler & add them to Memory
             for (var i = 0; i < module.ModuleDlls.Count; i++)
             {
-                var dll = module.ModuleDlls[i];
-
                 //Only add the main module to the Modules List
                 if (i == 0)
                     _modules[module.ModuleIdentifier] = module;
 
-                foreach (var seg in dll.File.SegmentTable)
-                {
-                    var originalOrdinal = seg.Ordinal;
-                    seg.Ordinal += dll.SegmentOffset;
-                    module.ProtectedMemory.AddSegment(seg);
-                    Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}:{originalOrdinal}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
-                }
-
-                dll.StateCode = (short)(_modules.Count * 10 + i);
+                MapDllSegments(module, module.ModuleDlls[i], i);
             }
 
             //Run INIT
@@ -1084,6 +1096,50 @@ namespace MBBSEmu.HostProcess
             }
 
             Logger.Info($"({module.ModuleIdentifier}) Module Added!");
+        }
+
+        /// <summary>
+        ///     Maps one DLL's segments into the module and assigns its state code.
+        ///     Segment ordinals are shifted by the DLL's offset so several DLLs can share
+        ///     one memory core without overlapping.
+        /// </summary>
+        private void MapDllSegments(MbbsModule module, MbbsDll dll, int dllIndex)
+        {
+            foreach (var seg in dll.File.SegmentTable)
+            {
+                var originalOrdinal = seg.Ordinal;
+                seg.Ordinal += dll.SegmentOffset;
+                module.ProtectedMemory.AddSegment(seg);
+                Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}:{originalOrdinal}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+            }
+
+            dll.StateCode = (short)(_modules.Count * 10 + dllIndex);
+        }
+
+        /// <summary>
+        ///     Loads an Internal companion into the host module that is already running.
+        ///     Relocation is patched only for the new DLL, then only that DLL's _INIT_ runs.
+        ///     The host DLL is not initialized again.
+        /// </summary>
+        private void AttachCompanion(MbbsModule parent, string companionId)
+        {
+            var added = parent.LoadCompanion(companionId);
+            if (added.Count == 0)
+                return;
+
+            Logger.Info($"({parent.ModuleIdentifier}) {companionId} shares this module's memory");
+
+            foreach (var dll in added)
+            {
+                var index = parent.ModuleDlls.IndexOf(dll);
+                PatchDllRelocation(parent, dll);
+                MapDllSegments(parent, dll, index);
+
+                if (!dll.EntryPoints.TryGetValue("_INIT_", out var entryPointer) || entryPointer == null)
+                    continue;
+
+                Run(parent.ModuleIdentifier, entryPointer, ushort.MaxValue);
+            }
         }
 
         /// <summary>
@@ -1258,9 +1314,16 @@ namespace MBBSEmu.HostProcess
 
         private void PatchRelocation(MbbsModule module)
         {
-
             foreach (var dll in module.ModuleDlls)
-            {
+                PatchDllRelocation(module, dll);
+        }
+
+        /// <summary>
+        ///     Patches relocation records for one DLL. An Internal companion calls this
+        ///     alone so the host DLL's additive relocations are not applied a second time.
+        /// </summary>
+        private void PatchDllRelocation(MbbsModule module, MbbsDll dll)
+        {
                 //Patch Segment 0 (PHAPI) to just RETF (0xCB)
                 dll.File.SegmentTable[0].Data[0] = 0xCB;
 
@@ -1452,7 +1515,6 @@ namespace MBBSEmu.HostProcess
                         }
                     }
                 }
-            }
         }
 
         /// <summary>

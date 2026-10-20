@@ -1772,8 +1772,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var localModuleStructPointer = Module.Memory.AllocateVariable($"MODULE-LOCAL-{Module.ModuleDlls[ModuleDll].StateCode}", ModuleStruct.Size);
             Module.Memory.SetArray($"MODULE-LOCAL-{Module.ModuleDlls[ModuleDll].StateCode}", moduleStruct.Data);
 
-            //Set Module Values from Struct
-            Module.ModuleDescription = Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0');
+            // The menu description belongs to the host DLL. An Internal companion
+            // (MajorMUD Plus) also calls register_module and must not replace it.
+            if (ModuleDll == 0 || string.IsNullOrEmpty(Module.ModuleDescription))
+                Module.ModuleDescription = Encoding.ASCII.GetString(moduleStruct.descrp).TrimEnd('\0');
             Module.ModuleDlls[ModuleDll].EntryPoints.Add("lonrou", moduleStruct.lonrou);
             Module.ModuleDlls[ModuleDll].EntryPoints.Add("sttrou", moduleStruct.sttrou);
             Module.ModuleDlls[ModuleDll].EntryPoints.Add("stsrou", moduleStruct.stsrou);
