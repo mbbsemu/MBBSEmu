@@ -13,7 +13,6 @@ namespace MBBSEmu.Tests.BIOS
         [Theory]
         [InlineData(0x40)]
         [InlineData(0x41)]
-        [InlineData(0x42)]
         public void CantWriteToInvalidPorts(byte port)
         {
             Reset();
@@ -27,6 +26,22 @@ namespace MBBSEmu.Tests.BIOS
             Action action = () => mbbsEmuCpuCore.Tick();
 
             action.Should().Throw<ArgumentException>();
+        }
+
+        [Fact]
+        public void SpeakerChannelWritesAreIgnored()
+        {
+            Reset();
+
+            var instructions = new Assembler(16);
+            instructions.@out(0x42, al);
+            instructions.hlt();
+
+            CreateCodeSegment(instructions);
+
+            Action action = () => mbbsEmuCpuCore.Tick();
+
+            action.Should().NotThrow();
         }
 
         [Fact]
