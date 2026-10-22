@@ -1539,7 +1539,58 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Int()
         {
-            _interruptHandlers[_currentInstruction.Immediate8].Handle();
+            var vector = _currentInstruction.Immediate8;
+
+            if (vector >= 0x34 && vector <= 0x3D && !_interruptHandlers.ContainsKey(vector))
+            {
+                PatchFpuEmulatorInterrupt(vector);
+                return;
+            }
+
+            _interruptHandlers[vector].Handle();
+        }
+
+        /// <summary>
+        ///     Borland/Microsoft floating point emulator calls: compilers emit INT 34h-3Bh in place of the
+        ///     x87 ESC opcodes D8h-DFh, INT 3Ch for an ESC with a segment override, and INT 3Dh for FWAIT.
+        ///     When a coprocessor is present the runtime rewrites each one in place into the real x87
+        ///     instruction the first time it executes; we do the same, then re-execute it.
+        /// </summary>
+        private void PatchFpuEmulatorInterrupt(byte vector)
+        {
+            var ip = Registers.IP;
+
+            switch (vector)
+            {
+                case 0x3D: //FWAIT
+                    Memory.SetByte(Registers.CS, ip, 0x90); //NOP
+                    Memory.SetByte(Registers.CS, (ushort)(ip + 1), 0x9B); //FWAIT
+                    break;
+                case 0x3C: //Segment override: bits 7-6 of the next byte select the segment
+                    {
+                        var escape = Memory.GetByte(Registers.CS, (ushort)(ip + 2));
+                        var prefix = (escape >> 6) switch
+                        {
+                            0 => (byte)0x26, //ES
+                            1 => (byte)0x2E, //CS
+                            2 => (byte)0x36, //SS
+                            _ => (byte)0x3E  //DS
+                        };
+                        Memory.SetByte(Registers.CS, ip, 0x9B); //FWAIT
+                        Memory.SetByte(Registers.CS, (ushort)(ip + 1), prefix);
+                        Memory.SetByte(Registers.CS, (ushort)(ip + 2), (byte)(escape | 0xC0)); //D8h-DFh
+                        break;
+                    }
+                default: //INT 34h-3Bh => FWAIT, ESC D8h-DFh
+                    Memory.SetByte(Registers.CS, ip, 0x9B);
+                    Memory.SetByte(Registers.CS, (ushort)(ip + 1), (byte)(0xD8 + vector - 0x34));
+                    break;
+            }
+
+            Memory.Recompile(Registers.CS, ip);
+
+            //Tick() advances IP past the INT afterwards; undo that so the patched instruction runs next
+            Registers.IP -= (ushort)_currentInstruction.Length;
         }
 
         [MethodImpl(OpcodeCompilerOptimizations)]
