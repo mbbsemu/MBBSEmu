@@ -3776,6 +3776,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
+            //C: a zero size or count reads nothing and returns 0
+            if (elementSize == 0 || numberOfElements == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
+
             var totalToRead = elementSize * numberOfElements;
             var buffer = new byte[totalToRead];
             var bytesRead = fileStream.Read(buffer);
@@ -3808,6 +3815,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (!FilePointerDictionary.TryGetValue(fileStruct.curp.Offset, out var fileStream))
                 throw new FileNotFoundException(
                     $"({Module.ModuleIdentifier}) File Pointer {fileStructPointer} (Stream: {fileStruct.curp}) not found in the File Pointer Dictionary");
+
+            //C: a zero size or count writes nothing and returns 0
+            if (size == 0 || count == 0)
+            {
+                Registers.AX = 0;
+                return;
+            }
 
             var oldPosition = fileStream.Position;
             var bytesToWrite = size * count;
