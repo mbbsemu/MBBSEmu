@@ -10,6 +10,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -22,6 +23,43 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         /// <returns></returns>
         public const ushort Segment = 0xFFFD;
+
+        private const ushort DosAllocRealSegOrdinal = 16;
+        private const ushort DosRealIntrOrdinal = 49;
+        private const ushort DosGetSegDescOrdinal = 0xF001;
+
+        /// <summary>
+        ///     Modules import PHAPI functions by name; these are the ordinals they're dispatched on.
+        ///     16 and 49 keep the values these two functions were already dispatched on.
+        /// </summary>
+        private static readonly Dictionary<string, ushort> OrdinalsByName = new()
+        {
+            {"DOSALLOCREALSEG", DosAllocRealSegOrdinal},
+            {"DOSREALINTR", DosRealIntrOrdinal},
+            {"DOSGETSEGDESC", DosGetSegDescOrdinal},
+        };
+
+        private static readonly List<string> UnknownNames = new();
+
+        /// <summary>
+        ///     Returns the ordinal a by-name PHAPI import is dispatched on. Names not implemented get an
+        ///     ordinal that reports the name if the module ever calls it.
+        ///
+        ///     Modules built against the C (cdecl) prototypes import the name with Borland's leading
+        ///     underscore, e.g. Galactic Empire imports _DOSREALINTR, so that's ignored.
+        /// </summary>
+        public static ushort GetOrdinal(string name)
+        {
+            if (OrdinalsByName.TryGetValue(name.TrimStart('_').ToUpperInvariant(), out var ordinal))
+                return ordinal;
+
+            lock (UnknownNames)
+            {
+                if (!UnknownNames.Contains(name))
+                    UnknownNames.Add(name);
+                return (ushort)(0xFF00 + UnknownNames.IndexOf(name));
+            }
+        }
 
         public override void Dispose()
         {
@@ -47,14 +85,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             switch (ordinal)
             {
-                case 49:
+                case DosRealIntrOrdinal:
                     DosRealIntr();
                     break;
-                case 16:
+                case DosAllocRealSegOrdinal:
                     DosAllocRealSeg();
-                    //DosCreatedAlias();
                     break;
-
+                case DosGetSegDescOrdinal:
+                    DosGetSegDesc();
+                    break;
+                case >= 0xFF00 when ordinal - 0xFF00 < UnknownNames.Count:
+                    throw new ArgumentOutOfRangeException($"Unimplemented PHAPI function: {UnknownNames[ordinal - 0xFF00]}");
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Exported Function Ordinal in PHAPI: {ordinal}");
             }
@@ -93,6 +134,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             RealignStack(6);
 
+            Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Returns the descriptor (base and size) of a selector
+        ///
+        ///     TW2002 uses it to size a copy of its stack segment for each player's task.
+        ///     Every MBBSEmu segment is 64K, which a 16-bit caller reads as 0, so report 0xFFFF.
+        ///
+        ///     Signature: USHORT DosGetSegDesc(SEL sel, PDESC descp);
+        ///                typedef struct { ULONG base; ULONG size; USHORT attrib; } DESC;
+        /// </summary>
+        private void DosGetSegDesc()
+        {
+            var descriptorPointer = GetParameterPointer(0);
+            var selector = GetParameter(2);
+
+            RealignStack(6);
+
+            if (!Module.ProtectedMemory.HasSegment(selector))
+            {
+                Registers.AX = 5; //Access denied
+                return;
+            }
+
+            var size = (uint)Math.Min(Module.Memory.GetMemorySegment(selector).Length, ushort.MaxValue);
+
+            Module.Memory.SetDWord(descriptorPointer, 0);
+            Module.Memory.SetDWord(descriptorPointer + 4, size);
+            Module.Memory.SetWord(descriptorPointer + 8, 0);
             Registers.AX = 0;
         }
 

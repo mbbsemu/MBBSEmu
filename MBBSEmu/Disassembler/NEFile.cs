@@ -32,6 +32,16 @@ namespace MBBSEmu.Disassembler
         public List<NonResidentName> NonResidentNameTable;
 
         /// <summary>
+        ///     Returns the name at <paramref name="offset"/> in the Imported Names Table: relocation records that
+        ///     import a function by name give its name's offset rather than an ordinal
+        /// </summary>
+        public string GetImportedName(ushort offset)
+        {
+            var fileOffset = WindowsHeader.ImportedNamesTableOffset + offset;
+            return Encoding.ASCII.GetString(FileContent, fileOffset + 1, FileContent[fileOffset]);
+        }
+
+        /// <summary>
         ///  CRC32 of the Loaded File
         /// </summary>
         public string CRC32 { get; set; }

@@ -1511,6 +1511,11 @@ namespace MBBSEmu.HostProcess
 
                                     };
 
+                                    //By-name imports give the offset of the function's name, not an ordinal. PHAPI
+                                    //functions are only ever imported by name, so look the name up to get its ordinal
+                                    if (newSegment == Phapi.Segment)
+                                        functionOrdinal = Phapi.GetOrdinal(dll.File.GetImportedName(functionOrdinal));
+
                                     var relocationPointer = new FarPtr(newSegment, functionOrdinal);
 
                                     //32-Bit Pointer
