@@ -69,6 +69,7 @@ namespace MBBSEmu.DOS
                 {
                     new Int21h(Registers, Memory, clock, _logger, fileUtility, stdin, stdout, stderr, _path),
                     new Int1Ah(Registers, Memory, clock),
+                    new Int11h(Registers),
                     new Int3Eh(),
                     new Int10h(Registers, _logger, stdout),
                     new Int7Bh(_logger, _path, fileUtility, Registers, Memory),
