@@ -45,6 +45,7 @@ namespace MBBSEmu.DOS
 
         private readonly Dictionary<string, string> _environmentVariables = new();
         private readonly ProgrammableIntervalTimer _pit;
+        private readonly TextModeScreen _screen;
         private string _path;
 
         public ExeRuntime(MZFile file, IClock clock, IMessageLogger logger, IFileUtility fileUtility, string path,
@@ -61,18 +62,20 @@ namespace MBBSEmu.DOS
             Registers = Cpu;
 
             _pit = new ProgrammableIntervalTimer(_logger, clock, Cpu);
+            _screen = new TextModeScreen(Memory, stdout);
 
             Cpu.Reset(
                 Memory,
                 null,
                 new List<IInterruptHandler>
                 {
-                    new Int21h(Registers, Memory, clock, _logger, fileUtility, stdin, stdout, stderr, _path),
+                    new Int21h(Registers, Memory, clock, _logger, fileUtility, stdin,
+                        new TextModeScreenOrderedStream(stdout, _screen), stderr, _path),
                     new Int1Ah(Registers, Memory, clock),
                     new Int11h(Registers),
-                    new Int16h(Registers, _logger, stdin),
+                    new Int16h(Registers, _logger, stdin, _screen),
                     new Int3Eh(),
-                    new Int10h(Registers, _logger, stdout),
+                    new Int10h(Registers, _logger, Memory, _screen),
                     new Int7Bh(_logger, _path, fileUtility, Registers, Memory),
                 },
                 new Dictionary<int, IIOPort>
@@ -128,8 +131,17 @@ namespace MBBSEmu.DOS
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 new Win32VT100().Enable();
 
+            long ticks = 0;
             while (!Registers.Halt)
+            {
+                //Programs drawing to video memory while they work (progress screens) are shown as they go
+                if ((++ticks & 0x3FFFF) == 0)
+                    _screen.Flush();
+
                 Cpu.Tick();
+            }
+
+            _screen.Flush();
 
             _sessionBase?.Stop();
             Stop();

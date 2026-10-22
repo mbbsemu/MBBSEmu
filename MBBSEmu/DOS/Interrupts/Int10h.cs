@@ -1,31 +1,26 @@
 ﻿using MBBSEmu.CPU;
-using MBBSEmu.IO;
 using MBBSEmu.Logging;
+using MBBSEmu.Memory;
 using System;
 
 namespace MBBSEmu.DOS.Interrupts
 {
     public class Int10h : IInterruptHandler
     {
-        private byte _cursorPositionX;
-
-        private byte _cursorPositionY;
-
-        private const string ANSI_CLEAR_SCREEN = "\x1B[2J";
-        private const string ANSI_SET_CURSOR_POSITION = "\x1B[{0};{1}H";
-
         private IMessageLogger _logger { get; init; }
-        private readonly IStream _stdout;
+        private readonly IMemoryCore _memory;
+        private readonly TextModeScreen _screen;
 
         private ICpuRegisters _registers { get; init; }
 
         public byte Vector => 0x10;
 
-        public Int10h(ICpuRegisters registers, IMessageLogger logger, IStream stdout)
+        public Int10h(ICpuRegisters registers, IMessageLogger logger, IMemoryCore memory, TextModeScreen screen)
         {
             _registers = registers;
             _logger = logger;
-            _stdout = stdout;
+            _memory = memory;
+            _screen = screen;
         }
 
         public void Handle()
@@ -47,7 +42,10 @@ namespace MBBSEmu.DOS.Interrupts
                     ReadAttributes_CharacterAtCursorPosition_0x08();
                     return;
                 case 0x06:
-                    ScrollPageUp_0x06();
+                    ScrollWindow(up: true);
+                    return;
+                case 0x07:
+                    ScrollWindow(up: false);
                     return;
                 case 0x02:
                     SetCursorPosition_0x02();
@@ -130,24 +128,46 @@ namespace MBBSEmu.DOS.Interrupts
         }
 
         /// <summary>
-        /// INT 10 - AH = 06h VIDEO - SCROLL PAGE UP
+        /// INT 10 - AH = 06h VIDEO - SCROLL PAGE UP / AH = 07h SCROLL PAGE DOWN
         /// AL = number of lines to scroll window (0 = blank whole window)
         /// BH = attributes to be used on blanked lines
         /// CH,CL = row,column of upper left corner of window to scroll
         /// DH,DL = row,column of lower right corner of window
         /// </summary>
-        private void ScrollPageUp_0x06()
+        private void ScrollWindow(bool up)
         {
-            //Blank Whole Screen?
-            if (_registers.AL == 0)
-            {
-                //_stdout.Write(Encoding.ASCII.GetBytes(ANSI_CLEAR_SCREEN));
+            int top = _registers.CH, left = _registers.CL;
+            int bottom = Math.Min((int)_registers.DH, TextModeScreen.ROWS - 1);
+            int right = Math.Min((int)_registers.DL, TextModeScreen.COLUMNS - 1);
+            if (top > bottom || left > right)
                 return;
+
+            var height = bottom - top + 1;
+            var lines = _registers.AL == 0 || _registers.AL > height ? height : _registers.AL;
+            var width = (ushort)((right - left + 1) * 2);
+
+            //Move the rows that stay, nearest the destination edge first so none are overwritten before they move
+            for (var i = 0; i < height - lines; i++)
+            {
+                var destination = up ? top + i : bottom - i;
+                var source = up ? destination + lines : destination - lines;
+                var row = _memory.GetArray(TextModeScreen.VIDEO_SEGMENT, CellOffset(source, left), width).ToArray();
+                _memory.SetArray(TextModeScreen.VIDEO_SEGMENT, CellOffset(destination, left), row);
             }
 
-            _logger.Warn($"Scrolling up {_registers.AL} lines not currently supported");
+            //Blank the rows scrolled in with spaces in attribute BH
+            var blank = new byte[width];
+            for (var i = 0; i < blank.Length; i += 2)
+            {
+                blank[i] = (byte)' ';
+                blank[i + 1] = _registers.BH;
+            }
 
+            for (var i = 0; i < lines; i++)
+                _memory.SetArray(TextModeScreen.VIDEO_SEGMENT, CellOffset(up ? bottom - i : top + i, left), blank);
         }
+
+        private static ushort CellOffset(int row, int column) => (ushort)((row * TextModeScreen.COLUMNS + column) * 2);
 
         /// <summary>
         /// INT 10 - AH = 02h VIDEO - SET CURSOR POSITION
@@ -159,9 +179,8 @@ namespace MBBSEmu.DOS.Interrupts
         /// </summary>
         private void SetCursorPosition_0x02()
         {
-            _cursorPositionX = _registers.DL;
-            _cursorPositionY = _registers.DH;
-            //_stdout.Write(Encoding.ASCII.GetBytes(string.Format(ANSI_SET_CURSOR_POSITION, _cursorPositionY, _cursorPositionX)));
+            _screen.CursorX = _registers.DL;
+            _screen.CursorY = _registers.DH;
         }
 
         /// <summary>
@@ -178,8 +197,8 @@ namespace MBBSEmu.DOS.Interrupts
         {
             _registers.AX = 0;
             _registers.BH = 2;
-            _registers.DH = _cursorPositionY; //Row
-            _registers.DL = _cursorPositionX; //Column
+            _registers.DH = _screen.CursorY; //Row
+            _registers.DL = _screen.CursorX; //Column
             _registers.CH = 6; //Start Line
             _registers.CL = 7; //End Line
         }

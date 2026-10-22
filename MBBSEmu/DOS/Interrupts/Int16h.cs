@@ -16,20 +16,25 @@ namespace MBBSEmu.DOS.Interrupts
         private ICpuRegisters _registers { get; init; }
         private IMessageLogger _logger { get; init; }
         private IStream _stdin { get; init; }
+        private readonly TextModeScreen _screen;
 
         private int _pendingKey = -1;
 
         public byte Vector => 0x16;
 
-        public Int16h(ICpuRegisters registers, IMessageLogger logger, IStream stdin)
+        public Int16h(ICpuRegisters registers, IMessageLogger logger, IStream stdin, TextModeScreen screen)
         {
             _registers = registers;
             _logger = logger;
             _stdin = stdin;
+            _screen = screen;
         }
 
         public void Handle()
         {
+            //Show what the program drew before it waits on the user
+            _screen?.Flush();
+
             switch (_registers.AH)
             {
                 case 0x00: //GET KEYSTROKE
