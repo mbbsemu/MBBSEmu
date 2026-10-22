@@ -7,6 +7,7 @@ using MBBSEmu.Module;
 using MBBSEmu.Session;
 using MBBSEmu.TextVariables;
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace MBBSEmu.HostProcess.ExportedModules
@@ -21,6 +22,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         public const ushort DosSegmentBase = 0x200;
         public ushort DosSegmentOffset = 0;
+
+        /// <summary>
+        ///     Segments released by DosFreeSeg, reused before allocating new ones
+        /// </summary>
+        private readonly Stack<ushort> _freedSegments = new();
 
         public override void Dispose()
         {
@@ -53,6 +59,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             {
                 case 34:
                     DosAllocSeg();
+                    break;
+                case 39:
+                    DosFreeSeg();
                     break;
                 case 44:
                     DosLoadModule();
@@ -97,14 +106,40 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var selectorPointer = GetParameterPointer(1);
             var flags = GetParameter(3);
 
-            var allocatedSegment = (ushort)(DosSegmentBase + DosSegmentOffset);
+            ushort allocatedSegment;
+            if (_freedSegments.Count > 0)
+                allocatedSegment = _freedSegments.Pop();
+            else
+                allocatedSegment = (ushort)(DosSegmentBase + DosSegmentOffset++);
 
             Module.ProtectedMemory.AddSegment(allocatedSegment);
             Module.Memory.SetWord(selectorPointer, allocatedSegment);
-            DosSegmentOffset++;
             Registers.AX = 0;
 
             RealignStack(8);
+        }
+
+        /// <summary>
+        ///     Frees a segment allocated by DosAllocSeg
+        ///
+        ///     Signature: USHORT DosFreeSeg(SEL sel);
+        /// </summary>
+        public void DosFreeSeg()
+        {
+            var selector = GetParameter(0);
+
+            RealignStack(2);
+
+            var allocatedByDosAllocSeg = selector >= DosSegmentBase && selector < DosSegmentBase + DosSegmentOffset;
+            if (!allocatedByDosAllocSeg || !Module.ProtectedMemory.HasSegment(selector) || _freedSegments.Contains(selector))
+            {
+                Registers.AX = 5; //Access denied
+                return;
+            }
+
+            Module.ProtectedMemory.RemoveSegment(selector);
+            _freedSegments.Push(selector);
+            Registers.AX = 0;
         }
 
         private ReadOnlySpan<byte> dossetvec => new byte[] { 0x0, 0x0, 0x0, 0x0 };
@@ -128,8 +163,14 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         public void DosGetModHandle()
         {
+            var moduleHandlePointer = GetParameterPointer(0);
+
             _logger.Warn($"({Module.ModuleIdentifier}) Getting External Modules is currently not supported");
+            Module.Memory.SetWord(moduleHandlePointer, 0);
             Registers.AX = 0;
+
+            //Signature: USHORT DosGetModHandle(PSZ ModuleName, PHMODULE ModuleHandle), callee pops both far pointers
+            RealignStack(8);
         }
 
         /// <summary>
