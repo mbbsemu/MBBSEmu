@@ -249,5 +249,30 @@ namespace MBBSEmu.Tests.Btrieve
             processor.PerformOperation(0, System.Text.Encoding.ASCII.GetBytes("Sysop"),
                 EnumBtrieveOperationCodes.AcquireEqual).Should().BeTrue();
         }
+
+        [Fact]
+        public void Open_FileWithACS_LoadsOnlyItsKeys()
+        {
+            var btrieveFile = new BtrieveFile();
+            btrieveFile.LoadFile(_logger, Path.Combine(_modulePath, "MBBSEMU.DAT"));
+
+            var acs = new byte[256];
+            for (var i = 0; i < 256; i++)
+                acs[i] = (byte)i;
+
+            btrieveFile.ACS = acs;
+            btrieveFile.ACSName = "TESTACS";
+            var key0Segment = btrieveFile.Keys[0].PrimarySegment;
+            key0Segment.Attributes |= EnumKeyAttributeMask.NumberedACS;
+            key0Segment.ACS = acs;
+
+            using (new BtrieveFileProcessor(btrieveFile, Path.Combine(_modulePath, "WITHACS.DAT"))) { }
+
+            // STAT returns the ACS table after the key specs; it must not be read as more keys
+            using var processor = new BtrieveFileProcessor(_fileUtility, _modulePath, "WITHACS.DAT", cacheSize: 8);
+
+            processor.Keys.Keys.Should().BeEquivalentTo(new ushort[] { 0, 1, 2, 3 });
+            processor.Keys[0].RequiresACS.Should().BeTrue();
+        }
     }
 }
