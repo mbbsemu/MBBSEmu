@@ -7,6 +7,7 @@ using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -326,17 +327,21 @@ namespace MBBSEmu.DOS.Interrupts
             if (command.key_buffer_length > 0)
                 _memory.SetByte(command.key_buffer_segment, command.key_buffer_offset, 0);
 
+            // Btrieve returns one key spec per key *segment*, in key number order. Keys is keyed by
+            // key number, which isn't guaranteed to run 0..Count-1, so don't index it positionally.
+            var keySegments = db.Keys.Values.OrderBy(key => key.Number).SelectMany(key => key.Segments).ToList();
+
             var requiredSize = (ushort)(Marshal.SizeOf(typeof(BtrieveFileSpec)) +
-                                        (db.Keys.Count * Marshal.SizeOf(typeof(BtrieveKeySpec))));
+                                        (keySegments.Count * Marshal.SizeOf(typeof(BtrieveKeySpec))));
             if (command.data_buffer_length < requiredSize)
                 return (BtrieveError.DataBufferLengthOverrun, command.data_buffer_length);
 
             // now write all this data
             var ptr = new FarPtr(command.data_buffer_segment, command.data_buffer_offset);
             ptr += new BtrieveFileSpec(db).WriteTo(_memory, ptr);
-            for (var i = (ushort)0; i < db.Keys.Count; ++i)
+            foreach (var segment in keySegments)
             {
-                ptr += new BtrieveKeySpec(db.Keys[i].PrimarySegment).WriteTo(_memory, ptr);
+                ptr += new BtrieveKeySpec(segment).WriteTo(_memory, ptr);
             }
 
             return (BtrieveError.Success, requiredSize);
