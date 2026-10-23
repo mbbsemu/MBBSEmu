@@ -32,7 +32,7 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("%s-%ld-%d-%s", "TEST--1-1-FOO", "TEST", (uint)0xFFFFFFFF, (ushort)1, "FOO")]
         [InlineData("%s-%lu-%d-%s", "TEST-2147483647-1-FOO", "TEST", 2147483647u, (ushort)1, "FOO")]
         [InlineData("%s-%lu-%d-%s", "TEST-3147483647-1-FOO", "TEST", 3147483647u, (ushort)1, "FOO")]
-        [InlineData("99% of the time, this will print %s", "99% of the time, this will print TEST", "TEST")] //Unescaped %
+        [InlineData("99% of the time, this will print %s", "9910f the time, this will print TEST", (ushort)8, "TEST")] //"% o" is a valid octal conversion
         [InlineData("Mid 50% Test", "Mid 50% Test", null)] //Unescaped %
         [InlineData("End 50% ", "End 50% ", null)] //Unescaped %
         [InlineData("End 50%", "End 50%", null)] //Unescaped %
