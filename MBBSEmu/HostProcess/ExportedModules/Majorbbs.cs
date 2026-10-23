@@ -170,6 +170,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetWord("OUTBSZ", OUTBUF_SIZE);
             Module.Memory.AllocateVariable("INPUT", 0xFF); //255 Byte Maximum user Input
             Module.Memory.AllocateVariable("USER", (ushort)(User.Size * _numberOfChannels), true);
+            foreach (var (channel, session) in ChannelDictionary)
+                SetUserModuleState((ushort)channel, session.UsrPtr.State, session.UsrPtr.Substt);
             Module.Memory.AllocateVariable("*USRPTR", 0x4); //pointer to the current USER record
             Module.Memory.AllocateVariable("STATUS", 0x2); //ushort Status
             Module.Memory.AllocateVariable("RSMODES", (ushort)(sizeof(ushort) * _numberOfChannels), true);
@@ -3261,6 +3263,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: int *rsmodes;
         /// </summary>
         private ReadOnlySpan<byte> rsmodes => Module.Memory.GetVariablePointer("*RSMODES").Data;
+
+        internal void SetUserModuleState(ushort channel, short state, short substate)
+        {
+            var pointer = Module.Memory.GetVariablePointer("USER") + (channel * User.Size);
+            var user = new User { Data = Module.Memory.GetArray(pointer, User.Size).ToArray() };
+            user.State = state;
+            user.Substt = substate;
+            Module.Memory.SetArray(pointer, user.Data);
+        }
 
         internal void SetResetModes(ushort resetMode)
         {
