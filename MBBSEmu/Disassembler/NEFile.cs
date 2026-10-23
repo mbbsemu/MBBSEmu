@@ -221,6 +221,7 @@ namespace MBBSEmu.Disassembler
                             entry.Offset =
                                 BitConverter.ToUInt16(FileContent,
                                     WindowsHeader.EntryTableOffset + entryByteOffset + 6 + entrySize * i);
+                            entry.Ordinal = entryOrdinal;   //Same ordinal shift as the fixed-segment case above
                         }
                         entryOrdinal++;
                         EntryTable.Add(entry);

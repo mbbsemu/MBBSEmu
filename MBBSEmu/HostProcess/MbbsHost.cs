@@ -1,6 +1,7 @@
 using MBBSEmu.Database.Repositories.Account;
 using MBBSEmu.Database.Repositories.AccountKey;
 using MBBSEmu.Date;
+using MBBSEmu.Disassembler;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
@@ -26,6 +27,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 
 namespace MBBSEmu.HostProcess
@@ -251,9 +253,22 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         public void Start(List<ModuleConfiguration> moduleConfigurations)
         {
-            //Load Modules
-            foreach (var m in moduleConfigurations)
+            // Each enabled module keeps its own memory. An Internal module (MajorMUD Plus)
+            // is not a menu module on Worldgroup; it is attached to the host already loaded.
+            var plan = ModuleLoadPlan.Build(moduleConfigurations, _fileUtility, Logger);
+            foreach (var m in plan.HostModules)
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, null, _messagingCenter));
+
+            foreach (var companion in plan.Companions)
+            {
+                if (!_modules.TryGetValue(companion.ParentIdentifier, out var parent))
+                {
+                    Logger.Error($"({companion.CompanionIdentifier}) Cannot attach; host {companion.ParentIdentifier} is not loaded");
+                    continue;
+                }
+
+                AttachCompanion(parent, companion.CompanionIdentifier);
+            }
 
             //Remove any modules that did not properly initialize
             var modulesToRemove = _modules.Values
@@ -492,22 +507,31 @@ namespace MBBSEmu.HostProcess
             _globalCache.Dispose();
         }
 
+        /// <summary>
+        ///     Broadcast routines (lonrou, huprou, finrou, mcurou). MajorBBS calls these
+        ///     for every module that register_module'd, including an Internal DLL sharing
+        ///     the host's memory. A module with one DLL is unchanged. The module the user
+        ///     is inside still runs through its main DLL (sttrou / stsrou).
+        /// </summary>
         private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
         {
             foreach (var m in _modules.Values.Where(x => (bool)x.ModuleConfig.ModuleEnabled))
             {
-                if (!m.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
-
-                if (routineEntryPoint.Segment != 0 &&
-                    routineEntryPoint.Offset != 0)
+                foreach (var dll in m.ModuleDlls)
                 {
+                    if (!dll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
+
+                    if (routineEntryPoint.Segment != 0 &&
+                        routineEntryPoint.Offset != 0)
+                    {
 #if DEBUG
-                    Logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
+                        Logger.Info($"Calling {routine} on module {m.ModuleIdentifier} for channel {channel}");
 #endif
 
-                    preRunCallback?.Invoke(m);
+                        preRunCallback?.Invoke(m);
 
-                    Run(m.ModuleIdentifier, routineEntryPoint, channel);
+                        Run(m.ModuleIdentifier, routineEntryPoint, channel);
+                    }
                 }
             }
         }
@@ -1013,21 +1037,11 @@ namespace MBBSEmu.HostProcess
             //Run Segments through AOT Decompiler & add them to Memory
             for (var i = 0; i < module.ModuleDlls.Count; i++)
             {
-                var dll = module.ModuleDlls[i];
-
                 //Only add the main module to the Modules List
                 if (i == 0)
                     _modules[module.ModuleIdentifier] = module;
 
-                foreach (var seg in dll.File.SegmentTable)
-                {
-                    var originalOrdinal = seg.Ordinal;
-                    seg.Ordinal += dll.SegmentOffset;
-                    module.ProtectedMemory.AddSegment(seg);
-                    Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}:{originalOrdinal}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
-                }
-
-                dll.StateCode = (short)(_modules.Count * 10 + i);
+                MapDllSegments(module, module.ModuleDlls[i], i);
             }
 
             //Run INIT
@@ -1043,6 +1057,50 @@ namespace MBBSEmu.HostProcess
             }
 
             Logger.Info($"({module.ModuleIdentifier}) Module Added!");
+        }
+
+        /// <summary>
+        ///     Maps one DLL's segments into the module and assigns its state code.
+        ///     Segment ordinals are shifted by the DLL's offset so several DLLs can share
+        ///     one memory core without overlapping.
+        /// </summary>
+        private void MapDllSegments(MbbsModule module, MbbsDll dll, int dllIndex)
+        {
+            foreach (var seg in dll.File.SegmentTable)
+            {
+                var originalOrdinal = seg.Ordinal;
+                seg.Ordinal += dll.SegmentOffset;
+                module.ProtectedMemory.AddSegment(seg);
+                Logger.Debug($"({module.ModuleIdentifier}:{dll.File.FileName}:{originalOrdinal}) Segment {seg.Ordinal} ({seg.Data.Length} bytes) loaded!");
+            }
+
+            dll.StateCode = (short)(_modules.Count * 10 + dllIndex);
+        }
+
+        /// <summary>
+        ///     Loads an Internal companion into the host module that is already running.
+        ///     Relocation is patched only for the new DLL, then only that DLL's _INIT_ runs.
+        ///     The host DLL is not initialized again.
+        /// </summary>
+        private void AttachCompanion(MbbsModule parent, string companionId)
+        {
+            var added = parent.LoadCompanion(companionId);
+            if (added.Count == 0)
+                return;
+
+            Logger.Info($"({parent.ModuleIdentifier}) {companionId} shares this module's memory");
+
+            foreach (var dll in added)
+            {
+                var index = parent.ModuleDlls.IndexOf(dll);
+                PatchDllRelocation(parent, dll);
+                MapDllSegments(parent, dll, index);
+
+                if (!dll.EntryPoints.TryGetValue("_INIT_", out var entryPointer) || entryPointer == null)
+                    continue;
+
+                Run(parent.ModuleIdentifier, entryPointer, ushort.MaxValue);
+            }
         }
 
         /// <summary>
@@ -1186,11 +1244,47 @@ namespace MBBSEmu.HostProcess
         ///     0x004D == 77, Ordinal for ATOL()
         /// </summary>
         /// <param name="module"></param>
+        /// <summary>
+        ///     Reads a length-prefixed name string from a DLL's Imported Names Table at the given
+        ///     offset. IMPORTNAME relocation records store the imported function name as an offset
+        ///     into this table.
+        /// </summary>
+        private static string GetImportedNameByOffset(NEFile file, ushort offset)
+        {
+            var fileOffset = file.WindowsHeader.ImportedNamesTableOffset + offset;
+            var length = file.FileContent[fileOffset];
+            return Encoding.ASCII.GetString(file.FileContent, fileOffset + 1, length);
+        }
+
+        /// <summary>
+        ///     Resolves an exported function name to its Entry Table ordinal within the given DLL by
+        ///     searching the Resident and Non-Resident Name Tables. Returns 0 if the name is not found.
+        /// </summary>
+        private static ushort ResolveExportedOrdinalByName(NEFile file, string name)
+        {
+            foreach (var residentName in file.ResidentNameTable)
+                if (string.Equals(residentName.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return residentName.IndexIntoEntryTable;
+
+            foreach (var nonResidentName in file.NonResidentNameTable)
+                if (string.Equals(nonResidentName.Name, name, StringComparison.OrdinalIgnoreCase))
+                    return nonResidentName.IndexIntoEntryTable;
+
+            return 0;
+        }
+
         private void PatchRelocation(MbbsModule module)
         {
-
             foreach (var dll in module.ModuleDlls)
-            {
+                PatchDllRelocation(module, dll);
+        }
+
+        /// <summary>
+        ///     Patches relocation records for one DLL. An Internal companion calls this
+        ///     alone so the host DLL's additive relocations are not applied a second time.
+        /// </summary>
+        private void PatchDllRelocation(MbbsModule module, MbbsDll dll)
+        {
                 //Patch Segment 0 (PHAPI) to just RETF (0xCB)
                 dll.File.SegmentTable[0].Data[0] = 0xCB;
 
@@ -1299,20 +1393,59 @@ namespace MBBSEmu.HostProcess
                                 {
                                     var nametableOrdinal = relocationRecord.TargetTypeValueTuple.Item2;
                                     var functionOrdinal = relocationRecord.TargetTypeValueTuple.Item3;
+                                    var importedModuleName = dll.File.ImportedNameTable[nametableOrdinal].Name;
 
-                                    var newSegment = dll.File.ImportedNameTable[nametableOrdinal].Name switch
+                                    FarPtr relocationPointer;
+                                    switch (importedModuleName)
                                     {
-                                        "MAJORBBS" => Majorbbs.Segment,
-                                        "GALGSBL" => Galgsbl.Segment,
-                                        "PHAPI" => Phapi.Segment,
-                                        "GALME" => Galme.Segment,
-                                        "DOSCALLS" => Doscalls.Segment,
-                                        _ => throw new Exception(
-                                            $"Unknown or Unimplemented Imported Module: {dll.File.ImportedNameTable[nametableOrdinal].Name}")
+                                        case "MAJORBBS":
+                                            relocationPointer = new FarPtr(Majorbbs.Segment, functionOrdinal);
+                                            break;
+                                        case "GALGSBL":
+                                            relocationPointer = new FarPtr(Galgsbl.Segment, functionOrdinal);
+                                            break;
+                                        case "PHAPI":
+                                            relocationPointer = new FarPtr(Phapi.Segment, functionOrdinal);
+                                            break;
+                                        case "GALME":
+                                            relocationPointer = new FarPtr(Galme.Segment, functionOrdinal);
+                                            break;
+                                        case "DOSCALLS":
+                                            relocationPointer = new FarPtr(Doscalls.Segment, functionOrdinal);
+                                            break;
+                                        case "GALMSG":
+                                            relocationPointer = new FarPtr(Galmsg.Segment, functionOrdinal);
+                                            break;
+                                        //Imported by name from another module DLL loaded alongside this one
+                                        //(e.g. MajorMUD Plus (WCCMMPLS) imports functions from MajorMUD (WCCMMUD)).
+                                        //For an IMPORTNAME relocation the target value is an offset into this DLL's
+                                        //imported-names table pointing at the function name; we resolve that name to
+                                        //an exported ordinal in the target DLL and build a pointer into its segments.
+                                        case var importedName
+                                            when module.ModuleDlls.Any(m =>
+                                                m.File.FileName.Split('.')[0].ToUpper() == importedName.ToUpper()):
+                                            {
+                                                var importedDll = module.ModuleDlls.First(m =>
+                                                    m.File.FileName.Split('.')[0].ToUpper() == importedName.ToUpper());
 
-                                    };
+                                                var importedFunctionName = GetImportedNameByOffset(dll.File, functionOrdinal);
+                                                var entryOrdinal = ResolveExportedOrdinalByName(importedDll.File, importedFunctionName);
 
-                                    var relocationPointer = new FarPtr(newSegment, functionOrdinal);
+                                                if (entryOrdinal == 0)
+                                                    throw new Exception(
+                                                        $"({module.ModuleIdentifier}) Unable to resolve imported name '{importedFunctionName}' from module {importedName}");
+
+                                                var importedEntry =
+                                                    importedDll.File.EntryTable.First(x => x.Ordinal == entryOrdinal);
+                                                relocationPointer = new FarPtr(
+                                                    (ushort)(importedEntry.SegmentNumber + importedDll.SegmentOffset),
+                                                    importedEntry.Offset);
+                                                break;
+                                            }
+                                        default:
+                                            throw new Exception(
+                                                $"Unknown or Unimplemented Imported Module: {importedModuleName}");
+                                    }
 
                                     //32-Bit Pointer
                                     if (relocationRecord.SourceType == 3)
@@ -1343,7 +1476,6 @@ namespace MBBSEmu.HostProcess
                         }
                     }
                 }
-            }
         }
 
         /// <summary>
