@@ -1324,6 +1324,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 1040:
                     ul2as();
                     break;
+                case 465:
+                    paccit();
+                    break;
                 case 480:
                     profan();
                     break;
@@ -8259,6 +8262,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void profan()
         {
             Registers.AX = 0;
+        }
+
+        /// <summary>
+        ///     Profanity check of the current input buffer, result is stored in pfnlvl
+        ///
+        ///     MBBSEmu doesn't support multiple profanity levels, so pfnlvl is always set to 0.
+        ///
+        ///     Signature:  void paccit(void);
+        /// </summary>
+        private void paccit()
+        {
+            Module.Memory.SetWord("PFNLVL", 0);
         }
 
         /// <summary>
