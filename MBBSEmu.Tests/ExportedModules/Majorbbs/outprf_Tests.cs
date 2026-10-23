@@ -1,5 +1,6 @@
 ﻿using MBBSEmu.Memory;
 using MBBSEmu.Module;
+using MBBSEmu.Session;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -32,6 +33,8 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         ///     outprf() must NOT clear prfbuf -- only clrprf() should. Modules (e.g. Galactic
         ///     Empire's hailing messages) rely on calling prf() once and then outprf() repeatedly
         ///     to broadcast the same buffered text to multiple channels.
+        ///
+        ///     Like GCOMM's outprf(), it does move prfptr back to the start of prfbuf.
         /// </summary>
         [Fact]
         public void outprf_DoesNotClearBuffer_Test()
@@ -42,20 +45,70 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             SetInput(inputValue);
 
             var prfBufPointerBefore = mbbsEmuMemoryCore.GetVariablePointer("PRFBUF");
-            var prfPtrBefore = mbbsEmuMemoryCore.GetPointer("PRFPTR");
 
             //Call outprf() multiple times, simulating broadcasting the same buffer to multiple channels
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0xFFFF });
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0xFFFE });
             ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0xFFFD });
 
-            //PRFPTR and PRFBUF remain intact for repeated sends
-            var prfPtrAfter = mbbsEmuMemoryCore.GetPointer("PRFPTR");
-            Assert.Equal(prfPtrBefore, prfPtrAfter);
+            //PRFPTR is back at the start of PRFBUF
+            Assert.Equal(prfBufPointerBefore, mbbsEmuMemoryCore.GetPointer("PRFPTR"));
 
             //PRFBUF contents should still be intact (not zeroed out)
             var prfBufAfter = mbbsEmuMemoryCore.GetString(prfBufPointerBefore, stripNull: true);
             Assert.Equal(inputValue, Encoding.ASCII.GetString(prfBufAfter));
+        }
+
+        /// <summary>
+        ///     Galactic Empire's outsect() formats a message once, calls outprf() for every ship in
+        ///     the sector, then calls clrprf(). Every channel must receive the message.
+        /// </summary>
+        [Fact]
+        public void outprf_RepeatedSendsReachEveryChannel_Test()
+        {
+            ResetForChannelOutput();
+
+            AppendWithPrf("Hail");
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0 });
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 1 });
+
+            Assert.Equal("Hail", Encoding.ASCII.GetString(((TestSession)testSessions[0]).DrainSentData()));
+            Assert.Equal("Hail", Encoding.ASCII.GetString(((TestSession)testSessions[1]).DrainSentData()));
+        }
+
+        /// <summary>
+        ///     Trade Wars 2002 flushes with "if (prfptr > prfbuf) outprf(usrnum);" from more than one
+        ///     place in a single step. After outprf() there must be nothing left pending, or the same
+        ///     output is sent twice.
+        /// </summary>
+        [Fact]
+        public void outprf_NothingPendingAfterSend_Test()
+        {
+            ResetForChannelOutput();
+
+            AppendWithPrf("Command [TL=00:00:00]:");
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0 });
+
+            Assert.Equal(mbbsEmuMemoryCore.GetVariablePointer("PRFBUF"), mbbsEmuMemoryCore.GetPointer("PRFPTR"));
+            Assert.Equal("Command [TL=00:00:00]:", Encoding.ASCII.GetString(((TestSession)testSessions[0]).DrainSentData()));
+        }
+
+        /// <summary>
+        ///     prf(); outprf(); prf(); outprf(); sends each message once.
+        /// </summary>
+        [Fact]
+        public void outprf_AlternatingWithPrfSendsEachMessageOnce_Test()
+        {
+            ResetForChannelOutput();
+
+            AppendWithPrf("Long first message");
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0 });
+            AppendWithPrf("Second");
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, OUTPRF_ORDINAL, new List<ushort> { 0 });
+
+            Assert.Equal("Long first messageSecond", Encoding.ASCII.GetString(((TestSession)testSessions[0]).DrainSentData()));
         }
 
         [Fact]
@@ -106,6 +159,18 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal("New message",
                 Encoding.ASCII.GetString(mbbsEmuMemoryCore.GetString("PRFBUF", true)));
+        }
+
+        /// <summary>
+        ///     Starts a channel 0 callback, so PRFPTR points at PRFBUF. The test sessions have no
+        ///     host, so the host-backed text variables can't be evaluated when output is sent to them.
+        /// </summary>
+        private void ResetForChannelOutput()
+        {
+            Reset();
+            majorbbs.SetState(0);
+            testSessions[0].SessionVariables.Clear();
+            testSessions[1].SessionVariables.Clear();
         }
 
         private void SetInput(string inputValue)
