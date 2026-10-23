@@ -1385,6 +1385,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 211:
                     filelength();
                     break;
+                case 396:
+                    lseek();
+                    break;
                 case 811:
                     echsec();
                     break;
@@ -8649,6 +8652,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (FilePointerDictionary.TryGetValue(fileHandle, out var filePointer))
             {
                 result = filePointer.Length;
+            }
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     lseek - moves the file pointer of a file handle
+        ///
+        ///     Signature: long lseek(int handle, long offset, int fromwhere);
+        /// </summary>
+        private void lseek()
+        {
+            var fileHandle = GetParameter(0);
+            var offset = GetParameterLong(1);
+            var origin = GetParameter(3);
+            var result = -1L;
+
+            if (FilePointerDictionary.TryGetValue(fileHandle, out var fileStream) && origin <= 2)
+            {
+                var newPosition = origin switch
+                {
+                    2 => fileStream.Length + offset, //SEEK_END
+                    1 => fileStream.Position + offset, //SEEK_CUR
+                    _ => offset //SEEK_SET
+                };
+
+                // TODO set errno
+                if (newPosition >= 0)
+                    result = fileStream.Seek(newPosition, SeekOrigin.Begin);
             }
 
             Registers.DX = (ushort)(result >> 16);
