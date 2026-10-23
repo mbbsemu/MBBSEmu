@@ -5,6 +5,7 @@ using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Enums;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.HostProcess.HostRoutines;
@@ -1083,6 +1084,11 @@ namespace MBBSEmu.HostProcess
 
             CallModuleRoutine("huprou", preRunCallback: null, channel);
 
+            //Clear this channel's USER[] record in every module once its hangup routine has run. Otherwise the
+            //record keeps saying "in module X" after the session is gone, and modules that sweep all channels
+            //(e.g. MajorMUD's background routines) keep treating it as a live player.
+            ClearUserRecord(channel);
+
             var session = _channelDictionary[channel];
             if (stopSession)
                 session.Stop();
@@ -1113,6 +1119,28 @@ namespace MBBSEmu.HostProcess
             {
                 _exportedFunctions[exportedFunctionKey].Dispose();
                 _exportedFunctions.Remove(exportedFunctionKey);
+            }
+        }
+
+        /// <summary>
+        ///     Zeroes USER[channel] in every loaded module's memory. A new session on this channel reloads the
+        ///     record from its own UsrPtr on SetState().
+        /// </summary>
+        private void ClearUserRecord(ushort channel)
+        {
+            try
+            {
+                foreach (var m in _modules.Values)
+                {
+                    if (!m.Memory.TryGetVariablePointer("USER", out var userBase)) continue;
+                    if (channel >= m.Memory.GetWord("NTERMS")) continue;
+                    var slot = new FarPtr(userBase.Segment, (ushort)(userBase.Offset + User.Size * channel));
+                    m.Memory.SetZero(slot, User.Size);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed clearing USER record for channel {channel}: {ex.Message}");
             }
         }
 
