@@ -2190,10 +2190,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Signature: void outprf (unum)
         /// </summary>
         /// <returns></returns>
-        private void outprf()
-        {
-            var userChannel = GetParameter(0);
+        private void outprf() => OutputPrfTo(GetParameter(0));
 
+        /// <summary>
+        ///     Sends the contents of prfbuf to the specified channel (if connected)
+        /// </summary>
+        private void OutputPrfTo(ushort userChannel)
+        {
             var basePointer = Module.Memory.GetVariablePointer("PRFBUF");
             var currentPointer = Module.Memory.GetPointer(Module.Memory.GetVariablePointer("PRFPTR"));
 
@@ -4946,7 +4949,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void byenow()
         {
-            prfmsg();
+            //MAJORBBS.C byenow(): msgnum NOMSG (0) = silent, PAMSG (-1) = text already prf()'d
+            const short NOMSG = 0;
+            const short PAMSG = -1;
+            const int BYEBYE_TIMEOUT_SECONDS = 30; //original: byecnt=2 on a 15 second sweep (15-30s)
+
+            var msgnum = (short)GetParameter(0);
+
+            if (msgnum != NOMSG && msgnum != PAMSG)
+                prfmsg();
+
+            //usrnum is the implicit input
+            var userChannel = Module.Memory.GetWord(Module.Memory.GetVariablePointer("USRNUM"));
+
+            if (!ChannelDictionary.TryGetValue(userChannel, out var session))
+            {
+                //Nobody connected on that channel: nothing to hang up
+                if (msgnum != NOMSG)
+                    clrprf();
+                return;
+            }
+
+            //Send the good-bye text now, then hang up once it has gone out (see MbbsHost.ProcessByeBye)
+            if (msgnum != NOMSG)
+            {
+                OutputPrfTo(userChannel);
+                clrprf();
+            }
+
+            session.InputBuffer.SetLength(0);
+            session.ByeByeDeadline ??= _clock.Now.AddSeconds(BYEBYE_TIMEOUT_SECONDS);
+
+            _logger.Info($"({Module.ModuleIdentifier}) byenow() on channel {userChannel} ({session.Username}) - disconnecting");
         }
 
         /// <summary>

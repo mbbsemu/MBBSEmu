@@ -168,6 +168,13 @@ namespace MBBSEmu.Session
         /// </summary>
         public BlockingCollection<byte[]> DataToClient { get; set; }
 
+        /// <summary>
+        ///     Set by byenow(): the session is going away. Input is ignored, and the host disconnects the
+        ///     session once its pending output has been sent, or at this deadline at the latest
+        ///     (MAJORBBS.C: BYEBYE flag + byecnt time-out).
+        /// </summary>
+        public DateTime? ByeByeDeadline { get; set; }
+
         public BlockingCollection<byte> DataFromClient { get; set; }
 
         /// <summary>
