@@ -426,29 +426,53 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (channel == ushort.MaxValue)
                 return;
 
-            //Set the Channel Status
-            var resultStatus = (EnumUserStatus)Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+            //Modules aren't required to curusr() back to the original channel before returning,
+            //so the active channel can differ from the channel this run was started for
+            if (ChannelNumber != channel)
+            {
+#if DEBUG
+                _logger.Debug($"({Module.ModuleIdentifier}) Active channel {ChannelNumber} differs from run channel {channel}, saving both");
+#endif
+                SaveChannelState(ChannelNumber);
+            }
 
-            //If STATUS was changed programatically, queue it up
-            if (resultStatus != ChannelDictionary[ChannelNumber].GetStatus())
-                ChannelDictionary[ChannelNumber].Status
-                    .Enqueue(resultStatus);
+            SaveChannelState(channel);
 
+#if DEBUG
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->status == {ChannelDictionary[channel].GetStatus()}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->state == {ChannelDictionary[channel].UsrPtr.State}");
+            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->substt == {ChannelDictionary[channel].UsrPtr.Substt}");
+#endif
+        }
+
+        /// <summary>
+        ///     Saves the specified channel's state from memory back to its Session
+        /// </summary>
+        /// <param name="channel"></param>
+        private void SaveChannelState(ushort channel)
+        {
+            if (channel == ushort.MaxValue || !ChannelDictionary.ContainsKey(channel))
+                return;
+
+            //STATUS only holds the active channel's status
+            if (channel == ChannelNumber)
+            {
+                var resultStatus = (EnumUserStatus)Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+
+                //If STATUS was changed programatically, queue it up
+                if (resultStatus != ChannelDictionary[channel].GetStatus())
+                    ChannelDictionary[channel].Status
+                        .Enqueue(resultStatus);
+            }
 
             //Save off the USRPTR area to the Channel
             var userPointer = Module.Memory.GetVariablePointer("USER");
-            ChannelDictionary[ChannelNumber].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
+            ChannelDictionary[channel].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
                 (ushort)(userPointer.Offset + (User.Size * channel)), User.Size).ToArray();
 
             //We Verify it exists as Unit Tests won't call SetState() which would establish the VDA for that Channel
-            if (Module.Memory.TryGetVariablePointer($"VDA-{ChannelNumber}", out var vdaPointer))
-                ChannelDictionary[ChannelNumber].VDA = Module.Memory.GetArray(vdaPointer, VOLATILE_DATA_SIZE).ToArray();
-
-#if DEBUG
-            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->status == {ChannelDictionary[ChannelNumber].GetStatus()}");
-            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->state == {ChannelDictionary[ChannelNumber].UsrPtr.State}");
-            _logger.Debug($"({Module.ModuleIdentifier}) {channel}->substt == {ChannelDictionary[ChannelNumber].UsrPtr.Substt}");
-#endif
+            if (Module.Memory.TryGetVariablePointer($"VDA-{channel}", out var vdaPointer))
+                ChannelDictionary[channel].VDA = Module.Memory.GetArray(vdaPointer, VOLATILE_DATA_SIZE).ToArray();
         }
 
         /// <summary>
@@ -4861,9 +4885,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
             {
-#if DEBUG
-                _logger.Debug($"({Module.ModuleIdentifier}) Invalid Channel: {newUserNumber}");
-#endif
+                //MajorBBS allocates user[] for every channel, so modules curusr() to idle channels
+                //to enumerate them and expect to find state == 0
+                if (newUserNumber < _configuration.BBSChannels + 1)
+                {
+                    PointAtInactiveChannel(newUserNumber);
+                    return;
+                }
+
+                _logger.Warn(
+                    $"(CURUSR-OUTOFRANGE) ({Module.ModuleIdentifier}) channel {ChannelNumber} called " +
+                    $"curusr({newUserNumber}) which exceeds the configured channel count -- ignoring.");
+
                 return;
             }
 
@@ -4876,6 +4909,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"Setting Current User to {newUserNumber}");
 #endif
+        }
+
+        /// <summary>
+        ///     Points the current user at a channel with no Session
+        ///
+        ///     STATUS and ChannelNumber are left unchanged since the run still belongs to the
+        ///     calling channel
+        /// </summary>
+        /// <param name="channel"></param>
+        private void PointAtInactiveChannel(ushort channel)
+        {
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channel);
+
+            var userPointer = new FarPtr(Module.Memory.GetVariablePointer("USER").Data);
+            userPointer.Offset += (ushort)(User.Size * channel);
+            Module.Memory.SetArray(userPointer, new byte[User.Size]);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), userPointer.Data);
+
+            var userAccPointer = new FarPtr(Module.Memory.GetVariablePointer("USRACC").Data);
+            userAccPointer.Offset += (ushort)(UserAccount.Size * channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), userAccPointer.Data);
+
+            var extUserPointer = new FarPtr(Module.Memory.GetVariablePointer("EXTUSR").Data);
+            extUserPointer.Offset += (ushort)(ExtUser.Size * channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), extUserPointer.Data);
+
+            //Nothing written to an idle channel's VDA is kept, so all idle channels share one
+            var scratchVdaPointer = Module.Memory.GetOrAllocateVariablePointer("VDA-INACTIVE", VOLATILE_DATA_SIZE);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), scratchVdaPointer.Data);
         }
 
         /// <summary>
