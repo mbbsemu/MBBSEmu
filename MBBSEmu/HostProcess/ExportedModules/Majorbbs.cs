@@ -422,8 +422,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="channel"></param>
         public void UpdateSession(ushort channel)
         {
-            //Don't process on RTKICK, etc. runs
-            if (channel == ushort.MaxValue)
+            //Don't process on RTKICK, etc. runs, or while curusr() points at a vacant channel
+            if (channel == ushort.MaxValue || ChannelNumber == ushort.MaxValue)
                 return;
 
             //Set the Channel Status
@@ -4861,8 +4861,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             if (newUserNumber != ushort.MaxValue && !ChannelDictionary.ContainsKey(newUserNumber))
             {
+                //MAJORBBS.C curusr() switches to ANY channel 0 <= uno < nterms, connected or not. Returning here
+                //left USRNUM/*USRPTR on the previous (live) user, so a module sweeping every channel (e.g. MajorMUD's
+                //inactivity check) wrote to the wrong player. Point at the vacant channel's own records instead.
+                if (newUserNumber < Module.Memory.GetWord("NTERMS"))
+                {
+                    //Save the live channel we are leaving (no-op when not in a channel context)
+                    UpdateSession(ChannelNumber);
+                    PointAtVacantChannel(newUserNumber);
+                }
 #if DEBUG
-                _logger.Debug($"({Module.ModuleIdentifier}) Invalid Channel: {newUserNumber}");
+                _logger.Debug($"({Module.ModuleIdentifier}) Vacant/Invalid Channel: {newUserNumber}");
 #endif
                 return;
             }
@@ -4876,6 +4885,34 @@ namespace MBBSEmu.HostProcess.ExportedModules
 #if DEBUG
             _logger.Debug($"Setting Current User to {newUserNumber}");
 #endif
+        }
+
+        /// <summary>
+        ///     curusr() target with no connected session: point USRNUM, *USRPTR, USAPTR and EXTPTR at that
+        ///     channel's own slots (as MAJORBBS.C does) and VDAPTR at a shared scratch block. No session data
+        ///     is loaded and ChannelNumber becomes "no channel" (ushort.MaxValue), the same as an RTKICK/SYSCYC
+        ///     context, so nothing is saved back to any session from these slots.
+        /// </summary>
+        private void PointAtVacantChannel(ushort channel)
+        {
+            ChannelNumber = ushort.MaxValue;
+
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channel);
+
+            var user = new FarPtr(Module.Memory.GetVariablePointer("USER").Data);
+            user.Offset += (ushort)(User.Size * channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("*USRPTR"), user.Data);
+
+            var usracc = new FarPtr(Module.Memory.GetVariablePointer("USRACC").Data);
+            usracc.Offset += (ushort)(UserAccount.Size * channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("USAPTR"), usracc.Data);
+
+            var extusr = new FarPtr(Module.Memory.GetVariablePointer("EXTUSR").Data);
+            extusr.Offset += (ushort)(ExtUser.Size * channel);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), extusr.Data);
+
+            var vacantVda = Module.Memory.GetOrAllocateVariablePointer("VDA-VACANT", VOLATILE_DATA_SIZE);
+            Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vacantVda.Data);
         }
 
         /// <summary>
