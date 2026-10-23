@@ -5,6 +5,7 @@ using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.DOS;
 using MBBSEmu.Extensions;
 using MBBSEmu.HostProcess.Enums;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.HostProcess.HostRoutines;
@@ -16,6 +17,7 @@ using MBBSEmu.Reports;
 using MBBSEmu.Session;
 using MBBSEmu.Session.Attributes;
 using MBBSEmu.Session.Enums;
+using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.Session.Rlogin;
 using MBBSEmu.TextVariables;
 using MBBSEmu.Util;
@@ -47,11 +49,6 @@ namespace MBBSEmu.HostProcess
         ///     Dictionary containing all active Channels
         /// </summary>
         private readonly PointerDictionary<SessionBase> _channelDictionary;
-
-        /// <summary>
-        ///     Tracks when a session entered a disconnecting state, for stale session cleanup
-        /// </summary>
-        private readonly Dictionary<ushort, DateTime> _disconnectingSessionTimestamps = new();
 
         /// <summary>
         ///     Dictionary containing all added Modules
@@ -104,6 +101,11 @@ namespace MBBSEmu.HostProcess
         private readonly Timer _cleanupTimer;
 
         /// <summary>
+        ///     Timer that marks the beginning of the nightly cleanup grace period
+        /// </summary>
+        private readonly Timer _cleanupStartTimer;
+
+        /// <summary>
         ///     Timer that triggers when nightly cleanup warning messages should start
         /// </summary>
         private Timer _cleanupWarningTimer;
@@ -135,6 +137,7 @@ namespace MBBSEmu.HostProcess
         ///     Flag that controls whether the main loop will perform a nightly cleanup
         /// </summary>
         private bool _performCleanup = false;
+        private bool _prepareCleanup = false;
         private EventWaitHandle _cleanupRestartEvent = null;
 
         /// <summary>
@@ -196,7 +199,12 @@ namespace MBBSEmu.HostProcess
 
             //Setup Cleanup Restart Event
             _cleanupTime = _configuration.CleanupTime;
-            _cleanupTimer = new Timer(_ => _performCleanup = true, null, NowUntil(_cleanupTime + _cleanupGracePeriod), TimeSpan.FromDays(1));
+            var cleanupStartDue = NowUntil(_cleanupTime);
+            var cleanupDue = NowUntil(_cleanupTime + _cleanupGracePeriod);
+            if (cleanupDue < cleanupStartDue)
+                _prepareCleanup = true;
+            _cleanupStartTimer = new Timer(_ => _prepareCleanup = true, null, cleanupStartDue, TimeSpan.FromDays(1));
+            _cleanupTimer = new Timer(_ => _performCleanup = true, null, cleanupDue, TimeSpan.FromDays(1));
             _cleanupWarningTimer = SetupCleanupWarningTimer();
 
             if (_configuration.TimerHertz > 0)
@@ -233,6 +241,10 @@ namespace MBBSEmu.HostProcess
                 module.Value.Dispose();
 
             _modules.Clear();
+
+            // close any Btrieve files (module-owned, and the shared GENBB/ACCBB databases)
+            // left open in the global cache
+            _globalCache.Dispose();
         }
 
         /// <summary>
@@ -245,13 +257,16 @@ namespace MBBSEmu.HostProcess
                 AddModule(new MbbsModule(_fileUtility, Clock, Logger, m, null, _messagingCenter));
 
             //Remove any modules that did not properly initialize
-            foreach (var (_, value) in _modules.Where(m => m.Value.MainModuleDll.EntryPoints.Count == 1 && (bool)m.Value.ModuleConfig.ModuleEnabled))
+            var modulesToRemove = _modules.Values
+                .Where(m => m.MainModuleDll.EntryPoints.Count == 1 && (bool)m.ModuleConfig.ModuleEnabled)
+                .Select(m => m.ModuleIdentifier)
+                .ToList();
+
+            foreach (var moduleIdentifier in modulesToRemove)
             {
-                Logger.Error($"{value.ModuleIdentifier} not properly initialized, Removing");
-                moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == value.ModuleIdentifier);
-                _modules.Remove(value.ModuleIdentifier);
-                foreach (var e in _exportedFunctions.Keys.Where(x => x.StartsWith(value.ModuleIdentifier)))
-                    _exportedFunctions.Remove(e);
+                Logger.Error($"{moduleIdentifier} not properly initialized, removing");
+                moduleConfigurations.RemoveAll(x => x.ModuleIdentifier == moduleIdentifier);
+                RemoveModuleArtifacts(moduleIdentifier);
             }
 
             _isRunning = true;
@@ -269,6 +284,7 @@ namespace MBBSEmu.HostProcess
         public void Stop()
         {
             _isRunning = false;
+            _cleanupStartTimer?.Dispose();
             _cleanupTimer?.Dispose();
             _cleanupWarningTimer?.Dispose();
             _tickTimer?.Dispose();
@@ -320,145 +336,126 @@ namespace MBBSEmu.HostProcess
                 //Process Channel Events
                 foreach (var session in _channelDictionary.Values)
                 {
-                    try
-                    {
-                        //Process a single incoming byte from the client session
-                        session.ProcessDataFromClient();
+                    //Process a single incoming byte from the client session
+                    session.ProcessDataFromClient();
+                    GsblInput.Synchronize(session);
 
-                        //Handle GSBL Chain of Events
-                        if (!ProcessGSBLInputEvents(session))
+                    //Run the character through GSBL input processing (btuchi, translation, echo, line assembly)
+                    if (session.DataToProcess && !ProcessIncomingCharacter(session))
+                    {
+                        session.DataToProcess = false;
+                        continue;
+                    }
+
+                    //Handle GSBL Chain of Events
+                    ProcessGSBLInputEvents(session);
+
+                    //Global Command Handler
+                    if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE && DoGlobalsAttribute.Get(session.SessionState))
+                    {
+                        //Transfer Input Buffer to Command Buffer, but don't clear it
+                        session.InputBuffer.WriteByte(0x0);
+                        session.InputCommand = session.InputBuffer.ToArray();
+
+                        //Check for Internal System Globals
+                        if (_globalRoutines.Any(g =>
+                            g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))
                         {
-                            session.DataToProcess = false;
+                            session.Status.Enqueue(EnumUserStatus.RINGING);
+                            session.InputBuffer.SetLength(0);
+
+                            //Redisplay Main Menu prompt after global if session is at Main Menu
+                            if (session.SessionState == EnumSessionState.MainMenuInput)
+                            {
+                                session.SessionState = EnumSessionState.MainMenuInputDisplay;
+                            }
+
+                            session.Status.Dequeue();
                             continue;
                         }
 
-                        //Handle Character based Events
-                        if (session.DataToProcess)
-                            ProcessIncomingCharacter(session);
-
-                        //Global Command Handler
-                        if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE && DoGlobalsAttribute.Get(session.SessionState))
+                        //Check for Module Globals
+                        foreach (var m in _modules.Values.Where(x => x.GlobalCommandHandlers.Any()))
                         {
-                            //Transfer Input Buffer to Command Buffer, but don't clear it
-                            session.InputBuffer.WriteByte(0x0);
-                            session.InputCommand = session.InputBuffer.ToArray();
+                            var result = Run(m.ModuleIdentifier,
+                                m.GlobalCommandHandlers.First(), session.Channel);
 
-                            //Check for Internal System Globals
-                            if (_globalRoutines.Any(g =>
-                                g.ProcessCommand(session.InputCommand, session.Channel, _channelDictionary, _modules)))    
-                            {
-                                session.Status.Enqueue(EnumUserStatus.RINGING);
-                                session.InputBuffer.SetLength(0);
+                            //Command Not Processed
+                            if (result == 0) continue;
 
-                                //Redisplay Main Menu prompt after global if session is at Main Menu
-                                if (session.SessionState == EnumSessionState.MainMenuInput)
-                                {
-                                    session.SessionState = EnumSessionState.MainMenuInputDisplay;
-                                }
+                            //Otherwise dequeue the input status to denote we've handled it
+                            session.Status.Dequeue();
+                            break;
 
-                                session.Status.Dequeue();
-                                continue;
-                            }
-
-                            //Check for Module Globals
-                            foreach (var m in _modules.Values.Where(x => x.GlobalCommandHandlers.Any()))
-                            {
-                                var result = Run(m.ModuleIdentifier,
-                                    m.GlobalCommandHandlers.First(), session.Channel);
-
-                                //Command Not Processed
-                                if (result == 0) continue;
-
-                                //Otherwise dequeue the input status to denote we've handled it
-                                session.Status.Dequeue();
-                                break;
-
-                            }
                         }
-
-                        switch (session.SessionState)
-                        {
-                            case EnumSessionState.RloginEnteringModule:
-                                {
-                                    ProcessLONROU_FromRlogin(session);
-                                    break;
-                                }
-                            //Initial call to STTROU when a User is Entering a Module
-                            case EnumSessionState.EnteringModule:
-                                {
-                                    ProcessSTTROU_EnteringModule(session);
-                                    break;
-                                }
-
-                            //Post-Login Display Routine
-                            case EnumSessionState.LoginRoutines:
-                                {
-                                    ProcessLONROU(session);
-                                    break;
-                                }
-
-                            //User is in the module, process all the in-module type of events
-                            case EnumSessionState.InModule:
-                                {
-                                    //Did BTUCHI or a previous command cause a status change?
-                                    if (session.GetStatus() == EnumUserStatus.CYCLE || session.GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY)
-                                    {
-                                        ProcessSTSROU(session);
-                                        break;
-                                    }
-
-                                    //User Input Available? Invoke *STTROU
-                                    if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
-                                    {
-                                        ProcessSTTROU(session);
-                                    }
-
-                                    //If the channel has been registered with BEGIN_POLLING
-                                    if (session.PollingRoutine != null)
-                                    {
-                                        session.Status.Enqueue(EnumUserStatus.POLLING_STATUS);
-                                        ProcessPollingRoutine(session);
-                                        session.Status.Dequeue();
-                                    }
-
-                                    break;
-                                }
-
-                            //Check for any other session states, we handle these here as they are
-                            //lower priority than handling "in-module" states
-                            default:
-                                {
-                                    foreach (var r in _mbbsRoutines)
-                                        if (r.ProcessSessionState(session, _modules))
-                                            break;
-
-                                }
-                                break;
-                        }
-
-                        //Mark Data Processing for this Channel as Complete
-                        session.DataToProcess = false;
-                        
                     }
-                    catch (Exception ex)
+
+                    switch (session.SessionState)
                     {
-                        Logger.Error($"Unhandled exception on channel {session.Channel} (user: {session.Username}): {ex.Message}");
-                        Logger.Error(ex.StackTrace);
+                        case EnumSessionState.RloginEnteringModule:
+                            {
+                                ProcessLONROU_FromRlogin(session);
+                                break;
+                            }
+                        //Initial call to STTROU when a User is Entering a Module
+                        case EnumSessionState.EnteringModule:
+                            {
+                                ProcessSTTROU_EnteringModule(session);
+                                break;
+                            }
 
-                        try
-                        {
-                        session.SendToClient("|RESET|\r\n|RED||B|An error occurred. Please reconnect and try again.|RESET|\r\n".EncodeToANSIArray());
-                        session.SessionState = EnumSessionState.LoggingOffProcessing;
-                        session.DataToProcess = false;
-                        }
-                        catch
-                        {
-                            Logger.Error($"Recovery also failed for channel {session.Channel}, forcing session to logged off state");
-                            session.SessionState = EnumSessionState.LoggedOff;
-                        }
+                        //Post-Login Display Routine
+                        case EnumSessionState.LoginRoutines:
+                            {
+                                ProcessLONROU(session);
+                                break;
+                            }
+
+                        //User is in the module, process all the in-module type of events
+                        case EnumSessionState.InModule:
+                            {
+                                //Did BTUCHI, a trigger block, or a previous command cause a status change?
+                                if (session.GetStatus() == EnumUserStatus.CYCLE || session.GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY ||
+                                    session.GetStatus() == EnumUserStatus.INBLK)
+                                {
+                                    ProcessSTSROU(session);
+                                    break;
+                                }
+
+                                //User Input Available? Invoke *STTROU
+                                if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
+                                {
+                                    ProcessSTTROU(session);
+                                }
+
+                                //If the channel has been registered with BEGIN_POLLING
+                                if (session.PollingRoutine != null)
+                                {
+                                    session.Status.Enqueue(EnumUserStatus.POLLING_STATUS);
+                                    ProcessPollingRoutine(session);
+                                    session.Status.Dequeue();
+                                }
+
+                                break;
+                            }
+
+                        //Check for any other session states, we handle these here as they are
+                        //lower priority than handling "in-module" states
+                        default:
+                            {
+                                foreach (var r in _mbbsRoutines)
+                                    if (r.ProcessSessionState(session, _modules))
+                                        break;
+
+                            }
+                            break;
                     }
+
+                    //Mark Data Processing for this Channel as Complete
+                    session.DataToProcess = false;
+
                 }
-                            
+
                 //Process Timed/Real-Time Events
                 ProcessRTKICK();
                 ProcessRTIHDLR();
@@ -486,19 +483,14 @@ namespace MBBSEmu.HostProcess
             CallModuleRoutine("finrou", module => Logger.Info($"Calling shutdown routine on module {module.ModuleIdentifier}"));
 
             //clean up modules
-            foreach (var m in _modules)
+            foreach (var module in _modules.Values.ToList())
             {
-                m.Value.Dispose();
-                _modules.Remove(m.Key);
-
-                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Key)).ToList();
-
-                foreach (var e in exportedFunctionsToRemove)
-                {
-                    _exportedFunctions[e].Dispose();
-                    _exportedFunctions.Remove(e);
-                }
+                RemoveModuleArtifacts(module.ModuleIdentifier);
             }
+
+            // close any Btrieve files (module-owned, and the shared GENBB/ACCBB databases)
+            // left open in the global cache
+            _globalCache.Dispose();
         }
 
         private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
@@ -541,66 +533,30 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessDisconnects()
         {
-            var now = Clock.Now;
-        
-            // Track sessions that are in a transitional/disconnecting state
-            foreach (var session in _channelDictionary.Values)
-            {
-                if (session.SessionState is EnumSessionState.LoggingOffProcessing
-                                          or EnumSessionState.LoggingOffDisplay
-                                          or EnumSessionState.Disconnected)
-                {
-                    if (!_disconnectingSessionTimestamps.ContainsKey(session.Channel))
-                    {
-                        _disconnectingSessionTimestamps[session.Channel] = now;
-                        Logger.Debug($"Channel {session.Channel} (user: {session.Username}) entered disconnecting state {session.SessionState}");
-                    }
-                }
-                else
-                {
-                    // Session recovered or moved on, remove from tracking
-                    _disconnectingSessionTimestamps.Remove(session.Channel);
-                }
-            }
-        
+            // We only remove channels that are logged off
             RemoveSessions(session =>
-            {
-                if (session.SessionState == EnumSessionState.LoggedOff)
-                    return true;
-        
-                // Force remove sessions stuck in a disconnecting state for more than 30 seconds
-                if (_disconnectingSessionTimestamps.TryGetValue(session.Channel, out var enteredAt) &&
-                    (now - enteredAt).TotalSeconds > 30)
-                {
-                    Logger.Warn($"Forcibly removing stale session on channel {session.Channel} (user: {session.Username}) stuck in {session.SessionState} for >{(now - enteredAt).TotalSeconds:F0}s");
-                    return true;
-                }
-        
-                return false;
-            });
-        
-            // Clean up timestamps for channels that were removed
-            var activeChannels = new HashSet<ushort>(_channelDictionary.Keys.Select(k => (ushort)k));
-            foreach (var key in _disconnectingSessionTimestamps.Keys.ToList())
-            {
-                if (!activeChannels.Contains(key))
-                    _disconnectingSessionTimestamps.Remove(key);
-            }
+                session.SessionState == EnumSessionState.LoggedOff);
         }
 
         private void RemoveSessions(Predicate<SessionBase> match)
         {
+            // for removing channels sequentially, starting with the highest index to not break
+            // _channelDictionary
             Stack<ushort> channelsToRemove = new Stack<ushort>();
-        
-            foreach (var key in _channelDictionary.Keys.ToList())
+
+            for (ushort i = 0; i < _channelDictionary.Count; i++)
             {
-                var i = (ushort)key;
+                //Because users might not be on sequential channels (0,1,3), we verify if the channel number
+                //is even in use first.
                 if (!_channelDictionary.ContainsKey(i) || !match(_channelDictionary[i])) continue;
+
                 channelsToRemove.Push(i);
             }
-        
+
             while (channelsToRemove.Count > 0)
+            {
                 RemoveSession(channelsToRemove.Pop());
+            }
         }
 
         /// <summary>
@@ -664,6 +620,11 @@ namespace MBBSEmu.HostProcess
             session.CurrentModule = null;
             session.CharacterInterceptor = null;
             session.PromptCharacter = 0;
+            session.ResetScreenPauseState();
+
+            //Don't let a module's GSBL input settings (echo off, trigger mode, etc.) follow the user out
+            session.GsblInput.Reset();
+            session.GsblInput.ClearInput();
 
             //Reset States
             session.Status.Clear();
@@ -708,12 +669,15 @@ namespace MBBSEmu.HostProcess
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ProcessLONROU(SessionBase session)
         {
-            session.OutputEnabled = _configuration.ModuleDoLoginRoutine;
-
-            CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
+            // Only call lonrou if DoLoginRoutine is enabled
+            // Previously we called it but just disabled output, but this causes
+            // cross-module state corruption when modules call functions like DosGetSegDesc
+            if (_configuration.ModuleDoLoginRoutine)
+            {
+                CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
+            }
 
             session.SessionState = EnumSessionState.MainMenuDisplay;
-            session.OutputEnabled = true;
         }
 
         /// <summary>
@@ -745,17 +709,16 @@ namespace MBBSEmu.HostProcess
         ///     Invokes routine registered using GSBL->BTUCHI()
         ///
         ///     BTUCHI is a character interceptor method which intercepts every incoming character on a channel
-        ///     and processes it before it's sent to the buffer. In the case of MBBSEmu, since the byte is ALREADY in
-        ///     the buffer, we overwrite the last byte received with the result of the registered BTUCHI routine
+        ///     and returns the character to process in its place, or 0 to discard it
         /// </summary>
         /// <param name="session"></param>
-        /// <returns></returns>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ushort ProcessBTUCHI(SessionBase session)
+        /// <param name="character">Character received</param>
+        /// <returns>The character to process, or 0 if it was discarded</returns>
+        private byte InvokeBTUCHI(SessionBase session, byte character)
         {
             //Create Parameters for BTUCHI Routine
             var initialStackValues = new Queue<ushort>(2);
-            initialStackValues.Enqueue(session.CharacterReceived);
+            initialStackValues.Enqueue(character);
             initialStackValues.Enqueue(session.Channel);
 
             var result = Run(session.CurrentModule.ModuleIdentifier,
@@ -765,20 +728,7 @@ namespace MBBSEmu.HostProcess
 
             //Only Take the low bytes, as it's the return character and not every routine/compiler
             //would clear out AH before assigning AL
-            result &= 0xFF;
-
-            if (result == 0)
-                return result;
-
-            session.CharacterProcessed = (byte)result;
-
-            if (session.CharacterProcessed == 0xD)
-            {
-                session.Status.Clear();
-                session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
-            }
-
-            return result;
+            return (byte)(result & 0xFF);
         }
 
         /// <summary>
@@ -907,52 +857,75 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
-        ///     Processes the incoming character from a channel through the GSBL series of events.
-        ///
-        ///     In an actual MBBS System, these events are all triggered before MBBS even "gets" the character
-        ///     from the serial channel.
+        ///     Invokes the BTUCHI routine when the echo buffer has emptied, if BTUCHE enabled it
+        /// </summary>
+        /// <param name="session"></param>
+        private void ProcessGSBLInputEvents(SessionBase session)
+        {
+            if (session.CharacterInterceptor == null || session.DataToProcess)
+                return;
+
+            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
+            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke)
+                ProcessEchoEmptyInvoke(session);
+        }
+
+        /// <summary>
+        ///     Processes the incoming character from a given channel through GSBL input processing
+        ///     (see <see cref="GsblInput"/>), which handles BTUCHI interception, input translation,
+        ///     line editing and echo.
         /// </summary>
         /// <param name="session"></param>
         /// <returns>
         ///     TRUE == Data Processed, Continue
         ///     FALSE == Data Processed, Halt Processing on Channel
         /// </returns>
-        private bool ProcessGSBLInputEvents(SessionBase session)
+        private bool ProcessIncomingCharacter(SessionBase session)
         {
-            //Quick Exit
-            if (session.CharacterInterceptor == null)
-                return true;
+            //FSD handles its own editing and echo of raw input
+            if (session.SessionState is EnumSessionState.InFullScreenDisplay or EnumSessionState.InFullScreenEditor)
+                return ProcessIncomingFullScreenCharacter(session);
 
-            //Invoke BTUCHI registered routine if one exists
-            if (session.DataToProcess)
-            {
-                return ProcessBTUCHI(session) != 0;
-            }
+            var result = GsblInput.ProcessCharacter(session, session.CharacterReceived,
+                GsblInput.GetTranslationTable(_globalCache),
+                session.CharacterInterceptor == null ? null : c => InvokeBTUCHI(session, c));
 
-            //Invoke routine registered with BTUCHE if it has been registered and the criteria is met
-            if (session.EchoEmptyInvokeEnabled && session.EchoEmptyInvoke)
-            {
-                ProcessEchoEmptyInvoke(session);
-                return true;
-            }
-
-            return true;
+            return result != EnumGsblInputResult.InterceptorDropped;
         }
 
         /// <summary>
-        ///     Processes the incoming character from a given channel and takes specific action depending on the
-        ///     character and the current state of the channel.
-        ///
-        ///     Echoing of the character back to the channel is also handled within this method
+        ///     Passes raw input through to the Full Screen Display/Editor, which interprets ANSI key
+        ///     sequences and handles its own echo
         /// </summary>
         /// <param name="session"></param>
-        private void ProcessIncomingCharacter(SessionBase session)
+        /// <returns>
+        ///     TRUE == Data Processed, Continue
+        ///     FALSE == Data Processed, Halt Processing on Channel
+        /// </returns>
+        private bool ProcessIncomingFullScreenCharacter(SessionBase session)
         {
-            //Handling Incoming Characters
+            if (session.InputLockout)
+                return false;
+
+            if (session.CharacterInterceptor != null)
+            {
+                var result = InvokeBTUCHI(session, session.CharacterReceived);
+                if (result == 0)
+                    return false;
+
+                session.CharacterProcessed = result;
+
+                if (session.CharacterProcessed == 0xD)
+                {
+                    session.Status.Clear();
+                    session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
+                }
+            }
+
             switch (session.CharacterReceived)
             {
                 //Backspace
-                case 127 when session.SessionState == EnumSessionState.InModule:
+                case 127:
                 case 0x8:
                     {
                         if (session.InputBuffer.Length > 0)
@@ -960,37 +933,6 @@ namespace MBBSEmu.HostProcess
                             session.SendToClient(new byte[] { 0x08, 0x20, 0x08 });
                             session.InputBuffer.SetLength(session.InputBuffer.Length - 1);
                         }
-                        break;
-                    }
-
-                //Enter or Return
-                case 0xD when (session.SessionState != EnumSessionState.InFullScreenDisplay && session.SessionState != EnumSessionState.InFullScreenEditor):
-                    {
-                        //If we're in transparent mode or BTUCHI has changed the character to null, don't echo
-                        if (!session.TransparentMode && session.CharacterProcessed > 0)
-                            session.SendToClient(new byte[] { 0xD, 0xA });
-
-                        //If BTUCHI Injected a deferred Execution Status, respect that vs. processing the input
-                        if (session.GetStatus() == EnumUserStatus.CYCLE)
-                        {
-                            //If we're cycling, ignore \r for triggering STTROU and add it to the input buffer for STSROU to handle
-                            if (session.TransparentMode)
-                            {
-                                session.InputBuffer.WriteByte(session.CharacterProcessed);
-                                break;
-                            }
-
-                            //Set Status == 3, which means there is a Command Ready
-                            session.Status.Clear(); //Clear the 240
-                            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE); //Enqueue Status of 3
-                            session.EchoSecureEnabled = false;
-                            break;
-                        }
-
-                        //Always Enqueue Input Ready, if one already not queued (from BTUCHI)
-                        if(session.GetStatus() != EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
-                            session.Status.Enqueue(EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE);
-
                         break;
                     }
 
@@ -1004,35 +946,13 @@ namespace MBBSEmu.HostProcess
                             break;
 
                         if (session.CharacterProcessed > 0)
-                        {
                             session.InputBuffer.WriteByte(session.CharacterProcessed);
-
-                            //If the client is in transparent mode, don't echo
-                            if (session.TransparentMode)
-                                break;
-
-                            //FSD handles its own echo
-                            if (session.SessionState == EnumSessionState.InFullScreenDisplay ||
-                                session.SessionState == EnumSessionState.InFullScreenEditor)
-                                break;
-
-                            if (session.Status.Count == 0 || session.GetStatus() == EnumUserStatus.UNUSED || session.GetStatus() == EnumUserStatus.RINGING ||
-                               session.GetStatus() == EnumUserStatus.POLLING_STATUS)
-                            {
-
-                                {
-                                    //Check for Secure Echo being Enabled
-                                    session.SendToClient(session.EchoSecureEnabled
-                                        ? new[] { session.ExtUsrAcc.ech }
-                                        : new[] { session.CharacterReceived });
-                                }
-                            }
-
-                        }
 
                         break;
                     }
             }
+
+            return true;
         }
 
         /// <summary>
@@ -1150,6 +1070,11 @@ namespace MBBSEmu.HostProcess
         /// <returns></returns>
         public bool RemoveSession(ushort channel)
         {
+            return RemoveSession(channel, true);
+        }
+
+        private bool RemoveSession(ushort channel, bool stopSession)
+        {
             if (!_channelDictionary.ContainsKey(channel))
             {
                 return false;
@@ -1159,13 +1084,64 @@ namespace MBBSEmu.HostProcess
 
             CallModuleRoutine("huprou", preRunCallback: null, channel);
 
+            //Clear this channel's USER[] record in every module once its hangup routine has run. Otherwise the
+            //record keeps saying "in module X" after the session is gone, and modules that sweep all channels
+            //(e.g. MajorMUD's background routines) keep treating it as a live player.
+            ClearUserRecord(channel);
+
             var session = _channelDictionary[channel];
-            session.Stop();
+            if (stopSession)
+                session.Stop();
             session.SessionState = EnumSessionState.Disconnected;
 
             _channelDictionary.Remove(channel);
 
             return true;
+        }
+
+        /// <summary>
+        ///     Removes a module and all exported-function objects associated with it from the host process.
+        /// </summary>
+        /// <param name="moduleIdentifier"></param>
+        private void RemoveModuleArtifacts(string moduleIdentifier)
+        {
+            if (_modules.TryGetValue(moduleIdentifier, out var module))
+            {
+                module.Dispose();
+                _modules.Remove(moduleIdentifier);
+            }
+
+            var exportedFunctionsToRemove = _exportedFunctions.Keys
+                .Where(x => x.StartsWith($"{moduleIdentifier}-", StringComparison.Ordinal))
+                .ToList();
+
+            foreach (var exportedFunctionKey in exportedFunctionsToRemove)
+            {
+                _exportedFunctions[exportedFunctionKey].Dispose();
+                _exportedFunctions.Remove(exportedFunctionKey);
+            }
+        }
+
+        /// <summary>
+        ///     Zeroes USER[channel] in every loaded module's memory. A new session on this channel reloads the
+        ///     record from its own UsrPtr on SetState().
+        /// </summary>
+        private void ClearUserRecord(ushort channel)
+        {
+            try
+            {
+                foreach (var m in _modules.Values)
+                {
+                    if (!m.Memory.TryGetVariablePointer("USER", out var userBase)) continue;
+                    if (channel >= m.Memory.GetWord("NTERMS")) continue;
+                    var slot = new FarPtr(userBase.Segment, (ushort)(userBase.Offset + User.Size * channel));
+                    m.Memory.SetZero(slot, User.Size);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed clearing USER record for channel {channel}: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -1455,7 +1431,7 @@ namespace MBBSEmu.HostProcess
             var dueTime = NowUntil(initialWarningTime);
             var period = TimeSpan.FromMinutes(1);
 
-            return new Timer(SendCleanupWarning, null, (int) dueTime.TotalMilliseconds, (int) period.TotalMilliseconds);
+            return new Timer(SendCleanupWarning, null, (int)dueTime.TotalMilliseconds, (int)period.TotalMilliseconds);
         }
 
         /// <summary>
@@ -1489,6 +1465,13 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         private void ProcessNightlyCleanup()
         {
+            if (_prepareCleanup)
+            {
+                Logger.Info("Beginning nightly cleanup grace period.");
+                _prepareCleanup = false;
+                SetCleanupResetModes();
+            }
+
             if (_performCleanup)
             {
                 Logger.Info($"Beginning nightly cleanup process.");
@@ -1511,11 +1494,20 @@ namespace MBBSEmu.HostProcess
         {
             Logger.Info("PERFORMING NIGHTLY CLEANUP");
 
+            var localConsoleSessions = _channelDictionary.Values.OfType<LocalConsoleSession>().ToList();
+
             // Notify Users of Nightly Cleanup
             foreach (var c in _channelDictionary)
                 _channelDictionary[c.Value.Channel].SendToClient($"|RESET|\r\n|B||RED|Nightly Cleanup Running -- Please log back on shortly|RESET|\r\n".EncodeToANSIArray());
 
-            // removes all sessions and stops worker thread
+            // Keep the local console's transport threads alive so it can return to login.
+            foreach (var localConsoleSession in localConsoleSessions)
+                RemoveSession(localConsoleSession.Channel, false);
+
+            // MajorBBS sets the modes again in hupall() before invoking each module's HUPROU.
+            SetCleanupResetModes();
+
+            // removes all sessions before module cleanup
             RemoveSessions(session => true);
 
             CallModuleRoutine("mcurou", module => Logger.Info($"Calling nightly cleanup routine on module {module.ModuleIdentifier}"));
@@ -1524,27 +1516,35 @@ namespace MBBSEmu.HostProcess
             //Save current module config
             var moduleConfigurations = (from m in _modules select m.Value.ModuleConfig).ToList();
 
-            foreach (var m in _modules)
+            foreach (var module in _modules.Values.ToList())
             {
-                var modulePath = m.Value.ModulePath;
+                var modulePath = module.ModulePath;
+                var cleanupCommands = module.Mdf.Cleanup.ToList();
+                RemoveModuleArtifacts(module.ModuleIdentifier);
 
-                m.Value.Dispose();
-                _modules.Remove(m.Value.ModuleIdentifier);
-                var exportedFunctionsToRemove = _exportedFunctions.Keys.Where(x => x.StartsWith(m.Value.ModuleIdentifier)).ToList();
-
-                foreach (var e in exportedFunctionsToRemove)
-                {
-                    _exportedFunctions[e].Dispose();
-                    _exportedFunctions.Remove(e);
-                }
-
-                foreach (var cleanup in m.Value.Mdf.Cleanup)
+                foreach (var cleanup in cleanupCommands)
                     RunProgram(modulePath, cleanup);
             }
 
             Logger.Info("NIGHTLY CLEANUP COMPLETE -- RESTARTING HOST");
 
             Start(moduleConfigurations);
+
+            foreach (var localConsoleSession in localConsoleSessions)
+            {
+                localConsoleSession.ResetForLogin();
+                AddSession(localConsoleSession);
+            }
+        }
+
+        private void SetCleanupResetModes()
+        {
+            foreach (var module in _modules.Values)
+            {
+                if (module.ExportedModuleDictionary.TryGetValue(Majorbbs.Segment, out var exportedModule) &&
+                    exportedModule is Majorbbs majorbbs)
+                    majorbbs.SetResetModes(Majorbbs.NANSRS);
+            }
         }
 
         /// <summary>
