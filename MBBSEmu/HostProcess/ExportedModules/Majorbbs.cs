@@ -3073,10 +3073,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var targetPointer = GetParameterPointer(0);
 
             //If the supplied string has any control characters for formatting, process them
-            var formattedMessage = FormatPrintf(GetParameterStringSpan(2), 4, true);
+            var formattedMessage = FormatPrintf(GetParameterStringSpan(2, true), 4, true);
 
             Module.Memory.SetArray(targetPointer, formattedMessage);
+            Module.Memory.SetByte(targetPointer + formattedMessage.Length, 0);
 
+            //Like sprintf(), the count doesn't include the null terminator
             Registers.AX = (ushort)formattedMessage.Length;
         }
 
