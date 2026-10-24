@@ -8,6 +8,7 @@ using MBBSEmu.HostProcess.Enums;
 using MBBSEmu.HostProcess.ExportedModules;
 using MBBSEmu.HostProcess.GlobalRoutines;
 using MBBSEmu.HostProcess.HostRoutines;
+using MBBSEmu.HostProcess.Structs;
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Memory;
@@ -435,6 +436,32 @@ namespace MBBSEmu.HostProcess
                                 break;
                             }
 
+                        //A Login Routine asked for input: the module handles it like it would in STTROU, except
+                        //the input goes to LONROU, until it returns 0 and the next module's Login Routine runs
+                        case EnumSessionState.InLoginRoutine:
+                            {
+                                if (session.GetStatus() == EnumUserStatus.CYCLE || session.GetStatus() == EnumUserStatus.OUTPUT_BUFFER_EMPTY ||
+                                    session.GetStatus() == EnumUserStatus.INBLK)
+                                {
+                                    ProcessSTSROU(session);
+                                    break;
+                                }
+
+                                if (session.GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
+                                {
+                                    ProcessLONROU_Input(session);
+                                }
+
+                                if (session.SessionState == EnumSessionState.InLoginRoutine && session.PollingRoutine != null)
+                                {
+                                    session.Status.Enqueue(EnumUserStatus.POLLING_STATUS);
+                                    ProcessPollingRoutine(session);
+                                    session.Status.Dequeue();
+                                }
+
+                                break;
+                            }
+
                         //User is in the module, process all the in-module type of events
                         case EnumSessionState.InModule:
                             {
@@ -719,7 +746,8 @@ namespace MBBSEmu.HostProcess
         {
             session.OutputEnabled = false; // always disabled for RLogin
 
-            CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
+            CallModuleRoutine("lonrou", module => BeginLogonRoutine(session, module), session.Channel);
+            EndLogonRoutines(session);
 
             session.SessionState = EnumSessionState.EnteringModule;
             session.OutputEnabled = true;
@@ -737,12 +765,96 @@ namespace MBBSEmu.HostProcess
             // Only call lonrou if DoLoginRoutine is enabled
             // Previously we called it but just disabled output, but this causes
             // cross-module state corruption when modules call functions like DosGetSegDesc
-            if (_configuration.ModuleDoLoginRoutine)
+            if (!_configuration.ModuleDoLoginRoutine)
             {
-                CallModuleRoutine("lonrou", preRunCallback: null, session.Channel);
+                session.SessionState = EnumSessionState.MainMenuDisplay;
+                return;
             }
 
+            RunLogonRoutines(session, 0);
+        }
+
+        /// <summary>
+        ///     Passes input to the Login Routine that asked for it, then continues with the next module's
+        ///     once that routine returns 0
+        /// </summary>
+        /// <param name="session"></param>
+        private void ProcessLONROU_Input(SessionBase session)
+        {
+            session.InputCommand = session.InputBuffer.ToArray();
+            session.InputBuffer.SetLength(0);
+
+            var module = session.CurrentModule;
+            if (Run(module.ModuleIdentifier, module.MainModuleDll.EntryPoints["lonrou"], session.Channel) != 0)
+                return;
+
+            session.UsrPtr.Substt = 0;
+            RunLogonRoutines(session, LogonModules().IndexOf(module) + 1);
+        }
+
+        /// <summary>
+        ///     Modules with a Login Routine, in the order they're called
+        /// </summary>
+        private List<MbbsModule> LogonModules() => _modules.Values
+            .Where(m => (bool)m.ModuleConfig.ModuleEnabled &&
+                        m.MainModuleDll.EntryPoints.TryGetValue("lonrou", out var lonrou) &&
+                        lonrou.Segment != 0 && lonrou.Offset != 0)
+            .ToList();
+
+        /// <summary>
+        ///     Calls each module's Login Routine from the given index on, as MajorBBS's cyclon() does.
+        ///
+        ///     A Login Routine that returns non-zero is waiting for input: the user stays in it (InLoginRoutine)
+        ///     and their next line of input goes to that routine. Once every routine is done, the user goes to
+        ///     the Main Menu.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="first">Index into LogonModules() to start at</param>
+        private void RunLogonRoutines(SessionBase session, int first)
+        {
+            var modules = LogonModules();
+            for (var i = first; i < modules.Count; i++)
+            {
+                BeginLogonRoutine(session, modules[i]);
+                if (Run(modules[i].ModuleIdentifier, modules[i].MainModuleDll.EntryPoints["lonrou"], session.Channel) == 0)
+                    continue;
+
+                session.CurrentModule = modules[i];
+                session.SessionState = EnumSessionState.InLoginRoutine;
+                return;
+            }
+
+            EndLogonRoutines(session);
+            session.CurrentModule = null;
             session.SessionState = EnumSessionState.MainMenuDisplay;
+        }
+
+        /// <summary>
+        ///     Sets up the user the way MajorBBS does before calling a module's Login Routine: class SUPLON,
+        ///     state set to that module, substt 0 and an empty VDA.
+        ///
+        ///     Modules can tell a Login Routine call from a STTROU call by the class. Trade Wars 2002 uses one
+        ///     routine for both, and with ACTUSR it starts its game menu instead of its logon notice.
+        /// </summary>
+        /// <param name="session"></param>
+        /// <param name="module"></param>
+        private static void BeginLogonRoutine(SessionBase session, MbbsModule module)
+        {
+            session.UsrPtr.UserClass = User.SUPLON;
+            session.UsrPtr.State = module.MainModuleDll.StateCode;
+            session.UsrPtr.Substt = 0;
+            Array.Clear(session.VDA, 0, Majorbbs.VOLATILE_DATA_SIZE);
+        }
+
+        /// <summary>
+        ///     Logon is complete: the user is active, at the Main Menu (state 0)
+        /// </summary>
+        /// <param name="session"></param>
+        private static void EndLogonRoutines(SessionBase session)
+        {
+            session.UsrPtr.UserClass = User.ACTUSR;
+            session.UsrPtr.State = 0;
+            session.UsrPtr.Substt = 0;
         }
 
         /// <summary>

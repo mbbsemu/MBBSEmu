@@ -34,6 +34,7 @@ namespace MBBSEmu.Extensions
                     moduleSession = true;
                     break;
                 case EnumSessionState.LoginRoutines:
+                case EnumSessionState.InLoginRoutine:
                 case EnumSessionState.MainMenuDisplay:
                 case EnumSessionState.MainMenuInput:
                 case EnumSessionState.MainMenuInputDisplay:
