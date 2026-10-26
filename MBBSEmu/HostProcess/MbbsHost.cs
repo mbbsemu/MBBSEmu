@@ -521,6 +521,7 @@ namespace MBBSEmu.HostProcess
             while (_incomingSessions.TryDequeue(out var incomingSession))
             {
                 incomingSession.Channel = (ushort)_channelDictionary.Allocate(incomingSession);
+                SetUserModuleState(incomingSession, incomingSession.UsrPtr.State, incomingSession.UsrPtr.Substt);
                 incomingSession.SessionTimer.Start();
                 Logger.Info($"Added Session {incomingSession.SessionId} to channel {incomingSession.Channel}");
             }
@@ -573,7 +574,7 @@ namespace MBBSEmu.HostProcess
             }
 
             session.SessionState = EnumSessionState.InModule;
-            session.UsrPtr.State = session.CurrentModule.MainModuleDll.StateCode;
+            SetUserModuleState(session, session.CurrentModule.MainModuleDll.StateCode, session.UsrPtr.Substt);
             ProcessSTTROU(session);
         }
 
@@ -627,7 +628,9 @@ namespace MBBSEmu.HostProcess
 
             //Reset States
             session.Status.Clear();
-            session.UsrPtr.Substt = 0;
+            // MajorBBS returns to menu state 0; modules rely on user[].state
+            // to exclude departed users from timer-driven processing.
+            SetUserModuleState(session, 0, 0);
 
             //Clear the Input Buffer
             session.InputBuffer.SetLength(0);
@@ -640,6 +643,22 @@ namespace MBBSEmu.HostProcess
                 !string.IsNullOrEmpty(((RloginSession)session).ModuleIdentifier))
             {
                 session.SessionState = EnumSessionState.ConfirmLogoffDisplay;
+            }
+        }
+
+        private void SetUserModuleState(SessionBase session, short state, short substate)
+        {
+            session.UsrPtr.State = state;
+            session.UsrPtr.Substt = substate;
+
+            // USER is currently private to each module, unlike MajorBBS's
+            // shared array. Publish host transitions without replacing other
+            // fields or overwriting guest changes on every timer callback.
+            foreach (var module in _modules.Values)
+            {
+                if (module.ExportedModuleDictionary.TryGetValue(Majorbbs.Segment, out var exportedModule) &&
+                    exportedModule is Majorbbs majorbbs)
+                    majorbbs.SetUserModuleState(session.Channel, state, substate);
             }
         }
 
@@ -1087,6 +1106,7 @@ namespace MBBSEmu.HostProcess
             if (stopSession)
                 session.Stop();
             session.SessionState = EnumSessionState.Disconnected;
+            SetUserModuleState(session, 0, 0);
 
             _channelDictionary.Remove(channel);
 
