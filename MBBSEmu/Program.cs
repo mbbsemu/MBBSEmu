@@ -19,8 +19,6 @@ using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
-using MBBSEmu.UI.Main;
-using MBBSEmu.UI.Setup;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -136,26 +134,9 @@ namespace MBBSEmu
         {
             try
             {
+                // TEMPORARY (restored in Task 12/14): the Setup Wizard is being ported to Terminal.Gui v2
                 if (args.Length == 0)
-                {
-                    Console.Write("Run the MBBSEmu Setup Wizard (Y/n): ");
-                    var response = Console.ReadLine()?.TrimEnd().ToUpper();
-                    if (string.IsNullOrEmpty(response) || response == "Y")
-                    {
-                        Console.WriteLine("Starting MBBSEmu Setup Wizard...");
-                        var setupWizard = new SetupView();
-                        setupWizard.Setup();
-                        setupWizard.Run();
-                        Console.WriteLine("Setup Wizard Complete!");
-                        Console.WriteLine(
-                            "Restart MBBSEmu for the new settings to take effect. Use the Command Line Option -? for detailed help.");
-                        return;
-                    }
-                    else
-                    {
-                        args = new[] { "-?" };
-                    }
-                }
+                    args = new[] { "-?" };
 
                 string[] programArgs = args;
 
@@ -508,27 +489,8 @@ namespace MBBSEmu
                     return;
                 }
 
-                // If the user specified CLI mode, don't start the UI
-                if (!_cliMode && !_isConsoleSession)
-                {
-                    var mainMBBSEmuWindow = new MainView(_serviceResolver);
-
-                    // Start UI in a Task as to not block this thread
-                    Task.Run(() =>
-                    {
-                        mainMBBSEmuWindow.Setup();
-                        mainMBBSEmuWindow.Run();
-                    });
-
-                    // Wait for the UI to be running before continuing
-                    Console.Write("Waiting for MBBSEmu GUI to start...");
-                    while (!mainMBBSEmuWindow.isRunning)
-                    {
-                        Thread.Sleep(500);
-                        Console.Write(".");
-                    }
-                    Console.WriteLine();
-                }
+                // TEMPORARY (restored in Task 12/14): the admin console is being ported to Terminal.Gui v2
+                _cliMode = true;
 
                 // Setup and Run Host
                 var host = _serviceResolver.GetService<IMbbsHost>();
