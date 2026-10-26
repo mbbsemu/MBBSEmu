@@ -286,6 +286,9 @@ namespace MBBSEmu.Btrieve
             }
 
             _keys = btrieveFile.Keys;
+            RecordLength = (uint)btrieveFile.RecordLength;
+            VariableLengthRecords = btrieveFile.VariableLengthRecords;
+            FileName = btrieveFile.FileName;
 
             foreach (var record in btrieveFile.Records)
             {
@@ -435,9 +438,18 @@ namespace MBBSEmu.Btrieve
         public BtrieveError Update(byte[] record)
         {
             int dwDataBufferLength = record.Length;
-            return (BtrieveError)Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Update,
+            var status = (BtrieveError)Wbtrv32.managedBtrcall((int)EnumBtrieveOperationCodes.Update,
                                                         unmanagedPosBlock, record, ref dwDataBufferLength,
                                                         null, 0xFF);
+
+            if (status != BtrieveError.Success)
+            {
+                _logger.Warn(
+                    $"(BTRIEVE-UPDATE-FAIL) File={FileName} status={status} ({(ushort)status}) " +
+                    $"recordLength={record.Length} -- record NOT updated.");
+            }
+
+            return status;
         }
 
         /// <summary>

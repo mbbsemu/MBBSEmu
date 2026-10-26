@@ -2912,7 +2912,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private bool updateBtv()
         {
-            var btrieveRecordPointerPointer = GetParameterPointer(0);
+            var btrieveRecordPointerPointer = GetBtrieveRecordPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
@@ -2945,13 +2945,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private bool insertBtv(LogLevel logLevel)
         {
-            var btrieveRecordPointer = GetParameterPointer(0);
+            var btrieveRecordPointer = GetBtrieveRecordPointer(0);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
 
             var dataToWrite = Module.Memory.GetArray(btrieveRecordPointer, (ushort)currentBtrieveFile.RecordLength);
 
             return currentBtrieveFile.Insert(dataToWrite.ToArray()) != 0;
+        }
+
+        /// <summary>
+        ///     Returns the record pointer passed as parameter parameterOrdinal to a Btrieve write
+        ///     (insbtv, updbtv, invbtv, upvbtv, ...). As in MajorBBS (PLBTVSTF.C), NULL means the
+        ///     current file's own record buffer, bb->data.
+        /// </summary>
+        private FarPtr GetBtrieveRecordPointer(int parameterOrdinal)
+        {
+            var recordPointer = GetParameterPointer(parameterOrdinal);
+            if (!recordPointer.IsNull())
+                return recordPointer;
+
+            return new BtvFileStruct(Module.Memory.GetArray(Module.Memory.GetPointer("BB"), BtvFileStruct.Size)).data;
         }
 
 
@@ -2962,7 +2976,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// </summary>
         private void invbtv()
         {
-            var btrieveRecordPointer = GetParameterPointer(0);
+            var btrieveRecordPointer = GetBtrieveRecordPointer(0);
             var recordLength = GetParameter(2);
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
             var record = Module.Memory.GetArray(btrieveRecordPointer, recordLength);
@@ -5391,7 +5405,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <returns></returns>
         private void upvbtv()
         {
-            var btrieveRecordPointerPointer = GetParameterPointer(0);
+            var btrieveRecordPointerPointer = GetBtrieveRecordPointer(0);
             var length = GetParameter(2);
 
             var currentBtrieveFile = BtrieveGetProcessor(Module.Memory.GetPointer("BB"));
