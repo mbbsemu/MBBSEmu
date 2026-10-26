@@ -1,5 +1,9 @@
+using System.Linq;
+using Terminal.Gui.App;
 using Terminal.Gui.Configuration;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.ViewBase;
+using Terminal.Gui.Views;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace MBBSEmu.UI
@@ -166,6 +170,42 @@ namespace MBBSEmu.UI
             SchemeManager.AddScheme(SchemeManager.SchemesToSchemeName(Schemes.Error), ErrorDialogScheme);
             SchemeManager.AddScheme(SchemeManager.SchemesToSchemeName(Schemes.Menu), Menu);
         }
+
+        /// <summary>
+        ///     DOS screens had no drop shadows: removes them from a view and everything in it, and gives dialogs the
+        ///     same double-line border as the rest of the UI
+        /// </summary>
+        public static void ApplyRetroStyle(View view)
+        {
+            if (view is Dialog)
+                view.BorderStyle = LineStyle.Double;
+
+            if (view.ShadowStyle is { } shadow && shadow != ShadowStyles.None)
+                view.ShadowStyle = ShadowStyles.None;
+
+            //Dialogs keep their buttons in an adornment (border/padding) rather than among their SubViews
+            var children = view.SubViews
+                .Concat(view.Margin?.View?.SubViews ?? Enumerable.Empty<View>())
+                .Concat(view.Border?.View?.SubViews ?? Enumerable.Empty<View>())
+                .Concat(view.Padding?.View?.SubViews ?? Enumerable.Empty<View>())
+                .Concat(view is Dialog dialog ? dialog.Buttons : Enumerable.Empty<View>())
+                .Distinct()
+                .ToList();
+
+            foreach (var child in children)
+                ApplyRetroStyle(child);
+        }
+
+        /// <summary>
+        ///     Applies ApplyRetroStyle to everything the application shows, including the message boxes and Save
+        ///     dialog that Terminal.Gui creates itself, as each one opens
+        /// </summary>
+        public static void StyleDialogsOf(IApplication app) =>
+            app.SessionBegun += (_, e) =>
+            {
+                if (e.State?.Runnable is View view)
+                    ApplyRetroStyle(view);
+            };
 
         /// <summary>
         ///     The same colors in every role, so Terminal.Gui doesn't derive dimmer variants

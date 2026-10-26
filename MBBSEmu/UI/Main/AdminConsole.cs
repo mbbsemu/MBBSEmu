@@ -127,6 +127,7 @@ namespace MBBSEmu.UI.Main
             }
 
             ConsoleTheme.ApplyGlobalDefaults();
+            ConsoleTheme.StyleDialogsOf(_app);
             ConsoleOwnership.SetUiActive(true);
             var signals = new List<PosixSignalRegistration>();
             try

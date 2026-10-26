@@ -14,6 +14,7 @@ namespace MBBSEmu.UI.Setup
             var app = Application.Create();
             app.Init(null);
             ConsoleTheme.ApplyGlobalDefaults();
+            ConsoleTheme.StyleDialogsOf(app);
             try
             {
                 var view = new SetupWizardView(new SetupWizardModel(new Random()), new TerminalGuiSetupWizardDialogs(app),
