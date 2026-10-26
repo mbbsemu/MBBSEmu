@@ -38,7 +38,7 @@ MBBSEmu/
 ├── IO/                     # Cross-platform file utilities, stream abstractions
 ├── Converters/             # JSON converters (bool, FarPtr, module config)
 ├── Resources/              # Embedded resource manager
-├── UI/                     # Terminal.Gui interface (MainView, SetupView)
+├── UI/                     # Terminal.Gui v2 admin console (AdminConsole, AdminConsoleView) and setup wizard (SetupWizard)
 ├── Util/                   # MessagingCenter, CRC32, LRU cache
 ├── Date/                   # IClock abstraction (SystemClock, FakeClock)
 ├── Reports/                # API usage report generation

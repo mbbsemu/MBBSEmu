@@ -18,7 +18,11 @@ Command Line Options:
 -DBRESET <password> Reset the SQLite DB back to default (deletes everything), if no password
                     is specified, you will be prompted to enter one
 -CONSOLE            Login to local CONSOLE after MBBSEmu initialization (system will shutdown when you logoff)
+-CLI                Run without the admin console (logs print to the terminal). Used automatically when
+                    no terminal is attached
 -EXE <example.exe>  Run DOS executable, typically used for module utilties or module installers
+
+The admin console needs a UTF-8 terminal of at least 80x24.
 
 Examples:
 ./MBBSEmu -M MyModule -P c:\bbsv6\ -DBRESET sysop
