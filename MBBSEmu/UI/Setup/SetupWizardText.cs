@@ -167,5 +167,7 @@ namespace MBBSEmu.UI.Setup
         public const string JsonFiles = "JSON Files";
 
         public static string SuccessMessage(string path) => $"Settings were successfully written to:\n{path}";
+
+        public static string SaveFailedMessage(string path, string reason) => $"Unable to write {path}:\n{reason}";
     }
 }

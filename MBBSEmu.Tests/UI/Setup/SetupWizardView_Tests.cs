@@ -34,6 +34,7 @@ namespace MBBSEmu.Tests.UI.Setup
         private readonly FakeDialogs _dialogs = new();
         private readonly SetupWizardModel _model = new(new Random(1));
         private readonly List<(string Path, string Contents)> _writes = new();
+        private Exception _writeFailure;
         private SetupWizardView _view;
         private TerminalGuiHarness _harness;
 
@@ -41,7 +42,13 @@ namespace MBBSEmu.Tests.UI.Setup
 
         private string[] Show(int width = 80, int height = 24)
         {
-            _view = new SetupWizardView(_model, _dialogs, (path, contents) => _writes.Add((path, contents)));
+            _view = new SetupWizardView(_model, _dialogs, (path, contents) =>
+            {
+                if (_writeFailure != null)
+                    throw _writeFailure;
+
+                _writes.Add((path, contents));
+            });
             _harness = new TerminalGuiHarness(width, height);
             _harness.Show(_view);
             _view.ApplyScreenSize(width, height);
@@ -187,6 +194,25 @@ namespace MBBSEmu.Tests.UI.Setup
             _writes.Should().Equal(("/x/appsettings.json", _model.ToJson()));
             _dialogs.Saved.Should().Equal("/x/appsettings.json");
             _view.Outcome.Should().Be(new SetupWizardResult(true, "/x/appsettings.json"));
+        }
+
+        /// <summary>
+        ///     A read-only or protected folder must not throw away everything the sysop entered
+        /// </summary>
+        [Fact]
+        public void SaveFails_ShowsErrorAndStaysOnReview()
+        {
+            Show();
+            GoTo(EnumSetupStep.Review);
+            _dialogs.SavePath = "/x/appsettings.json";
+            _writeFailure = new UnauthorizedAccessException("Access to the path is denied.");
+
+            Next();
+
+            _dialogs.Errors.Should().Equal((SetupWizardText.ErrorTitle, "Unable to write /x/appsettings.json:\nAccess to the path is denied."));
+            _dialogs.Saved.Should().BeEmpty();
+            _view.CurrentStep.Should().Be(EnumSetupStep.Review);
+            _view.Outcome.Should().BeNull();
         }
 
         [Fact]

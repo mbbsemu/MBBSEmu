@@ -162,7 +162,17 @@ namespace MBBSEmu.UI.Setup
                 return;
             }
 
-            _writeFile(path, _model.ToJson());
+            try
+            {
+                _writeFile(path, _model.ToJson());
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                //Keep everything entered so the sysop can pick another location
+                _dialogs.ShowError(SetupWizardText.ErrorTitle, SetupWizardText.SaveFailedMessage(path, e.Message));
+                return;
+            }
+
             _dialogs.ShowSaved(path);
             End(new SetupWizardResult(true, path));
         }
