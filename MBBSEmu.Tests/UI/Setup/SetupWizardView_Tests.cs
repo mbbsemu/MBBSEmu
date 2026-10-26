@@ -196,11 +196,13 @@ namespace MBBSEmu.Tests.UI.Setup
             _harness.Screen().Should().Contain(x =>
                 x.Contains("The Name of your BBS or the Name you want to give"));
 
+            //DOS light gray (#AAAAAA) on DOS blue (#0000AA) in every role, rather than Terminal.Gui's derived dim
+            //"read-only" color
             var scheme = _view.HelpPanel(EnumSetupStep.General).GetScheme();
-            var stepColors = new Attribute(ColorName16.Black, ColorName16.Gray);
-            scheme.Normal.Should().Be(stepColors);
-            scheme.ReadOnly.Should().Be(stepColors);
-            scheme.Editable.Should().Be(stepColors);
+            var helpColors = new Attribute(new Color(0xAA, 0xAA, 0xAA), new Color(0x00, 0x00, 0xAA));
+            scheme.Normal.Should().Be(helpColors);
+            scheme.ReadOnly.Should().Be(helpColors);
+            scheme.Editable.Should().Be(helpColors);
         }
 
         [Fact]

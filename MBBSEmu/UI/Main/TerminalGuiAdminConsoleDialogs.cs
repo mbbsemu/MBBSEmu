@@ -1,4 +1,5 @@
 using Terminal.Gui.App;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -31,9 +32,10 @@ namespace MBBSEmu.UI.Main
             {
                 Title = title,
                 Width = Dim.Percent(80),
-                Height = Dim.Percent(70)
+                Height = Dim.Percent(70),
+                BorderStyle = LineStyle.Double
             };
-            dialog.SetScheme(ConsoleTheme.Base);
+            dialog.SetScheme(ConsoleTheme.DialogScheme);
 
             //TextView is marked obsolete in favor of a separate editor package, but it is still the built-in
             //read-only, word-wrapping, scrollable text view, which is all this dialog needs
@@ -47,7 +49,7 @@ namespace MBBSEmu.UI.Main
                 Height = Dim.Fill(1)
             };
 #pragma warning restore CS0618
-            body.SetScheme(ConsoleTheme.Base);
+            body.SetScheme(ConsoleTheme.DialogScheme);
             dialog.Add(body);
 
             var ok = new Button { Text = AdminConsoleText.OkButton, IsDefault = true };

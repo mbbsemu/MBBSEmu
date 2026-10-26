@@ -14,6 +14,7 @@ namespace MBBSEmu.Tests.UI.Main
 
             lines.Select(x => x.Text).Should().Equal("0: SYSOP", "1: DISCONNECTED", "2: CONNECTING", "3: DISCONNECTED");
             lines.Select(x => x.IsDisconnected).Should().Equal(false, true, false, true);
+            lines.Select(x => x.IsConnecting).Should().Equal(false, false, true, false);
         }
 
         [Fact]

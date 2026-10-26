@@ -40,6 +40,9 @@ namespace MBBSEmu.UI.Main
         private readonly FrameView _auditFrame;
         private readonly FrameView _applicationFrame;
         private readonly FrameView _channelsFrame;
+        private readonly Label _auditTab;
+        private readonly Label _applicationTab;
+        private readonly Label _channelsTab;
         private readonly View _statusBar;
         private readonly TooSmallView _tooSmall;
 
@@ -98,7 +101,9 @@ namespace MBBSEmu.UI.Main
                 if (row >= 0 && row < _auditLog.Count)
                     _dialogs.ShowEntry(AdminConsoleText.AuditEntryTitle, LogEntryFormatter.AuditDetail(_auditLog[row]));
             };
-            _auditFrame = CreateFrame(AdminConsoleText.AuditLogTitle, AuditLogTable);
+            AuditLogTable.Style.RowColorGetter = _ => ConsoleTheme.AuditRow;
+            _auditFrame = CreateFrame(AuditLogTable);
+            _auditTab = CreateTab(_auditFrame, AdminConsoleText.AuditLogTitle);
 
             _applicationSource = new ApplicationLogTableSource(_applicationLog);
             ApplicationLogTable = CreateTable(_applicationSource);
@@ -106,6 +111,8 @@ namespace MBBSEmu.UI.Main
             {
                 Microsoft.Extensions.Logging.LogLevel.Error or Microsoft.Extensions.Logging.LogLevel.Critical => ConsoleTheme.ErrorRow,
                 Microsoft.Extensions.Logging.LogLevel.Warning => ConsoleTheme.WarningRow,
+                Microsoft.Extensions.Logging.LogLevel.Information => ConsoleTheme.InfoRow,
+                Microsoft.Extensions.Logging.LogLevel.Debug or Microsoft.Extensions.Logging.LogLevel.Trace => ConsoleTheme.DebugRow,
                 _ => null
             };
             ApplicationLogTable.Accepting += (_, e) =>
@@ -115,7 +122,8 @@ namespace MBBSEmu.UI.Main
                 if (row >= 0 && row < _applicationLog.Count)
                     _dialogs.ShowEntry(AdminConsoleText.ApplicationEntryTitle, LogEntryFormatter.ApplicationDetail(_applicationLog[row]));
             };
-            _applicationFrame = CreateFrame(AdminConsoleText.ApplicationLogTitle, ApplicationLogTable);
+            _applicationFrame = CreateFrame(ApplicationLogTable);
+            _applicationTab = CreateTab(_applicationFrame, AdminConsoleText.ApplicationLogTitle);
 
             ChannelListView = new ListView
             {
@@ -129,17 +137,29 @@ namespace MBBSEmu.UI.Main
             ChannelListView.VerticalScrollBar.VisibilityMode = ScrollBarVisibilityMode.Auto;
             ChannelListView.RowRender += (_, e) =>
             {
-                if (e.Row >= 0 && e.Row < _channelLines.Count && _channelLines[e.Row].IsDisconnected)
-                    e.RowAttribute = ConsoleTheme.DimChannel;
+                if (e.Row < 0 || e.Row >= _channelLines.Count)
+                    return;
+
+                //Leave the selected row's highlight alone while the list has focus
+                if (ChannelListView.HasFocus && e.Row == ChannelListView.SelectedItem)
+                    return;
+
+                var line = _channelLines[e.Row];
+                e.RowAttribute = line.IsDisconnected ? ConsoleTheme.DimChannel
+                    : line.IsConnecting ? ConsoleTheme.ConnectingChannel
+                    : ConsoleTheme.OnlineChannel;
             };
-            _channelsFrame = CreateFrame(ChannelList.Title(0, 0), ChannelListView);
+            _channelsFrame = CreateFrame(ChannelListView);
+            _channelsTab = CreateTab(_channelsFrame, ChannelList.Title(0, 0));
 
             _statusBar = new View { X = 0, Height = 1, CanFocus = false };
             _statusBar.SetScheme(ConsoleTheme.Menu);
 
             _tooSmall = new TooSmallView(AdminConsoleText.TooSmallQuitHint);
 
-            Add(_menuBar, _auditFrame, _applicationFrame, _channelsFrame, _statusBar, _tooSmall);
+            //Tabs after the frames, so they draw over the frames' top borders
+            Add(_menuBar, _auditFrame, _applicationFrame, _channelsFrame, _auditTab, _applicationTab, _channelsTab, _statusBar,
+                _tooSmall);
         }
 
         /// <summary>
@@ -151,7 +171,7 @@ namespace MBBSEmu.UI.Main
             _height = height;
 
             var tooSmall = ScreenSize.IsBelowMinimum(width, height);
-            foreach (var view in new View[] { _menuBar, _auditFrame, _applicationFrame, _channelsFrame, _statusBar })
+            foreach (var view in new View[] { _menuBar, _auditFrame, _applicationFrame, _channelsFrame, _auditTab, _applicationTab, _channelsTab, _statusBar })
                 view.Visible = !tooSmall;
 
             if (tooSmall)
@@ -169,6 +189,9 @@ namespace MBBSEmu.UI.Main
             Place(_applicationFrame, 0, 1 + _layout.AuditHeight, _layout.LeftWidth, _layout.ApplicationLogHeight);
             Place(_channelsFrame, _layout.LeftWidth, 1, _layout.SidebarWidth, height - 2);
             Place(_statusBar, 0, height - 1, width, 1);
+            PlaceTab(_auditTab, _auditFrame);
+            PlaceTab(_applicationTab, _applicationFrame);
+            PlaceTab(_channelsTab, _channelsFrame);
 
             SizeAuditColumns();
             SizeApplicationColumns();
@@ -188,7 +211,7 @@ namespace MBBSEmu.UI.Main
             AppendAndFollow(AuditLogTable, _auditLog, newAuditEntries);
 
             _channelLines = channels;
-            _channelsFrame.Title = ChannelList.Title(onlineCount, channels.Count);
+            _channelsTab.Text = $" {ChannelList.Title(onlineCount, channels.Count)} ";
 
             var longest = channels.Count == 0 ? 0 : channels.Max(x => x.Text.Length);
             if (longest != _longestChannelLine)
@@ -227,6 +250,7 @@ namespace MBBSEmu.UI.Main
                 Table = source
             };
             table.SetScheme(ConsoleTheme.Base);
+            table.Style.HeaderScheme = ConsoleTheme.Heading;
 
             //Sit flush inside the frame: no line above the headers or down the outer edges
             table.Style.AlwaysShowHeaders = true;
@@ -243,12 +267,29 @@ namespace MBBSEmu.UI.Main
             return table;
         }
 
-        private static FrameView CreateFrame(string title, View content)
+        private static FrameView CreateFrame(View content)
         {
-            var frame = new FrameView { Title = title, BorderStyle = LineStyle.Double };
+            var frame = new FrameView { BorderStyle = LineStyle.Double };
             frame.SetScheme(ConsoleTheme.Frame);
             frame.Add(content);
             return frame;
+        }
+
+        /// <summary>
+        ///     A MajorBBS-style title tab for a panel (drawn over its top border), highlighted while the panel has focus
+        /// </summary>
+        private static Label CreateTab(FrameView frame, string title)
+        {
+            var tab = new Label { Text = $" {title} " };
+            tab.SetScheme(ConsoleTheme.PanelTab);
+            frame.HasFocusChanged += (_, e) => tab.SetScheme(e.NewValue ? ConsoleTheme.FocusedPanelTab : ConsoleTheme.PanelTab);
+            return tab;
+        }
+
+        private static void PlaceTab(Label tab, View frame)
+        {
+            tab.X = Pos.Left(frame) + 2;
+            tab.Y = Pos.Top(frame);
         }
 
         private static void Place(View view, int x, int y, int width, int height)

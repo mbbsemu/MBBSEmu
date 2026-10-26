@@ -11,7 +11,10 @@ namespace MBBSEmu.UI.Main
     /// <summary>
     ///     One row of the Channels sidebar
     /// </summary>
-    public sealed record ChannelLine(string Text, bool IsDisconnected);
+    /// <param name="Text">"N: USERNAME", "N: CONNECTING" or "N: DISCONNECTED"</param>
+    /// <param name="IsDisconnected">No session on the channel</param>
+    /// <param name="IsConnecting">A session that hasn't logged in yet</param>
+    public sealed record ChannelLine(string Text, bool IsDisconnected, bool IsConnecting = false);
 
     /// <summary>
     ///     Builds the Channels sidebar contents
@@ -32,7 +35,7 @@ namespace MBBSEmu.UI.Main
                 lines[channel] = session switch
                 {
                     null => new ChannelLine($"{channel}: DISCONNECTED", true),
-                    _ when string.IsNullOrEmpty(session.Username) => new ChannelLine($"{channel}: CONNECTING", false),
+                    _ when string.IsNullOrEmpty(session.Username) => new ChannelLine($"{channel}: CONNECTING", false, true),
                     _ => new ChannelLine($"{channel}: {session.Username.ToUpperInvariant()}", false)
                 };
             }

@@ -126,6 +126,7 @@ namespace MBBSEmu.UI.Main
                 return new AdminConsoleResult(EnumAdminConsoleOutcome.TerminalUnavailable, e);
             }
 
+            ConsoleTheme.ApplyGlobalDefaults();
             ConsoleOwnership.SetUiActive(true);
             var signals = new List<PosixSignalRegistration>();
             try

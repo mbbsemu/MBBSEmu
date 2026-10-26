@@ -18,29 +18,46 @@ namespace MBBSEmu.UI.Setup
     /// </summary>
     public sealed class SetupWizardView : Window
     {
+        private static readonly Color Blue = ConsoleTheme.Cga.Blue;
+
         /// <summary>
-        ///     Wizard steps: black on gray, with the focused control highlighted
+        ///     The wizard dialog: bright cyan frame and buttons, with its title (and the focused button) as a gray tab
         /// </summary>
-        private static readonly Scheme StepScheme = new(new Attribute(ColorName16.Black, ColorName16.Gray))
+        private static readonly Scheme WizardScheme = new(ConsoleTheme.On(ConsoleTheme.Cga.BrightCyan, Blue))
         {
-            Focus = new Attribute(ColorName16.BrightYellow, ColorName16.Blue),
-            HotFocus = new Attribute(ColorName16.BrightYellow, ColorName16.Blue),
-            Editable = new Attribute(ColorName16.Black, ColorName16.Gray),
-            Disabled = new Attribute(ColorName16.DarkGray, ColorName16.Gray)
+            Focus = ConsoleTheme.Tab,
+            Active = ConsoleTheme.Tab,
+            HotNormal = ConsoleTheme.On(ConsoleTheme.Cga.Yellow, Blue),
+            HotFocus = ConsoleTheme.On(ConsoleTheme.Cga.Red, ConsoleTheme.Cga.LightGray)
         };
 
         /// <summary>
-        ///     Help text and the Welcome text: the step's own black on gray in every role, since Terminal.Gui
-        ///     otherwise derives a dim dark-grey "read-only" color that is hard to read
+        ///     Wizard steps: white labels on blue, with the focused control in black on cyan
         /// </summary>
-        private static readonly Scheme TextScheme = new(new Attribute(ColorName16.Black, ColorName16.Gray))
+        private static readonly Scheme StepScheme = new(ConsoleTheme.On(ConsoleTheme.Cga.White, Blue))
         {
-            Focus = new Attribute(ColorName16.Black, ColorName16.Gray),
-            Active = new Attribute(ColorName16.Black, ColorName16.Gray),
-            ReadOnly = new Attribute(ColorName16.Black, ColorName16.Gray),
-            Editable = new Attribute(ColorName16.Black, ColorName16.Gray),
-            Disabled = new Attribute(ColorName16.Black, ColorName16.Gray)
+            Focus = ConsoleTheme.Selection,
+            Active = ConsoleTheme.Selection,
+            HotNormal = ConsoleTheme.On(ConsoleTheme.Cga.BrightCyan, Blue),
+            HotFocus = ConsoleTheme.Selection,
+            Editable = ConsoleTheme.On(ConsoleTheme.Cga.White, Blue),
+            Disabled = ConsoleTheme.On(ConsoleTheme.Cga.DarkGray, Blue)
         };
+
+        /// <summary>
+        ///     The Welcome and Review text: white on blue in every role, since Terminal.Gui otherwise derives a dim
+        ///     "read-only" color that is hard to read
+        /// </summary>
+        private static readonly Scheme TextScheme = ConsoleTheme.Uniform(ConsoleTheme.On(ConsoleTheme.Cga.White, Blue));
+
+        /// <summary>
+        ///     Help text: DOS light gray on blue, quieter than the white labels beside it
+        /// </summary>
+        internal static readonly Attribute HelpColors = ConsoleTheme.On(ConsoleTheme.Cga.LightGray, Blue);
+
+        private static readonly Scheme HelpScheme = ConsoleTheme.Uniform(HelpColors);
+
+        private static readonly Scheme SeparatorScheme = ConsoleTheme.Uniform(ConsoleTheme.On(ConsoleTheme.Cga.BrightCyan, Blue));
 
         /// <summary>
         ///     Largest wizard size: bigger terminals get a centered wizard rather than a huge, mostly empty one
@@ -56,14 +73,14 @@ namespace MBBSEmu.UI.Setup
         private const int MinimumHelpWidth = 22;
 
         /// <summary>
-        ///     Input fields: a blue box, so an empty field is still visible on the gray step
+        ///     Input fields: a cyan box, bright while focused; greyed out (no box) while disabled
         /// </summary>
-        private static readonly Scheme FieldScheme = new(new Attribute(ColorName16.White, ColorName16.Blue))
+        private static readonly Scheme FieldScheme = new(ConsoleTheme.On(ConsoleTheme.Cga.Black, ConsoleTheme.Cga.Cyan))
         {
-            Focus = new Attribute(ColorName16.BrightYellow, ColorName16.Blue),
-            Editable = new Attribute(ColorName16.White, ColorName16.Blue),
-            ReadOnly = new Attribute(ColorName16.Gray, ColorName16.DarkGray),
-            Disabled = new Attribute(ColorName16.Gray, ColorName16.DarkGray)
+            Focus = ConsoleTheme.On(ConsoleTheme.Cga.Black, ConsoleTheme.Cga.BrightCyan),
+            Editable = ConsoleTheme.On(ConsoleTheme.Cga.Black, ConsoleTheme.Cga.Cyan),
+            ReadOnly = ConsoleTheme.On(ConsoleTheme.Cga.DarkGray, Blue),
+            Disabled = ConsoleTheme.On(ConsoleTheme.Cga.DarkGray, Blue)
         };
 
         private readonly SetupWizardModel _model;
@@ -125,7 +142,7 @@ namespace MBBSEmu.UI.Setup
                 X = Pos.Center(),
                 Y = Pos.Center()
             };
-            Wizard.SetScheme(StepScheme);
+            Wizard.SetScheme(WizardScheme);
 
             AddWelcomeStep();
             AddGeneralStep();
@@ -260,7 +277,8 @@ namespace MBBSEmu.UI.Setup
             if (!string.IsNullOrEmpty(helpText))
             {
                 var separator = new Line { Orientation = Orientation.Vertical, Y = 0, Height = Dim.Fill() };
-                var panel = CreateText(helpText);
+                separator.SetScheme(SeparatorScheme);
+                var panel = CreateText(helpText, HelpScheme);
                 panel.Y = 0;
                 panel.Height = Dim.Fill();
 
@@ -280,7 +298,7 @@ namespace MBBSEmu.UI.Setup
         {
             var step = AddStep(EnumSetupStep.Welcome, SetupWizardText.WelcomeTitle, string.Empty);
 
-            var welcome = CreateText(SetupWizardText.WelcomeHelp);
+            var welcome = CreateText(SetupWizardText.WelcomeHelp, TextScheme);
             welcome.X = 1;
             welcome.Y = 1;
             welcome.Width = Dim.Fill(1);
@@ -291,14 +309,14 @@ namespace MBBSEmu.UI.Setup
         /// <summary>
         ///     Read-only, word-wrapped text in the step's colors that never takes focus
         /// </summary>
-        private static View CreateText(string text)
+        private static View CreateText(string text, Scheme scheme)
         {
             //TextView is marked obsolete in favor of a separate editor package, but it is still the built-in
             //read-only, word-wrapping text view
 #pragma warning disable CS0618
             var view = new TextView { Text = text, ReadOnly = true, WordWrap = true, CanFocus = false };
 #pragma warning restore CS0618
-            view.SetScheme(TextScheme);
+            view.SetScheme(scheme);
             return view;
         }
 
@@ -476,6 +494,7 @@ namespace MBBSEmu.UI.Setup
                 Height = Dim.Fill()
             };
 #pragma warning restore CS0618
+            _reviewText.SetScheme(TextScheme);
             _reviewStep.Add(_reviewText);
         }
 
