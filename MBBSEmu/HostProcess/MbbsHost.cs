@@ -573,13 +573,12 @@ namespace MBBSEmu.HostProcess
             // _channelDictionary
             Stack<ushort> channelsToRemove = new Stack<ushort>();
 
-            for (ushort i = 0; i < _channelDictionary.Count; i++)
+            //Channel keys can be sparse (0, 2 with nothing at 1), so iterate the keys rather than 0..Count
+            foreach (var channel in _channelDictionary.Keys
+                         .Where(k => match(_channelDictionary[k]))
+                         .OrderBy(k => k))
             {
-                //Because users might not be on sequential channels (0,1,3), we verify if the channel number
-                //is even in use first.
-                if (!_channelDictionary.ContainsKey(i) || !match(_channelDictionary[i])) continue;
-
-                channelsToRemove.Push(i);
+                channelsToRemove.Push((ushort)channel);
             }
 
             while (channelsToRemove.Count > 0)
