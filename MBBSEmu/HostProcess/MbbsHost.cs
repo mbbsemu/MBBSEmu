@@ -1017,6 +1017,11 @@ namespace MBBSEmu.HostProcess
 
             Logger.Info($"Running auxiliary program: {cmdline}");
 
+            //While the Admin Console owns the terminal, the program's console output goes to the log instead
+            var uiActive = ConsoleOwnership.IsUiActive;
+            var stdout = uiActive ? new LogLineWriter(line => Logger.Info($"[{exe}] {line}")) : Console.Out;
+            var stderr = uiActive ? new LogLineWriter(line => Logger.Error($"[{exe}] {line}")) : Console.Error;
+
             var runtime = new ExeRuntime(
                             new Disassembler.MZFile(Path.Combine(modulePath, exe)),
                             Clock,
@@ -1024,13 +1029,19 @@ namespace MBBSEmu.HostProcess
                             _fileUtility,
                             modulePath,
                             sessionBase: null,
-                            new TextReaderStream(Console.In),
-                            new TextWriterStream(Console.Out),
-                            new TextWriterStream(Console.Error));
+                            new TextReaderStream(uiActive ? TextReader.Null : Console.In),
+                            new TextWriterStream(stdout),
+                            new TextWriterStream(stderr));
             runtime.Load(args);
             runtime.Run();
 
             runtime.Dispose();
+
+            if (uiActive)
+            {
+                stdout.Dispose();
+                stderr.Dispose();
+            }
         }
 
         /// <summary>
