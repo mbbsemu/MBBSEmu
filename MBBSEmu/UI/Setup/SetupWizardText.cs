@@ -161,6 +161,10 @@ namespace MBBSEmu.UI.Setup
         public const string SuccessTitle = "Success";
 
         public const string CancelledMessage = "Setup cancelled";
+        public const string TooSmallQuitHint = "Esc cancels setup.";
+        public const string YesButton = "_Yes";
+        public const string NoButton = "_No";
+        public const string JsonFiles = "JSON Files";
 
         public static string SuccessMessage(string path) => $"Settings were successfully written to:\n{path}";
     }

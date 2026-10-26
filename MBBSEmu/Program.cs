@@ -21,6 +21,7 @@ using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
 using MBBSEmu.UI;
 using MBBSEmu.UI.Main;
+using MBBSEmu.UI.Setup;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -136,13 +137,30 @@ namespace MBBSEmu
         {
             try
             {
-                // TEMPORARY (restored in Task 14): the Setup Wizard is being ported to Terminal.Gui v2
                 if (args.Length == 0)
                 {
                     // No terminal to run the wizard in (e.g. a service), so explain the options instead
                     if (!TerminalEnvironment.IsInteractive())
                     {
                         PrintHelp(waitForKey: false);
+                        return;
+                    }
+
+                    Console.Write("Run the MBBSEmu Setup Wizard (Y/n): ");
+                    var response = Console.ReadLine()?.TrimEnd().ToUpper();
+                    if (string.IsNullOrEmpty(response) || response == "Y")
+                    {
+                        Console.WriteLine("Starting MBBSEmu Setup Wizard...");
+                        var setupResult = SetupWizard.Run();
+                        if (!setupResult.Saved)
+                        {
+                            Console.WriteLine(SetupWizardText.CancelledMessage);
+                            return;
+                        }
+
+                        Console.WriteLine("Setup Wizard Complete!");
+                        Console.WriteLine(
+                            "Restart MBBSEmu for the new settings to take effect. Use the Command Line Option -? for detailed help.");
                         return;
                     }
 
