@@ -643,11 +643,14 @@ namespace MBBSEmu
             }
 
             var logFactory = new LogFactory();
+            IReadOnlyList<ChannelSession> sessions = Array.Empty<ChannelSession>();
             var result = new AdminConsole(new AdminConsoleOptions
             {
                 MessageLogger = logFactory.GetLogger<MessageLogger>(),
                 AuditLogger = logFactory.GetLogger<AuditLogger>(),
-                GetSessions = () => host.GetUserSessions().Select(x => new ChannelSession(x.Channel, x.Username)).ToList(),
+                GetSessions = () => sessions = SessionSnapshot.Read(
+                    () => host.GetUserSessions().Where(x => x != null).Select(x => new ChannelSession(x.Channel, x.Username)),
+                    sessions),
                 ChannelCount = configuration.BBSChannels,
                 StatusRightText = StatusLine.RightText(configuration.TelnetEnabled, configuration.RloginEnabled, build),
                 Build = build,
