@@ -25,7 +25,8 @@ namespace MBBSEmu.UI.Setup
         {
             Focus = new Attribute(ColorName16.BrightYellow, ColorName16.Blue),
             HotFocus = new Attribute(ColorName16.BrightYellow, ColorName16.Blue),
-            Editable = new Attribute(ColorName16.Black, ColorName16.Gray)
+            Editable = new Attribute(ColorName16.Black, ColorName16.Gray),
+            Disabled = new Attribute(ColorName16.DarkGray, ColorName16.Gray)
         };
 
         /// <summary>
@@ -60,7 +61,9 @@ namespace MBBSEmu.UI.Setup
         private static readonly Scheme FieldScheme = new(new Attribute(ColorName16.White, ColorName16.Blue))
         {
             Focus = new Attribute(ColorName16.BrightYellow, ColorName16.Blue),
-            Editable = new Attribute(ColorName16.White, ColorName16.Blue)
+            Editable = new Attribute(ColorName16.White, ColorName16.Blue),
+            ReadOnly = new Attribute(ColorName16.Gray, ColorName16.DarkGray),
+            Disabled = new Attribute(ColorName16.Gray, ColorName16.DarkGray)
         };
 
         private readonly SetupWizardModel _model;
@@ -70,6 +73,7 @@ namespace MBBSEmu.UI.Setup
         private readonly Dictionary<WizardStep, EnumSetupStep> _stepIds = new();
         private readonly Dictionary<EnumSetupStep, View> _helpPanels = new();
         private readonly List<View> _helpSeparators = new();
+        private readonly Dictionary<View, Label> _labels = new();
         private readonly TooSmallView _tooSmall;
         private readonly ObservableCollection<string> _keyItems = new();
         private WizardStep _reviewStep;
@@ -79,6 +83,12 @@ namespace MBBSEmu.UI.Setup
         internal TextField BbsNameField { get; private set; }
         internal TextField ChannelsField { get; private set; }
         internal TextField TelnetPortField { get; private set; }
+        internal OptionSelector TelnetEnabledSelector { get; private set; }
+        internal OptionSelector TelnetHeartbeatSelector { get; private set; }
+        internal OptionSelector RloginEnabledSelector { get; private set; }
+        internal TextField RloginPortField { get; private set; }
+        internal TextField RloginRemoteIPField { get; private set; }
+        internal OptionSelector RloginPortPerModuleSelector { get; private set; }
         internal TextField KeyField { get; private set; }
         internal Button AddKeyButton { get; private set; }
 
@@ -325,12 +335,14 @@ namespace MBBSEmu.UI.Setup
             var step = AddStep(EnumSetupStep.Telnet, SetupWizardText.TelnetTitle, SetupWizardText.TelnetHelp);
             View previous = null;
 
-            AddOptions(step, ref previous, SetupWizardText.TelnetServerLabel, SetupWizardText.TelnetEnabledHelp,
+            TelnetEnabledSelector = AddOptions(step, ref previous, SetupWizardText.TelnetServerLabel, SetupWizardText.TelnetEnabledHelp,
                 SetupWizardText.Enabled, SetupWizardText.Disabled, _model.TelnetEnabled, x => _model.TelnetEnabled = x);
             TelnetPortField = AddTextField(step, ref previous, SetupWizardText.TelnetPortLabel, SetupWizardText.TelnetPortHelp, 5,
                 _model.TelnetPort, x => _model.TelnetPort = x, digitsOnly: true);
-            AddOptions(step, ref previous, SetupWizardText.TelnetHeartbeatLabel, SetupWizardText.TelnetHeartbeatHelp,
+            TelnetHeartbeatSelector = AddOptions(step, ref previous, SetupWizardText.TelnetHeartbeatLabel, SetupWizardText.TelnetHeartbeatHelp,
                 SetupWizardText.On, SetupWizardText.Off, _model.TelnetHeartbeat, x => _model.TelnetHeartbeat = x);
+
+            EnableWhenServiceIs(TelnetEnabledSelector, () => _model.TelnetEnabled, TelnetPortField, TelnetHeartbeatSelector);
         }
 
         private void AddRloginStep()
@@ -338,14 +350,37 @@ namespace MBBSEmu.UI.Setup
             var step = AddStep(EnumSetupStep.Rlogin, SetupWizardText.RloginTitle, SetupWizardText.RloginHelp);
             View previous = null;
 
-            AddOptions(step, ref previous, SetupWizardText.RloginServerLabel, SetupWizardText.RloginEnabledHelp,
+            RloginEnabledSelector = AddOptions(step, ref previous, SetupWizardText.RloginServerLabel, SetupWizardText.RloginEnabledHelp,
                 SetupWizardText.Enabled, SetupWizardText.Disabled, _model.RloginEnabled, x => _model.RloginEnabled = x);
-            AddTextField(step, ref previous, SetupWizardText.RloginPortLabel, SetupWizardText.RloginPortHelp, 6,
+            RloginPortField = AddTextField(step, ref previous, SetupWizardText.RloginPortLabel, SetupWizardText.RloginPortHelp, 6,
                 _model.RloginPort, x => _model.RloginPort = x, digitsOnly: true);
-            AddTextField(step, ref previous, SetupWizardText.RloginRemoteIPLabel, SetupWizardText.RloginRemoteIPHelp, 15,
+            RloginRemoteIPField = AddTextField(step, ref previous, SetupWizardText.RloginRemoteIPLabel, SetupWizardText.RloginRemoteIPHelp, 15,
                 _model.RloginRemoteIP, x => _model.RloginRemoteIP = x);
-            AddOptions(step, ref previous, SetupWizardText.RloginPortPerModuleLabel, SetupWizardText.RloginPortPerModuleHelp,
+            RloginPortPerModuleSelector = AddOptions(step, ref previous, SetupWizardText.RloginPortPerModuleLabel, SetupWizardText.RloginPortPerModuleHelp,
                 SetupWizardText.Yes, SetupWizardText.No, _model.RloginPortPerModule, x => _model.RloginPortPerModule = x);
+
+            EnableWhenServiceIs(RloginEnabledSelector, () => _model.RloginEnabled, RloginPortField, RloginRemoteIPField,
+                RloginPortPerModuleSelector);
+        }
+
+        /// <summary>
+        ///     Greys out a service's settings (and their labels) while the service is Disabled: they don't apply, and
+        ///     the model saves their defaults
+        /// </summary>
+        private void EnableWhenServiceIs(OptionSelector service, Func<bool> isEnabled, params View[] settings)
+        {
+            void Apply()
+            {
+                foreach (var setting in settings)
+                {
+                    setting.Enabled = isEnabled();
+                    _labels[setting].Enabled = isEnabled();
+                }
+            }
+
+            //Runs after the selector's own handler has updated the model
+            service.ValueChanged += (_, _) => Apply();
+            Apply();
         }
 
         private void AddAdvancedStep()
@@ -477,7 +512,7 @@ namespace MBBSEmu.UI.Setup
         /// <summary>
         ///     Adds "label: (•) first ( ) second" on the next rows of the step, bound to the model
         /// </summary>
-        private void AddOptions(WizardStep step, ref View previous, string labelText, string help, string first, string second,
+        private OptionSelector AddOptions(WizardStep step, ref View previous, string labelText, string help, string first, string second,
             bool value, Action<bool> set)
         {
             var options = new OptionSelector
@@ -488,6 +523,7 @@ namespace MBBSEmu.UI.Setup
             options.ValueChanged += (_, e) => set(e.NewValue == 0);
 
             AddControl(step, ref previous, labelText, help, options);
+            return options;
         }
 
         /// <summary>
@@ -506,6 +542,7 @@ namespace MBBSEmu.UI.Setup
                     panel.Text = help;
             };
 
+            _labels[control] = label;
             step.Add(label, control);
             previous = control;
         }

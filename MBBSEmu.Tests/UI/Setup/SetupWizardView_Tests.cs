@@ -108,6 +108,44 @@ namespace MBBSEmu.Tests.UI.Setup
         }
 
         [Fact]
+        public void TelnetDisabled_GreysOutItsSettings()
+        {
+            Show();
+            GoTo(EnumSetupStep.Telnet);
+
+            _view.TelnetEnabledSelector.Value = 1;
+
+            _model.TelnetEnabled.Should().BeFalse();
+            _view.TelnetPortField.Enabled.Should().BeFalse();
+            _view.TelnetHeartbeatSelector.Enabled.Should().BeFalse();
+
+            _view.TelnetEnabledSelector.Value = 0;
+
+            _view.TelnetPortField.Enabled.Should().BeTrue();
+            _view.TelnetHeartbeatSelector.Enabled.Should().BeTrue();
+        }
+
+        /// <summary>
+        ///     Rlogin starts disabled, so its settings start greyed out
+        /// </summary>
+        [Fact]
+        public void RloginDisabledByDefault_StartsGreyedOut()
+        {
+            Show();
+            GoTo(EnumSetupStep.Rlogin);
+
+            _view.RloginPortField.Enabled.Should().BeFalse();
+            _view.RloginRemoteIPField.Enabled.Should().BeFalse();
+            _view.RloginPortPerModuleSelector.Enabled.Should().BeFalse();
+
+            _view.RloginEnabledSelector.Value = 0;
+
+            _view.RloginPortField.Enabled.Should().BeTrue();
+            _view.RloginRemoteIPField.Enabled.Should().BeTrue();
+            _view.RloginPortPerModuleSelector.Enabled.Should().BeTrue();
+        }
+
+        [Fact]
         public void TypingInField_UpdatesModel()
         {
             Show();

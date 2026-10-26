@@ -28,6 +28,13 @@ namespace MBBSEmu.UI.Setup
     {
         public static readonly IReadOnlyList<string> DefaultKeys = new[] { "DEMO", "NORMAL", "USER" };
 
+        //Service defaults, also what's saved for a service that is disabled
+        public const string DefaultTelnetPort = "23";
+        public const bool DefaultTelnetHeartbeat = false;
+        public const string DefaultRloginPort = "513";
+        public const string DefaultRloginRemoteIP = "127.0.0.1";
+        public const bool DefaultRloginPortPerModule = true;
+
         private readonly List<string> _keys = new(DefaultKeys);
 
         public SetupWizardModel(Random random)
@@ -47,13 +54,13 @@ namespace MBBSEmu.UI.Setup
         public bool DoLoginRoutine { get; set; } = true;
 
         public bool TelnetEnabled { get; set; } = true;
-        public string TelnetPort { get; set; } = "23";
-        public bool TelnetHeartbeat { get; set; }
+        public string TelnetPort { get; set; } = DefaultTelnetPort;
+        public bool TelnetHeartbeat { get; set; } = DefaultTelnetHeartbeat;
 
         public bool RloginEnabled { get; set; }
-        public string RloginPort { get; set; } = "513";
-        public string RloginRemoteIP { get; set; } = "127.0.0.1";
-        public bool RloginPortPerModule { get; set; } = true;
+        public string RloginPort { get; set; } = DefaultRloginPort;
+        public string RloginRemoteIP { get; set; } = DefaultRloginRemoteIP;
+        public bool RloginPortPerModule { get; set; } = DefaultRloginPortPerModule;
 
         public string DatabaseFilename { get; set; } = "mbbsemu.db";
         public string BtrieveCacheSize { get; set; } = "4";
@@ -112,12 +119,13 @@ namespace MBBSEmu.UI.Setup
                         errors.Add(SetupWizardText.ValidRegistrationNumber);
                     break;
 
-                case EnumSetupStep.Telnet:
-                    ValidatePort(TelnetEnabled, TelnetPort, SetupWizardText.TelnetPortRequired, SetupWizardText.ValidTelnetPort, errors);
+                //A disabled service's settings are greyed out and saved as defaults, so they aren't checked
+                case EnumSetupStep.Telnet when TelnetEnabled:
+                    ValidatePort(TelnetPort, SetupWizardText.TelnetPortRequired, SetupWizardText.ValidTelnetPort, errors);
                     break;
 
-                case EnumSetupStep.Rlogin:
-                    ValidatePort(RloginEnabled, RloginPort, SetupWizardText.RloginPortRequired, SetupWizardText.ValidRloginPort, errors);
+                case EnumSetupStep.Rlogin when RloginEnabled:
+                    ValidatePort(RloginPort, SetupWizardText.RloginPortRequired, SetupWizardText.ValidRloginPort, errors);
 
                     if (!IPAddress.TryParse(RloginRemoteIP, out _))
                         errors.Add(SetupWizardText.ValidRloginRemoteIP);
@@ -153,6 +161,10 @@ namespace MBBSEmu.UI.Setup
             _ => SetupWizardText.ErrorTitle
         };
 
+        /// <summary>
+        ///     Settings to save. A disabled service's other settings are saved as their defaults, so whatever was left
+        ///     in its greyed-out fields can't end up in the file.
+        /// </summary>
         public AppSettings ToAppSettings() => new()
         {
             BBSTitle = BbsName,
@@ -161,12 +173,12 @@ namespace MBBSEmu.UI.Setup
             RegistrationNumber = RegistrationNumber,
             ModuleDoLoginRoutine = DoLoginRoutine,
             TelnetEnabled = TelnetEnabled,
-            TelnetPort = TelnetPort,
-            TelnetHeartbeat = TelnetHeartbeat,
+            TelnetPort = TelnetEnabled ? TelnetPort : DefaultTelnetPort,
+            TelnetHeartbeat = TelnetEnabled ? TelnetHeartbeat : DefaultTelnetHeartbeat,
             RloginEnabled = RloginEnabled,
-            RloginPort = RloginPort,
-            RloginRemoteIP = RloginRemoteIP,
-            RloginPortPerModule = RloginPortPerModule,
+            RloginPort = RloginEnabled ? RloginPort : DefaultRloginPort,
+            RloginRemoteIP = RloginEnabled ? RloginRemoteIP : DefaultRloginRemoteIP,
+            RloginPortPerModule = RloginEnabled ? RloginPortPerModule : DefaultRloginPortPerModule,
             UserDatabaseFilename = DatabaseFilename,
             BtrieveCacheSize = TryParseNumber(BtrieveCacheSize, out var cacheSize) ? cacheSize : 0,
             AccountDefaultKeys = _keys.ToArray()
@@ -177,12 +189,11 @@ namespace MBBSEmu.UI.Setup
         /// </summary>
         public string ToJson() => JsonSerializer.Serialize(ToAppSettings(), new JsonSerializerOptions { WriteIndented = true });
 
-        private static void ValidatePort(bool enabled, string port, string requiredMessage, string invalidMessage, List<string> errors)
+        private static void ValidatePort(string port, string requiredMessage, string invalidMessage, List<string> errors)
         {
             if (string.IsNullOrEmpty(port))
             {
-                if (enabled)
-                    errors.Add(requiredMessage);
+                errors.Add(requiredMessage);
                 return;
             }
 

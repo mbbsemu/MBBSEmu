@@ -133,6 +133,7 @@ namespace MBBSEmu.Tests.UI.Setup
         [InlineData("99999999999")]
         public void Validate_Rlogin_PortOutOfRange(string port)
         {
+            _model.RloginEnabled = true;
             _model.RloginPort = port;
 
             _model.Validate(EnumSetupStep.Rlogin).Should().Equal(SetupWizardText.ValidRloginPort);
@@ -141,9 +142,71 @@ namespace MBBSEmu.Tests.UI.Setup
         [Fact]
         public void Validate_Rlogin_RemoteIP()
         {
+            _model.RloginEnabled = true;
             _model.RloginRemoteIP = "999.1.1.1";
 
             _model.Validate(EnumSetupStep.Rlogin).Should().Equal(SetupWizardText.ValidRloginRemoteIP);
+        }
+
+        /// <summary>
+        ///     A disabled service's settings are greyed out in the wizard, so they must not block it either
+        /// </summary>
+        [Fact]
+        public void Validate_Telnet_DisabledIgnoresInvalidPort()
+        {
+            _model.TelnetEnabled = false;
+            _model.TelnetPort = "0";
+
+            _model.Validate(EnumSetupStep.Telnet).Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Validate_Rlogin_DisabledIgnoresPortAndRemoteIP()
+        {
+            _model.RloginEnabled = false;
+            _model.RloginPort = "0";
+            _model.RloginRemoteIP = "999.1.1.1";
+
+            _model.Validate(EnumSetupStep.Rlogin).Should().BeEmpty();
+        }
+
+        [Fact]
+        public void ToAppSettings_DisabledServicesSaveTheirDefaults()
+        {
+            _model.TelnetEnabled = false;
+            _model.TelnetPort = "0";
+            _model.TelnetHeartbeat = true;
+            _model.RloginEnabled = false;
+            _model.RloginPort = "1";
+            _model.RloginRemoteIP = "not an ip";
+            _model.RloginPortPerModule = false;
+
+            var settings = _model.ToAppSettings();
+
+            settings.TelnetEnabled.Should().BeFalse();
+            settings.TelnetPort.Should().Be("23");
+            settings.TelnetHeartbeat.Should().BeFalse();
+            settings.RloginEnabled.Should().BeFalse();
+            settings.RloginPort.Should().Be("513");
+            settings.RloginRemoteIP.Should().Be("127.0.0.1");
+            settings.RloginPortPerModule.Should().BeTrue();
+        }
+
+        [Fact]
+        public void ToAppSettings_EnabledServicesSaveWhatWasEntered()
+        {
+            _model.RloginEnabled = true;
+            _model.RloginPort = "2513";
+            _model.RloginRemoteIP = "10.0.0.5";
+            _model.RloginPortPerModule = false;
+            _model.TelnetHeartbeat = true;
+
+            var settings = _model.ToAppSettings();
+
+            settings.RloginPort.Should().Be("2513");
+            settings.RloginRemoteIP.Should().Be("10.0.0.5");
+            settings.RloginPortPerModule.Should().BeFalse();
+            settings.TelnetHeartbeat.Should().BeTrue();
         }
 
         [Fact]
