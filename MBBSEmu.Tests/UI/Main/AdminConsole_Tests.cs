@@ -69,7 +69,8 @@ namespace MBBSEmu.Tests.UI.Main
 
         private void Stop() => Interlocked.Increment(ref _stops);
 
-        private AdminConsoleResult Run(Action startServices, Action stopServices, string startupWarning = null)
+        private AdminConsoleResult Run(Action startServices, Action stopServices, string startupWarning = null,
+            bool realDialogs = false)
         {
             _console = new AdminConsole(new AdminConsoleOptions
             {
@@ -93,7 +94,7 @@ namespace MBBSEmu.Tests.UI.Main
                         });
                     return app;
                 },
-                CreateDialogs = _ => _dialogs,
+                CreateDialogs = app => realDialogs ? new TerminalGuiAdminConsoleDialogs(app, "test") : _dialogs,
                 UtcNow = () => new DateTime(Interlocked.Read(ref _clockTicks), DateTimeKind.Utc),
                 ExitProcess = code =>
                 {
@@ -215,6 +216,36 @@ namespace MBBSEmu.Tests.UI.Main
 
             result.Outcome.Should().Be(EnumAdminConsoleOutcome.ForceQuit);
             _dialogs.ShutdownAsks.Should().Be(0);
+            _exitCodes.Should().Equal(1);
+        }
+
+        /// <summary>
+        ///     A signal (e.g. an SSH drop) while a dialog is up: nobody is there to close it, so the console must
+        /// </summary>
+        [Fact]
+        public void UnattendedShutdownWhileDialogOpen_Exits()
+        {
+            KeyAt(100, Key.Q.WithCtrl);
+            At(400, _ => _console.RequestShutdown(unattended: true));
+
+            var result = Run(Start, Stop, realDialogs: true);
+
+            result.Outcome.Should().Be(EnumAdminConsoleOutcome.Shutdown);
+            _stops.Should().Be(1);
+        }
+
+        [Fact]
+        public void UnattendedDeadlineWhileDialogOpen_ForceQuits()
+        {
+            using var stopGate = new ManualResetEventSlim();
+            KeyAt(100, Key.Q.WithCtrl);
+            At(400, _ => _console.RequestShutdown(unattended: true));
+            At(600, _ => Interlocked.Add(ref _clockTicks, TimeSpan.FromSeconds(16).Ticks));
+
+            var result = Run(Start, () => stopGate.Wait(TimeSpan.FromSeconds(10)), realDialogs: true);
+            stopGate.Set();
+
+            result.Outcome.Should().Be(EnumAdminConsoleOutcome.ForceQuit);
             _exitCodes.Should().Equal(1);
         }
 

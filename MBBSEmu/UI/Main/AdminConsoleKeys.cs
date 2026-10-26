@@ -39,5 +39,18 @@ namespace MBBSEmu.UI.Main
 
             return EnumConsoleKeyAction.None;
         }
+
+        /// <summary>
+        ///     What to do with a key, given whether the console (rather than a dialog) is on top. Dialogs handle their
+        ///     own keys, so Esc can close them, but Ctrl+Z is swallowed everywhere: Terminal.Gui's Suspend binding is
+        ///     application-wide and would freeze the BBS even from under a dialog.
+        /// </summary>
+        public static EnumConsoleKeyAction Decide(Key key, bool consoleOnTop)
+        {
+            if (key.KeyCode == Key.Z.WithCtrl.KeyCode)
+                return EnumConsoleKeyAction.Swallow;
+
+            return consoleOnTop ? Classify(key) : EnumConsoleKeyAction.None;
+        }
     }
 }

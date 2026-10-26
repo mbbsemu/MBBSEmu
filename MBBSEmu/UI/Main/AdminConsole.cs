@@ -103,6 +103,7 @@ namespace MBBSEmu.UI.Main
         private volatile Exception _startException;
         private Exception _uiException;
         private string _forceQuitMessage;
+        private bool _ending;
 
         public AdminConsole(AdminConsoleOptions options)
         {
@@ -158,7 +159,7 @@ namespace MBBSEmu.UI.Main
                     catch (Exception e)
                     {
                         _startException = e;
-                        _app.Invoke(() => _app.RequestStop(_view));
+                        _app.Invoke(EndLoop);
                     }
                 });
 
@@ -273,11 +274,36 @@ namespace MBBSEmu.UI.Main
         private void ForceExit(string message)
         {
             _forceQuitMessage ??= message;
-            _app.RequestStop(_view);
+            EndLoop();
+        }
+
+        /// <summary>
+        ///     Ends the UI loop even if a dialog is open: a stop request on the console only takes effect once every
+        ///     dialog above it has closed, and after a signal nobody is there to close them. The refresh timer keeps
+        ///     calling StopTopmost until the console itself has stopped.
+        /// </summary>
+        private void EndLoop()
+        {
+            _ending = true;
+            StopTopmost();
+        }
+
+        private void StopTopmost()
+        {
+            if (_app.TopRunnable != null && !ReferenceEquals(_app.TopRunnableView, _view))
+                _app.RequestStop(_app.TopRunnable);
+            else
+                _app.RequestStop(_view);
         }
 
         private bool Refresh()
         {
+            if (_ending)
+            {
+                StopTopmost();
+                return true;
+            }
+
             try
             {
                 var sessions = _options.GetSessions();
@@ -288,34 +314,23 @@ namespace MBBSEmu.UI.Main
                     ChannelList.CountOnline(_options.ChannelCount, sessions));
 
                 if (_startException != null || _coordinator.Phase == EnumShutdownPhase.Stopped)
-                {
-                    _app.RequestStop(_view);
-                    return false;
-                }
-
-                if (_coordinator.DeadlineExpired)
-                {
+                    EndLoop();
+                else if (_coordinator.DeadlineExpired)
                     ForceExit(AdminConsoleText.UnattendedTimeoutExit);
-                    return false;
-                }
 
                 return true;
             }
             catch (Exception e)
             {
                 _uiException ??= e;
-                _app.RequestStop(_view);
-                return false;
+                EndLoop();
+                return true;
             }
         }
 
         private void OnKeyDown(object sender, Key key)
         {
-            //Dialogs on top of the console handle their own keys (Esc closes them)
-            if (_app.TopRunnableView != _view)
-                return;
-
-            switch (AdminConsoleKeys.Classify(key))
+            switch (AdminConsoleKeys.Decide(key, consoleOnTop: _app.TopRunnableView == _view))
             {
                 case EnumConsoleKeyAction.Swallow:
                     key.Handled = true;
