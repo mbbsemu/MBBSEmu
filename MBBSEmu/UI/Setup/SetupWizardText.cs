@@ -116,7 +116,7 @@ namespace MBBSEmu.UI.Setup
 
         public const string DefaultKeysLabel = "Default User Keys: ";
         public const string AddKeyButton = "+";
-        public const string RemoveKeyButton = "-";
+        public const string DeleteKeyButton = "Delete";
         public const string DefaultsButton = "Defaults";
 
         public const string ErrorTitle = "Error";

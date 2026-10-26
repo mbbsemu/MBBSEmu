@@ -108,6 +108,8 @@ namespace MBBSEmu.UI.Setup
         internal OptionSelector RloginPortPerModuleSelector { get; private set; }
         internal TextField KeyField { get; private set; }
         internal Button AddKeyButton { get; private set; }
+        internal ListView KeysList { get; private set; }
+        internal Button DeleteKeyButton { get; private set; }
 
         /// <summary>
         ///     The step's help panel, which shows the focused field's help
@@ -416,30 +418,29 @@ namespace MBBSEmu.UI.Setup
         {
             var step = AddStep(EnumSetupStep.Security, SetupWizardText.SecurityTitle, SetupWizardText.SecurityHelp);
 
-            //Label, then the field with its +/- buttons, then the list with Defaults beside it: the help pane on the
-            //right leaves about 40 columns, so nothing sits to the right of the label
+            //The input box and its + button only add keys; Delete and Defaults sit beside the list and act on it.
+            //The help pane on the right leaves about 40 columns, so nothing sits to the right of the label.
             var label = new Label { Text = SetupWizardText.DefaultKeysLabel, X = 1, Y = 1 };
             KeyField = new TextField { X = 1, Y = Pos.Bottom(label) + 1, Width = 14 };
             KeyField.SetScheme(FieldScheme);
             AddKeyButton = new Button { Text = SetupWizardText.AddKeyButton, X = Pos.Right(KeyField) + 1, Y = Pos.Top(KeyField) };
-            var removeKeyButton = new Button { Text = SetupWizardText.RemoveKeyButton, X = Pos.Right(AddKeyButton) + 1, Y = Pos.Top(KeyField) };
 
-            var keyList = new ListView
+            KeysList = new ListView
             {
                 X = 1,
                 Y = Pos.Bottom(KeyField) + 2,
                 Width = 14,
                 Height = Dim.Fill(1)
             };
-            keyList.SetSource(_keyItems);
+            KeysList.SetSource(_keyItems);
             RefreshKeys();
 
-            var defaultsButton = new Button { Text = SetupWizardText.DefaultsButton, X = Pos.Right(keyList) + 1, Y = Pos.Top(keyList) };
-
-            keyList.ValueChanged += (_, e) =>
+            DeleteKeyButton = new Button { Text = SetupWizardText.DeleteKeyButton, X = Pos.Right(KeysList) + 1, Y = Pos.Top(KeysList) };
+            var defaultsButton = new Button
             {
-                if (e.NewValue is { } index && index >= 0 && index < _model.Keys.Count)
-                    KeyField.Text = _model.Keys[index];
+                Text = SetupWizardText.DefaultsButton,
+                X = Pos.Left(DeleteKeyButton),
+                Y = Pos.Bottom(DeleteKeyButton) + 1
             };
 
             AddKeyButton.Accepting += (_, e) =>
@@ -456,17 +457,16 @@ namespace MBBSEmu.UI.Setup
                 KeyField.Text = string.Empty;
             };
 
-            removeKeyButton.Accepting += (_, e) =>
+            DeleteKeyButton.Accepting += (_, e) =>
             {
                 e.Handled = true;
-                if (!_model.RemoveKey(keyList.SelectedItem ?? -1))
+                if (!_model.RemoveKey(KeysList.SelectedItem ?? -1))
                 {
                     _dialogs.ShowError(SetupWizardText.ErrorTitle, SetupWizardText.NoKeySelected);
                     return;
                 }
 
                 RefreshKeys();
-                KeyField.Text = string.Empty;
             };
 
             defaultsButton.Accepting += (_, e) =>
@@ -474,10 +474,9 @@ namespace MBBSEmu.UI.Setup
                 e.Handled = true;
                 _model.ResetKeys();
                 RefreshKeys();
-                KeyField.Text = string.Empty;
             };
 
-            step.Add(label, KeyField, AddKeyButton, removeKeyButton, keyList, defaultsButton);
+            step.Add(label, KeyField, AddKeyButton, KeysList, DeleteKeyButton, defaultsButton);
         }
 
         private void AddReviewStep()

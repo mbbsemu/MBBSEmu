@@ -252,6 +252,59 @@ namespace MBBSEmu.Tests.UI.Setup
             _model.Keys.Should().Equal("DEMO", "NORMAL", "USER");
         }
 
+        /// <summary>
+        ///     The input box only adds keys; deleting works on the list's selection, so picking a key in the list
+        ///     must not put it in the input box
+        /// </summary>
+        [Fact]
+        public void SelectingAKey_LeavesTheInputBoxAlone()
+        {
+            Show();
+            GoTo(EnumSetupStep.Security);
+
+            _view.KeysList.SelectedItem = 1;
+
+            _view.KeyField.Text.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void DeleteButton_RemovesTheSelectedKey()
+        {
+            Show();
+            GoTo(EnumSetupStep.Security);
+            _view.KeyField.Text = "SYSOP";
+            _view.KeysList.SelectedItem = 1;
+
+            _view.DeleteKeyButton.InvokeCommand(Command.Accept);
+
+            _model.Keys.Should().Equal("DEMO", "USER");
+            _view.KeyField.Text.Should().Be("SYSOP", "deleting a key doesn't touch what's being typed");
+        }
+
+        [Fact]
+        public void DeleteButton_WithNothingSelected_ShowsError()
+        {
+            Show();
+            GoTo(EnumSetupStep.Security);
+            _view.KeysList.SelectedItem = null;
+
+            _view.DeleteKeyButton.InvokeCommand(Command.Accept);
+
+            _dialogs.Errors.Should().Equal((SetupWizardText.ErrorTitle, SetupWizardText.NoKeySelected));
+            _model.Keys.Should().Equal("DEMO", "NORMAL", "USER");
+        }
+
+        [Fact]
+        public void DeleteButton_SitsBesideTheListNotTheInputBox()
+        {
+            Show();
+            GoTo(EnumSetupStep.Security);
+            _harness.Screen();
+
+            _view.DeleteKeyButton.Frame.Y.Should().Be(_view.KeysList.Frame.Y);
+            _view.DeleteKeyButton.Frame.X.Should().BeGreaterThan(_view.KeysList.Frame.Right - 1);
+        }
+
         [Fact]
         public void ReviewStep_ShowsCurrentValues()
         {
