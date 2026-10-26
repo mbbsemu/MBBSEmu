@@ -35,6 +35,9 @@ namespace MBBSEmu.UI.Main
             };
             dialog.SetScheme(ConsoleTheme.Base);
 
+            //TextView is marked obsolete in favor of a separate editor package, but it is still the built-in
+            //read-only, word-wrapping, scrollable text view, which is all this dialog needs
+#pragma warning disable CS0618
             var body = new TextView
             {
                 Text = text,
@@ -43,6 +46,7 @@ namespace MBBSEmu.UI.Main
                 Width = Dim.Fill(),
                 Height = Dim.Fill(1)
             };
+#pragma warning restore CS0618
             body.SetScheme(ConsoleTheme.Base);
             dialog.Add(body);
 

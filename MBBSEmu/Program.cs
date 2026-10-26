@@ -19,6 +19,8 @@ using MBBSEmu.Server.Socket;
 using MBBSEmu.Session.Enums;
 using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
+using MBBSEmu.UI;
+using MBBSEmu.UI.Main;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -134,9 +136,18 @@ namespace MBBSEmu
         {
             try
             {
-                // TEMPORARY (restored in Task 12/14): the Setup Wizard is being ported to Terminal.Gui v2
+                // TEMPORARY (restored in Task 14): the Setup Wizard is being ported to Terminal.Gui v2
                 if (args.Length == 0)
+                {
+                    // No terminal to run the wizard in (e.g. a service), so explain the options instead
+                    if (!TerminalEnvironment.IsInteractive())
+                    {
+                        PrintHelp(waitForKey: false);
+                        return;
+                    }
+
                     args = new[] { "-?" };
+                }
 
                 string[] programArgs = args;
 
@@ -197,12 +208,7 @@ namespace MBBSEmu
                             i++;
                             break;
                         case "-?":
-                            Console.WriteLine(
-                                new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
-                            Console.WriteLine(
-                                $"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
-                            Console.WriteLine("(Press Any Key to Exit)");
-                            Console.ReadKey();
+                            PrintHelp(waitForKey: TerminalEnvironment.IsInteractive());
                             return;
                         case "-CONFIG":
                         case "-C":
@@ -489,67 +495,29 @@ namespace MBBSEmu
                     return;
                 }
 
-                // TEMPORARY (restored in Task 12/14): the admin console is being ported to Terminal.Gui v2
-                _cliMode = true;
+                var interactiveTerminal = TerminalEnvironment.IsInteractive();
+                if (UserInterfaceModeSelector.IsHeadlessFallback(_cliMode, _isConsoleSession, _doApiReport, interactiveTerminal))
+                    _logger.Info(TerminalEnvironment.NoTerminalMessage);
 
-                // Setup and Run Host
                 var host = _serviceResolver.GetService<IMbbsHost>();
-                host.Start(_moduleConfigurations);
 
                 // API Report
                 if (_doApiReport)
                 {
+                    host.Start(_moduleConfigurations);
                     host.GenerateAPIReport();
 
                     host.Stop();
                     return;
                 }
 
-                _runningServices.Add(host);
+                // Admin Console owns the terminal until MBBSEmu shuts down
+                if (UserInterfaceModeSelector.Select(_cliMode, _isConsoleSession, _doApiReport, interactiveTerminal) ==
+                    EnumUserInterfaceMode.AdminConsole && RunAdminConsole(host, configuration))
+                    return;
 
-                // Setup and Run Telnet Server
-                if (configuration.TelnetEnabled)
-                {
-                    var telnetService = _serviceResolver.GetService<ISocketServer>();
-                    var telnetHostIP = configuration.TelnetIPAddress;
-
-                    telnetService.Start(EnumSessionType.Telnet, telnetHostIP, configuration.TelnetPort);
-                    _logger.Info($"Telnet listening on IP {telnetHostIP} port {configuration.TelnetPort}");
-
-                    _runningServices.Add(telnetService);
-                }
-
-                // Setup and Run Rlogin Server
-                if (configuration.RloginEnabled)
-                {
-                    var rloginService = _serviceResolver.GetService<ISocketServer>();
-                    var rloginHostIP = configuration.RloginIPAddress;
-
-                    rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, configuration.RloginPort);
-                    _logger.Info($"Rlogin listening on IP {rloginHostIP} port {configuration.RloginPort}");
-
-                    _runningServices.Add(rloginService);
-
-                    if (configuration.RloginPortPerModule)
-                    {
-                        var rloginPort = configuration.RloginPort + 1;
-                        foreach (var m in _moduleConfigurations)
-                        {
-                            _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
-                            rloginService = _serviceResolver.GetService<ISocketServer>();
-                            rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, rloginPort++,
-                                                m.ModuleIdentifier);
-                            _runningServices.Add(rloginService);
-                        }
-                    }
-                }
-                else
-                {
-                    _logger.Info("Rlogin Server Disabled (via appsettings.json)");
-                }
-
-                _logger.Info(
-                    $"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+                // CLI: log lines are written straight to the terminal
+                StartServices(host, configuration);
 
                 Console.CancelKeyPress += CancelKeyPressHandler;
 
@@ -558,10 +526,157 @@ namespace MBBSEmu
             }
             catch (Exception e)
             {
-                Console.WriteLine("Critical Exception has occurred:");
-                Console.WriteLine(e);
+                PrintCriticalException(e);
                 Environment.Exit(0);
             }
+        }
+
+        /// <summary>
+        ///     Starts the MajorBBS host, then the Telnet and Rlogin servers
+        /// </summary>
+        private void StartServices(IMbbsHost host, AppSettingsManager configuration)
+        {
+            host.Start(_moduleConfigurations);
+            AddRunningService(host);
+
+            // Setup and Run Telnet Server
+            if (configuration.TelnetEnabled)
+            {
+                var telnetService = _serviceResolver.GetService<ISocketServer>();
+                var telnetHostIP = configuration.TelnetIPAddress;
+
+                telnetService.Start(EnumSessionType.Telnet, telnetHostIP, configuration.TelnetPort);
+                _logger.Info($"Telnet listening on IP {telnetHostIP} port {configuration.TelnetPort}");
+
+                AddRunningService(telnetService);
+            }
+
+            // Setup and Run Rlogin Server
+            if (configuration.RloginEnabled)
+            {
+                var rloginService = _serviceResolver.GetService<ISocketServer>();
+                var rloginHostIP = configuration.RloginIPAddress;
+
+                rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, configuration.RloginPort);
+                _logger.Info($"Rlogin listening on IP {rloginHostIP} port {configuration.RloginPort}");
+
+                AddRunningService(rloginService);
+
+                if (configuration.RloginPortPerModule)
+                {
+                    var rloginPort = configuration.RloginPort + 1;
+                    foreach (var m in _moduleConfigurations)
+                    {
+                        _logger.Info($"Rlogin {m.ModuleIdentifier} listening on port {rloginPort}");
+                        rloginService = _serviceResolver.GetService<ISocketServer>();
+                        rloginService.Start(EnumSessionType.Rlogin, rloginHostIP, rloginPort++,
+                                            m.ModuleIdentifier);
+                        AddRunningService(rloginService);
+                    }
+                }
+            }
+            else
+            {
+                _logger.Info("Rlogin Server Disabled (via appsettings.json)");
+            }
+
+            _logger.Info(
+                $"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+        }
+
+        /// <summary>
+        ///     Stops every running service and waits for the MajorBBS host to finish
+        /// </summary>
+        private void StopServices()
+        {
+            foreach (var runningService in GetRunningServices())
+                runningService.Stop();
+
+            _serviceResolver.GetService<IMbbsHost>().WaitForShutdown();
+        }
+
+        // Services start on a background thread while the Admin Console runs, so the list is shared
+        private void AddRunningService(IStoppable service)
+        {
+            lock (_runningServices)
+                _runningServices.Add(service);
+        }
+
+        private List<IStoppable> GetRunningServices()
+        {
+            lock (_runningServices)
+                return _runningServices.ToList();
+        }
+
+        /// <summary>
+        ///     Runs the Admin Console until MBBSEmu shuts down
+        /// </summary>
+        /// <returns>False if no terminal UI could start, so the caller should run as CLI instead</returns>
+        private bool RunAdminConsole(IMbbsHost host, AppSettingsManager configuration)
+        {
+            var build = new ResourceManager().GetString("MBBSEmu.Assets.version.txt").Trim();
+
+            string startupWarning = null;
+            if (!TerminalEnvironment.IsUtf8Locale(OperatingSystem.IsWindows(), Environment.GetEnvironmentVariable))
+            {
+                startupWarning = TerminalEnvironment.Utf8Warning(
+                    insideTmux: !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("TMUX")));
+                Console.WriteLine(startupWarning);
+            }
+
+            var logFactory = new LogFactory();
+            var result = new AdminConsole(new AdminConsoleOptions
+            {
+                MessageLogger = logFactory.GetLogger<MessageLogger>(),
+                AuditLogger = logFactory.GetLogger<AuditLogger>(),
+                GetSessions = () => host.GetUserSessions().Select(x => new ChannelSession(x.Channel, x.Username)).ToList(),
+                ChannelCount = configuration.BBSChannels,
+                StatusRightText = StatusLine.RightText(configuration.TelnetEnabled, configuration.RloginEnabled, build),
+                Build = build,
+                StartupWarning = startupWarning
+            }).Run(() => StartServices(host, configuration), StopServices);
+
+            switch (result.Outcome)
+            {
+                case EnumAdminConsoleOutcome.TerminalUnavailable:
+                    _logger.Info(TerminalEnvironment.NoTerminalMessage);
+                    return false;
+                case EnumAdminConsoleOutcome.Shutdown:
+                    Console.WriteLine(AdminConsoleText.ShutDownComplete);
+                    break;
+                case EnumAdminConsoleOutcome.StartupFailed:
+                    PrintCriticalException(result.Exception);
+                    Environment.Exit(0);
+                    break;
+                case EnumAdminConsoleOutcome.UiFailed:
+                    PrintCriticalException(result.Exception);
+                    Environment.Exit(1);
+                    break;
+            }
+
+            return true;
+        }
+
+        private static void PrintCriticalException(Exception e)
+        {
+            Console.WriteLine("Critical Exception has occurred:");
+            Console.WriteLine(e);
+        }
+
+        /// <summary>
+        ///     Prints the command line help and version
+        /// </summary>
+        /// <param name="waitForKey">Wait for a key before returning, so a double-clicked console window stays open</param>
+        private static void PrintHelp(bool waitForKey)
+        {
+            Console.WriteLine(new ResourceManager().GetString("MBBSEmu.Assets.commandLineHelp.txt"));
+            Console.WriteLine($"Version: {new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+
+            if (!waitForKey)
+                return;
+
+            Console.WriteLine("(Press Any Key to Exit)");
+            Console.ReadKey();
         }
 
         /// <summary>
@@ -582,7 +697,7 @@ namespace MBBSEmu
 
             _logger.Warn("MBBSEmu Shutting down...");
 
-            foreach (var runningService in _runningServices)
+            foreach (var runningService in GetRunningServices())
             {
                 runningService.Stop();
             }
