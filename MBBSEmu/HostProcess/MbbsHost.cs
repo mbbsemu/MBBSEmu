@@ -545,9 +545,10 @@ namespace MBBSEmu.HostProcess
             _globalCache.Dispose();
         }
 
-        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue)
+        private void CallModuleRoutine(string routine, Action<MbbsModule> preRunCallback, ushort channel = ushort.MaxValue,
+            int moduleLimit = int.MaxValue)
         {
-            foreach (var m in _modules.Values.Where(x => (bool)x.ModuleConfig.ModuleEnabled))
+            foreach (var m in EnabledModules().Take(moduleLimit))
             {
                 if (!m.MainModuleDll.EntryPoints.TryGetValue(routine, out var routineEntryPoint)) continue;
 
@@ -767,6 +768,7 @@ namespace MBBSEmu.HostProcess
             // cross-module state corruption when modules call functions like DosGetSegDesc
             if (!_configuration.ModuleDoLoginRoutine)
             {
+                EndLogonRoutines(session);
                 session.SessionState = EnumSessionState.MainMenuDisplay;
                 return;
             }
@@ -793,11 +795,17 @@ namespace MBBSEmu.HostProcess
         }
 
         /// <summary>
+        ///     Enabled modules, in the order their routines are called
+        /// </summary>
+        private List<MbbsModule> EnabledModules() => _modules.Values
+            .Where(m => (bool)m.ModuleConfig.ModuleEnabled)
+            .ToList();
+
+        /// <summary>
         ///     Modules with a Login Routine, in the order they're called
         /// </summary>
-        private List<MbbsModule> LogonModules() => _modules.Values
-            .Where(m => (bool)m.ModuleConfig.ModuleEnabled &&
-                        m.MainModuleDll.EntryPoints.TryGetValue("lonrou", out var lonrou) &&
+        private List<MbbsModule> LogonModules() => EnabledModules()
+            .Where(m => m.MainModuleDll.EntryPoints.TryGetValue("lonrou", out var lonrou) &&
                         lonrou.Segment != 0 && lonrou.Offset != 0)
             .ToList();
 
@@ -831,15 +839,16 @@ namespace MBBSEmu.HostProcess
 
         /// <summary>
         ///     Sets up the user the way MajorBBS does before calling a module's Login Routine: class SUPLON,
-        ///     state set to that module, substt 0 and an empty VDA.
+        ///     state set to that module, substt 0, an empty VDA, and the module counted in LogonModuleLimit.
         ///
         ///     Modules can tell a Login Routine call from a STTROU call by the class. Trade Wars 2002 uses one
         ///     routine for both, and with ACTUSR it starts its game menu instead of its logon notice.
         /// </summary>
         /// <param name="session"></param>
         /// <param name="module"></param>
-        private static void BeginLogonRoutine(SessionBase session, MbbsModule module)
+        private void BeginLogonRoutine(SessionBase session, MbbsModule module)
         {
+            session.LogonModuleLimit = EnabledModules().IndexOf(module) + 1;
             session.UsrPtr.UserClass = User.SUPLON;
             session.UsrPtr.State = module.MainModuleDll.StateCode;
             session.UsrPtr.Substt = 0;
@@ -852,6 +861,7 @@ namespace MBBSEmu.HostProcess
         /// <param name="session"></param>
         private static void EndLogonRoutines(SessionBase session)
         {
+            session.LogonModuleLimit = int.MaxValue;
             session.UsrPtr.UserClass = User.ACTUSR;
             session.UsrPtr.State = 0;
             session.UsrPtr.Substt = 0;
@@ -1391,9 +1401,11 @@ namespace MBBSEmu.HostProcess
 
             Logger.Info($"Removing Channel: {channel}");
 
-            CallModuleRoutine("huprou", preRunCallback: null, channel);
-
             var session = _channelDictionary[channel];
+
+            //As MajorBBS's loscar(): only the modules whose Login Routine the user got to are told of the hangup
+            CallModuleRoutine("huprou", preRunCallback: null, channel, session.LogonModuleLimit);
+
             if (stopSession)
                 session.Stop();
             session.SessionState = EnumSessionState.Disconnected;

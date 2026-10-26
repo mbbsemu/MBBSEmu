@@ -79,6 +79,12 @@ namespace MBBSEmu.Session
         public MbbsModule CurrentModule { get; set; }
 
         /// <summary>
+        ///     How far the login sequence got, as a count of the host's modules (MajorBBS's usrptr->linlim).
+        ///     A disconnect runs the Hangup Routines of only that many modules, so none until the user logs in.
+        /// </summary>
+        public int LogonModuleLimit { get; set; }
+
+        /// <summary>
         ///     MajorBBS User Status
         /// </summary>
         public Queue<EnumUserStatus> Status { get; set; }
@@ -360,6 +366,7 @@ namespace MBBSEmu.Session
             UsrAcc = new UserAccount();
             ExtUsrAcc = new ExtUser();
             CurrentModule = null;
+            LogonModuleLimit = 0;
             Status = new Queue<EnumUserStatus>();
             SessionTimer.Reset();
 
