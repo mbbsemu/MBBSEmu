@@ -66,8 +66,10 @@ namespace MBBSEmu.UI.Main
 
         /// <summary>
         ///     Yes/No question that defaults to No; Esc or closing the dialog also counts as No
+        ///
+        ///     MessageBox makes its last button the default (what Enter presses), so No goes last.
         /// </summary>
         private bool AskYesNo(string title, string message) =>
-            MessageBox.Query(_app, title, message, AdminConsoleText.NoButton, AdminConsoleText.YesButton) == 1;
+            MessageBox.Query(_app, title, message, AdminConsoleText.YesButton, AdminConsoleText.NoButton) == 0;
     }
 }

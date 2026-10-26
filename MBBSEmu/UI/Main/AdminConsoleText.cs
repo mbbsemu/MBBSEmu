@@ -7,8 +7,8 @@ namespace MBBSEmu.UI.Main
     {
         public const string AboutTitle = "About MBBSEmu";
         public const string OkButton = "OK";
-        public const string YesButton = "Yes";
-        public const string NoButton = "No";
+        public const string YesButton = "_Yes";
+        public const string NoButton = "_No";
 
         public const string AuditLogTitle = "Audit Log";
         public const string ApplicationLogTitle = "Application Log";
