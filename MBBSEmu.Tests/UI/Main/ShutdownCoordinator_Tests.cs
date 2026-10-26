@@ -1,7 +1,9 @@
 using FluentAssertions;
 using MBBSEmu.UI.Main;
 using System;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace MBBSEmu.Tests.UI.Main
@@ -93,6 +95,34 @@ namespace MBBSEmu.Tests.UI.Main
             _now = Start.AddSeconds(15);
             coordinator.DeadlineExpired.Should().BeTrue();
             release.Set();
+        }
+
+        /// <summary>
+        ///     Stopping must not wait for a free thread-pool thread: under load (or a long WaitForShutdown) the pool
+        ///     can be busy for many seconds, and the 15 second bound would expire before stopping even began
+        /// </summary>
+        [Fact]
+        public void Begin_StopsPromptlyEvenWhenThreadPoolIsBusy()
+        {
+            using var release = new ManualResetEventSlim();
+            ThreadPool.GetMinThreads(out var minWorkers, out _);
+            var blockers = Enumerable.Range(0, minWorkers * 4)
+                .Select(_ => Task.Run(() => release.Wait(TimeSpan.FromSeconds(10))))
+                .ToArray();
+            try
+            {
+                using var stopped = new ManualResetEventSlim();
+                var coordinator = Create(() => stopped.Set());
+
+                coordinator.Begin(unattended: false);
+
+                stopped.Wait(TimeSpan.FromSeconds(1)).Should().BeTrue();
+            }
+            finally
+            {
+                release.Set();
+                Task.WaitAll(blockers);
+            }
         }
 
         [Fact]

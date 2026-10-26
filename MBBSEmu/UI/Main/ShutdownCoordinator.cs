@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MBBSEmu.UI.Main
@@ -78,7 +79,9 @@ namespace MBBSEmu.UI.Main
                 _phase = EnumShutdownPhase.ShuttingDown;
             }
 
-            Task.Run(StopServices);
+            //A dedicated thread: stopping can block for a long time in WaitForShutdown, and must not wait behind
+            //a busy thread pool for a thread to start on
+            Task.Factory.StartNew(StopServices, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             return true;
         }
 

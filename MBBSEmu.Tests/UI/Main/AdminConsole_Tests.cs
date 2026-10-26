@@ -103,7 +103,9 @@ namespace MBBSEmu.Tests.UI.Main
                 }
             });
 
-            var run = Task.Run(() => _console.Run(startServices, stopServices));
+            //Its own thread, so a busy thread pool (the full suite runs in parallel) can't delay the console starting
+            var run = Task.Factory.StartNew(() => _console.Run(startServices, stopServices), CancellationToken.None,
+                TaskCreationOptions.LongRunning, TaskScheduler.Default);
             run.Wait(TimeSpan.FromSeconds(10)).Should().BeTrue("the admin console should exit");
             return run.Result;
         }

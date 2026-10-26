@@ -150,7 +150,8 @@ namespace MBBSEmu.UI.Main
                 RegisterSignals(signals);
                 _app.AddTimeout(RefreshInterval, Refresh);
 
-                _startTask = Task.Run(() =>
+                //Module loading runs for a while; give it its own thread rather than a thread-pool one
+                _startTask = Task.Factory.StartNew(() =>
                 {
                     try
                     {
@@ -161,7 +162,7 @@ namespace MBBSEmu.UI.Main
                         _startException = e;
                         _app.Invoke(EndLoop);
                     }
-                });
+                }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
                 try
                 {
