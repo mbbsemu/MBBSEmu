@@ -2,8 +2,11 @@ using FluentAssertions;
 using MBBSEmu.UI.Setup;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Input;
 using Xunit;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace MBBSEmu.Tests.UI.Setup
 {
@@ -126,7 +129,61 @@ namespace MBBSEmu.Tests.UI.Setup
 
             _view.ChannelsField.SetFocus();
 
-            _view.Wizard.CurrentStep!.HelpText.Should().Be(SetupWizardText.ChannelsHelp);
+            _view.HelpPanel(EnumSetupStep.General).Text.Should().Be(SetupWizardText.ChannelsHelp);
+        }
+
+        /// <summary>
+        ///     The Welcome step has no fields, so its text is the step's content rather than a narrow help column
+        /// </summary>
+        [Fact]
+        public void WelcomeText_UsesTheWholeStep()
+        {
+            var screen = Show(132, 40);
+
+            screen.Should().Contain(x => x.Contains("Welcome to The MajorBBS Emulation Project!"));
+            screen.Should().Contain(x => x.Contains("MBBSEmu was created to allow quick, easy access to the Games we all love"));
+        }
+
+        /// <summary>
+        ///     Terminal.Gui's built-in help pane is a fixed 25 columns drawn in dark grey on black; the wizard's own
+        ///     panel uses the step's colors and grows with the terminal
+        /// </summary>
+        [Fact]
+        public void HelpPanel_IsReadableAndWidensOnLargeTerminals()
+        {
+            Show(200, 60);
+            GoTo(EnumSetupStep.General);
+            _view.BbsNameField.SetFocus();
+
+            _harness.Screen().Should().Contain(x =>
+                x.Contains("The Name of your BBS or the Name you want to give"));
+
+            var scheme = _view.HelpPanel(EnumSetupStep.General).GetScheme();
+            var stepColors = new Attribute(ColorName16.Black, ColorName16.Gray);
+            scheme.Normal.Should().Be(stepColors);
+            scheme.ReadOnly.Should().Be(stepColors);
+            scheme.Editable.Should().Be(stepColors);
+        }
+
+        [Fact]
+        public void At80x24_FieldsStillFitBesideTheHelp()
+        {
+            Show();
+            GoTo(EnumSetupStep.General);
+
+            var screen = _harness.Screen();
+
+            screen.Should().Contain(x => x.Contains("BBS Name: Emulated MajorBBS System"));
+            screen.Should().Contain(x => x.Contains("Run Login Routines (Global): ◉ Yes"));
+        }
+
+        [Fact]
+        public void LargeTerminal_WizardSizeIsCapped()
+        {
+            Show(200, 60);
+
+            _view.Wizard.Frame.Width.Should().Be(SetupWizardView.MaximumWidth);
+            _view.Wizard.Frame.Height.Should().Be(SetupWizardView.MaximumHeight);
         }
 
         [Fact]

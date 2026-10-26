@@ -29,6 +29,32 @@ namespace MBBSEmu.UI.Setup
         };
 
         /// <summary>
+        ///     Help text and the Welcome text: the step's own black on gray in every role, since Terminal.Gui
+        ///     otherwise derives a dim dark-grey "read-only" color that is hard to read
+        /// </summary>
+        private static readonly Scheme TextScheme = new(new Attribute(ColorName16.Black, ColorName16.Gray))
+        {
+            Focus = new Attribute(ColorName16.Black, ColorName16.Gray),
+            Active = new Attribute(ColorName16.Black, ColorName16.Gray),
+            ReadOnly = new Attribute(ColorName16.Black, ColorName16.Gray),
+            Editable = new Attribute(ColorName16.Black, ColorName16.Gray),
+            Disabled = new Attribute(ColorName16.Black, ColorName16.Gray)
+        };
+
+        /// <summary>
+        ///     Largest wizard size: bigger terminals get a centered wizard rather than a huge, mostly empty one
+        /// </summary>
+        public const int MaximumWidth = 110;
+        public const int MaximumHeight = 30;
+
+        /// <summary>
+        ///     Columns kept for labels and fields to the left of the help panel
+        /// </summary>
+        private const int FieldsWidth = 46;
+
+        private const int MinimumHelpWidth = 22;
+
+        /// <summary>
         ///     Input fields: a blue box, so an empty field is still visible on the gray step
         /// </summary>
         private static readonly Scheme FieldScheme = new(new Attribute(ColorName16.White, ColorName16.Blue))
@@ -42,6 +68,8 @@ namespace MBBSEmu.UI.Setup
         private readonly Action<string, string> _writeFile;
 
         private readonly Dictionary<WizardStep, EnumSetupStep> _stepIds = new();
+        private readonly Dictionary<EnumSetupStep, View> _helpPanels = new();
+        private readonly List<View> _helpSeparators = new();
         private readonly TooSmallView _tooSmall;
         private readonly ObservableCollection<string> _keyItems = new();
         private WizardStep _reviewStep;
@@ -53,6 +81,11 @@ namespace MBBSEmu.UI.Setup
         internal TextField TelnetPortField { get; private set; }
         internal TextField KeyField { get; private set; }
         internal Button AddKeyButton { get; private set; }
+
+        /// <summary>
+        ///     The step's help panel, which shows the focused field's help
+        /// </summary>
+        internal View HelpPanel(EnumSetupStep step) => _helpPanels[step];
 
         internal EnumSetupStep CurrentStep => Wizard.CurrentStep != null && _stepIds.TryGetValue(Wizard.CurrentStep, out var step)
             ? step
@@ -80,13 +113,11 @@ namespace MBBSEmu.UI.Setup
             {
                 Title = SetupWizardText.WizardTitle,
                 X = Pos.Center(),
-                Y = Pos.Center(),
-                Width = Dim.Percent(90),
-                Height = Dim.Percent(80)
+                Y = Pos.Center()
             };
             Wizard.SetScheme(StepScheme);
 
-            AddStep(EnumSetupStep.Welcome, SetupWizardText.WelcomeTitle, SetupWizardText.WelcomeHelp);
+            AddWelcomeStep();
             AddGeneralStep();
             AddTelnetStep();
             AddRloginStep();
@@ -143,9 +174,32 @@ namespace MBBSEmu.UI.Setup
             Wizard.Visible = !tooSmall;
 
             if (tooSmall)
+            {
                 _tooSmall.Show(Math.Max(0, width - 2), Math.Max(0, height - 2));
-            else
-                _tooSmall.Hide();
+                SetNeedsLayout();
+                return;
+            }
+
+            _tooSmall.Hide();
+
+            //90% x 80% of the window as before, up to the maximum size
+            var wizardWidth = Math.Min(MaximumWidth, (width - 2) * 9 / 10);
+            var wizardHeight = Math.Min(MaximumHeight, (height - 2) * 8 / 10);
+            Wizard.Width = wizardWidth;
+            Wizard.Height = wizardHeight;
+
+            //Help gets what the fields don't need, up to half the step
+            var stepWidth = wizardWidth - 2;
+            var helpWidth = Math.Clamp(stepWidth - FieldsWidth, MinimumHelpWidth, Math.Max(MinimumHelpWidth, stepWidth / 2));
+            foreach (var separator in _helpSeparators)
+                separator.X = stepWidth - helpWidth - 1;
+
+            //One column of space after the separator
+            foreach (var panel in _helpPanels.Values)
+            {
+                panel.X = stepWidth - helpWidth + 1;
+                panel.Width = helpWidth - 1;
+            }
 
             SetNeedsLayout();
         }
@@ -183,13 +237,59 @@ namespace MBBSEmu.UI.Setup
             App?.RequestStop(this);
         }
 
+        /// <summary>
+        ///     Adds a step with its own help panel on the right (Terminal.Gui's built-in help pane is a fixed 25
+        ///     columns), showing helpText until a field takes focus. No helpText means no panel.
+        /// </summary>
         private WizardStep AddStep(EnumSetupStep id, string title, string helpText)
         {
-            var step = new WizardStep { Title = title, HelpText = helpText };
+            var step = new WizardStep { Title = title };
             step.SetScheme(StepScheme);
             _stepIds[step] = id;
+
+            if (!string.IsNullOrEmpty(helpText))
+            {
+                var separator = new Line { Orientation = Orientation.Vertical, Y = 0, Height = Dim.Fill() };
+                var panel = CreateText(helpText);
+                panel.Y = 0;
+                panel.Height = Dim.Fill();
+
+                _helpSeparators.Add(separator);
+                _helpPanels[id] = panel;
+                step.Add(separator, panel);
+            }
+
             Wizard.AddStep(step);
             return step;
+        }
+
+        /// <summary>
+        ///     The Welcome step has no fields, so its text fills the step
+        /// </summary>
+        private void AddWelcomeStep()
+        {
+            var step = AddStep(EnumSetupStep.Welcome, SetupWizardText.WelcomeTitle, string.Empty);
+
+            var welcome = CreateText(SetupWizardText.WelcomeHelp);
+            welcome.X = 1;
+            welcome.Y = 1;
+            welcome.Width = Dim.Fill(1);
+            welcome.Height = Dim.Fill();
+            step.Add(welcome);
+        }
+
+        /// <summary>
+        ///     Read-only, word-wrapped text in the step's colors that never takes focus
+        /// </summary>
+        private static View CreateText(string text)
+        {
+            //TextView is marked obsolete in favor of a separate editor package, but it is still the built-in
+            //read-only, word-wrapping text view
+#pragma warning disable CS0618
+            var view = new TextView { Text = text, ReadOnly = true, WordWrap = true, CanFocus = false };
+#pragma warning restore CS0618
+            view.SetScheme(TextScheme);
+            return view;
         }
 
         private void AddGeneralStep()
@@ -394,7 +494,7 @@ namespace MBBSEmu.UI.Setup
         ///     Places a label and its control one row below the previous control, and shows the control's help
         ///     text in the step's help pane while it has focus
         /// </summary>
-        private static void AddControl(WizardStep step, ref View previous, string labelText, string help, View control)
+        private void AddControl(WizardStep step, ref View previous, string labelText, string help, View control)
         {
             var label = new Label { Text = labelText, X = 1, Y = previous == null ? 1 : Pos.Bottom(previous) + 1 };
 
@@ -402,8 +502,8 @@ namespace MBBSEmu.UI.Setup
             control.Y = Pos.Top(label);
             control.HasFocusChanged += (_, e) =>
             {
-                if (e.NewValue)
-                    step.HelpText = help;
+                if (e.NewValue && _helpPanels.TryGetValue(_stepIds[step], out var panel))
+                    panel.Text = help;
             };
 
             step.Add(label, control);
