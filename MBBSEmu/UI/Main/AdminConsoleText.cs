@@ -23,6 +23,12 @@ namespace MBBSEmu.UI.Main
         public const string ApplicationEntryTitle = "Log Entry";
         public const string AuditEntryTitle = "Audit Entry";
 
+        public const string ShutDownComplete = "MBBSEmu shut down";
+        public const string ForceQuitExit = "MBBSEmu force quit before shutdown finished";
+        public const string UnattendedTimeoutExit = "MBBSEmu shutdown did not finish within 15 seconds; exiting";
+        public const string UiFailed = "Admin console failed";
+        public const string UnexpectedClose = "The admin console closed unexpectedly";
+
         public static string AboutMessage(string build) => "The MajorBBS Emulation Project\n" +
                                                            $"Build #{build}\n\n" +
                                                            "Open Source & Community Driven!\n" +
