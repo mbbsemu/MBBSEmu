@@ -248,7 +248,7 @@ namespace MBBSEmu.UI.Setup
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                //Keep everything entered so the sysop can pick another location
+                //Stay on Review with everything entered; the message says how to get somewhere writable
                 _dialogs.ShowError(SetupWizardText.ErrorTitle, SetupWizardText.SaveFailedMessage(path, e.Message));
                 return;
             }

@@ -162,6 +162,11 @@ namespace MBBSEmu.UI.Setup
 
         public static string SuccessMessage(string path) => $"Settings were successfully written to:\n{path}";
 
-        public static string SaveFailedMessage(string path, string reason) => $"Unable to write {path}:\n{reason}";
+        /// <summary>
+        ///     The settings always go next to MBBSEmu, so the way out of a folder that can't be written is moving MBBSEmu
+        /// </summary>
+        public static string SaveFailedMessage(string path, string reason) =>
+            $"Unable to write {path}:\n{reason}\n\n" +
+            "Move the MBBSEmu folder somewhere you can save files, such as your Documents folder, and run MBBSEmu again.";
     }
 }

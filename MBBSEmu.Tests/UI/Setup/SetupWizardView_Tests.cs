@@ -367,7 +367,9 @@ namespace MBBSEmu.Tests.UI.Setup
 
             Next();
 
-            _dialogs.Errors.Should().Equal((SetupWizardText.ErrorTitle, $"Unable to write {SettingsPath}:\nAccess to the path is denied."));
+            _dialogs.Errors.Should().Equal((SetupWizardText.ErrorTitle,
+                $"Unable to write {SettingsPath}:\nAccess to the path is denied.\n\n" +
+                "Move the MBBSEmu folder somewhere you can save files, such as your Documents folder, and run MBBSEmu again."));
             _dialogs.Saved.Should().BeEmpty();
             _view.CurrentStep.Should().Be(EnumSetupStep.Review);
             _view.Outcome.Should().BeNull();
