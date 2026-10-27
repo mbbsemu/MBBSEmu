@@ -122,12 +122,12 @@ namespace MBBSEmu
 
         /// <summary>
         ///     Started with no arguments in a terminal: MBBSEmu runs from its own folder and remembers the modules
-        ///     loaded with File > Load Module in its default modules.json
+        ///     loaded with Modules > Load Module in its default modules.json
         /// </summary>
         private bool _isGuiMode;
 
         /// <summary>
-        ///     Where modules loaded with File > Load Module are remembered
+        ///     Where modules loaded with Modules > Load Module are remembered
         /// </summary>
         private ModuleSaving _moduleSaving;
 
@@ -567,7 +567,7 @@ namespace MBBSEmu
         }
 
         /// <summary>
-        ///     Run without arguments: loads the modules saved by File > Load Module, if there are any. A file that
+        ///     Run without arguments: loads the modules saved by Modules > Load Module, if there are any. A file that
         ///     can't be read loads nothing and is left alone; Load Module then works for this session only.
         /// </summary>
         private void LoadDefaultModuleList()
@@ -714,7 +714,7 @@ namespace MBBSEmu
         }
 
         /// <summary>
-        ///     Loads modules picked with File > Load Module into the running host
+        ///     Loads modules picked with Modules > Load Module into the running host
         /// </summary>
         private ModuleLoader CreateModuleLoader(IMbbsHost host, AppSettingsManager configuration, ModuleSaving saving) =>
             new(host.LoadModule, saving,

@@ -68,7 +68,7 @@ namespace MBBSEmu.UI.Main
         public string StartupWarning { get; init; }
 
         /// <summary>
-        ///     Loads modules picked with File > Load Module, or null to leave loading off
+        ///     Loads modules picked with Modules > Load Module, or null to leave loading off
         /// </summary>
         public IModuleLoader ModuleLoader { get; init; }
 
@@ -241,7 +241,7 @@ namespace MBBSEmu.UI.Main
         public void ShowMessage(string title, string message) => InvokeWhileRunning(() => _dialogs.ShowMessage(title, message));
 
         /// <summary>
-        ///     File > Load Module: asks for a module's .MDF and loads it in the background, then shows how it went.
+        ///     Modules > Load Module: asks for a module's .MDF and loads it in the background, then shows how it went.
         ///     Must be called on the UI thread.
         /// </summary>
         private void LoadModule()

@@ -8,7 +8,7 @@ namespace MBBSEmu.UI.Modules
     public sealed record ModuleLoadReport(bool IsError, string Title, string Message);
 
     /// <summary>
-    ///     Loads modules the sysop picks with File > Load Module
+    ///     Loads modules the sysop picks with Modules > Load Module
     /// </summary>
     public interface IModuleLoader
     {

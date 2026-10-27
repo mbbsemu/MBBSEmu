@@ -20,7 +20,7 @@ namespace MBBSEmu.UI.Main
         Shutdown,
 
         /// <summary>
-        ///     Pick a module to load (File > Load Module)
+        ///     Pick a module to load (Modules > Load Module)
         /// </summary>
         LoadModule
     }

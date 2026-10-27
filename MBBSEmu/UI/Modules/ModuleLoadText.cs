@@ -15,7 +15,7 @@ namespace MBBSEmu.UI.Modules
         /// <summary>
         ///     Shown on the menu bar until a module is loaded
         /// </summary>
-        public const string NoModulesHint = "No modules loaded yet — File → Load Module (Ctrl+O)";
+        public const string NoModulesHint = "No modules loaded yet — Modules → Load Module (Ctrl+O)";
 
         public const string StartedWithConfiguration = "MBBSEmu was started with a module configuration";
         public const string UnreadableModulesFileReason = "modules.json couldn't be read";

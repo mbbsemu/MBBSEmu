@@ -67,6 +67,8 @@ namespace MBBSEmu.UI.Main
         internal TableView ApplicationLogTable { get; }
         internal TableView AuditLogTable { get; }
         internal ListView ChannelListView { get; }
+        internal MenuBar MenuBar => _menuBar;
+
         internal MenuItem ShutdownMenuItem { get; }
         internal MenuItem LoadModuleMenuItem { get; }
         internal MenuItem AboutMenuItem { get; }
@@ -89,8 +91,8 @@ namespace MBBSEmu.UI.Main
             AboutMenuItem = new MenuItem("_About", string.Empty, () => _dialogs.ShowAbout(), Key.Empty);
             _menuBar = new MenuBar(new[]
             {
-                new MenuBarItem("_File", new View[] { LoadModuleMenuItem }),
                 new MenuBarItem("_Server", new View[] { ShutdownMenuItem }),
+                new MenuBarItem("_Modules", new View[] { LoadModuleMenuItem }),
                 new MenuBarItem("_Help", new View[] { AboutMenuItem })
             })
             {
@@ -100,7 +102,7 @@ namespace MBBSEmu.UI.Main
             };
             _menuBar.SetScheme(ConsoleTheme.Menu);
 
-            //Right-aligned on the menu bar, pointing at File > Load Module until a module is loaded
+            //Right-aligned on the menu bar, pointing at Modules > Load Module until a module is loaded
             _noModulesHint = new Label { Y = 0, Text = ModuleLoadText.NoModulesHint, Visible = false, CanFocus = false };
             _noModulesHint.SetScheme(ConsoleTheme.Menu);
 
@@ -246,7 +248,7 @@ namespace MBBSEmu.UI.Main
         ///     Replaces the status bar hints with "Shutting down…"
         /// </summary>
         /// <summary>
-        ///     Shows or hides the hint pointing at File > Load Module
+        ///     Shows or hides the hint pointing at Modules > Load Module
         /// </summary>
         public void SetNoModulesHint(bool show)
         {

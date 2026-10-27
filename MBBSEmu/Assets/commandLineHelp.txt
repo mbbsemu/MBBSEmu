@@ -5,7 +5,7 @@ https://github.com/mbbsemu/MBBSEmu
 -----------------------------------------------------------
 Run MBBSEmu with no options in a terminal to open the admin console. It keeps
 appsettings.json, modules.json and the BBS databases next to the MBBSEmu program;
-use File > Load Module to add a module.
+use Modules > Load Module to add a module.
 
 Command Line Options:
 -?                  This Help Screen

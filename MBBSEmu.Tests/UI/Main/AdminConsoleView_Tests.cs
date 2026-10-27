@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Terminal.Gui.Input;
+using Terminal.Gui.Views;
 using Xunit;
 
 namespace MBBSEmu.Tests.UI.Main
@@ -234,16 +235,46 @@ namespace MBBSEmu.Tests.UI.Main
         }
 
         [Fact]
-        public void Menu_ListsFileBeforeServerAndHelp()
+        public void Menu_ListsServerThenModulesThenHelp()
         {
             var menuRow = Show(80, 24)[0];
 
-            var file = menuRow.IndexOf("File", StringComparison.Ordinal);
             var server = menuRow.IndexOf("Server", StringComparison.Ordinal);
+            var modules = menuRow.IndexOf("Modules", StringComparison.Ordinal);
             var help = menuRow.IndexOf("Help", StringComparison.Ordinal);
-            file.Should().BeGreaterThanOrEqualTo(0, menuRow);
-            server.Should().BeGreaterThan(file, menuRow);
-            help.Should().BeGreaterThan(server, menuRow);
+            server.Should().BeGreaterThanOrEqualTo(0, menuRow);
+            modules.Should().BeGreaterThan(server, menuRow);
+            help.Should().BeGreaterThan(modules, menuRow);
+            menuRow.Should().NotContain("File");
+        }
+
+        [Fact]
+        public void ModulesMenu_StartsWithLoadModule()
+        {
+            Show(80, 24);
+
+            var modules = _view.MenuBar.SubViews.OfType<MenuBarItem>().Single(item => item.Title == "_Modules");
+
+            modules.PopoverMenu!.Root!.SubViews.OfType<MenuItem>().First().Should().BeSameAs(_view.LoadModuleMenuItem);
+        }
+
+        [Fact]
+        public void NoModulesHint_FitsBesideTheMenusAt80Columns()
+        {
+            Show(80, 24);
+
+            _view.SetNoModulesHint(true);
+
+            var menuRow = _harness.Screen()[0];
+            var help = menuRow.IndexOf("Help", StringComparison.Ordinal);
+            help.Should().BeGreaterThanOrEqualTo(0, menuRow);
+            menuRow.IndexOf(ModuleLoadText.NoModulesHint, StringComparison.Ordinal).Should().BeGreaterThan(help + "Help".Length, menuRow);
+        }
+
+        [Fact]
+        public void NoModulesHint_PointsAtModulesLoadModule()
+        {
+            ModuleLoadText.NoModulesHint.Should().Contain("Modules → Load Module");
         }
 
         [Fact]

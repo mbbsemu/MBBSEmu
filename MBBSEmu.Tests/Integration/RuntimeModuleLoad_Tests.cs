@@ -9,7 +9,7 @@ using Xunit;
 namespace MBBSEmu.Tests.Integration
 {
     /// <summary>
-    ///     Loading a module into a host that is already running, as File > Load Module does
+    ///     Loading a module into a host that is already running, as Modules > Load Module does
     /// </summary>
     public class RuntimeModuleLoad_Tests : MBBSEmuIntegrationTestBase
     {
