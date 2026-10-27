@@ -15,6 +15,8 @@ MBBSEmu is an emulator for running MajorBBS and Worldgroup Modules on Windows, L
 3. Create a [modules.json](https://wiki.mbbsemu.com/doku.php?id=mbbsemu:configuration:modules.json) file if want to run multiple Modules
 4. Start MBBSEmu with your desired [Command Line Options](https://wiki.mbbsemu.com/doku.php?id=mbbsemu:configuration:command_line_options)
 
+Or skip the command line: run MBBSEmu with no options and choose File → Load Module to pick a module's .MDF file. MBBSEmu remembers it next time.
+
 **That's it!** :)
 
 # Is MBBSEmu Crashing or not emulating accurately?

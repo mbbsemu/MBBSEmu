@@ -267,6 +267,8 @@ CLI argument parsing: `-M` (module), `-P` (path), `-K` (menu key), `-C` (config 
 
 Boot sequence: parse args → load AppSettings → build ServiceResolver → load modules (from CLI, directory scan, or modules.json) → create MbbsHost → start Telnet/Rlogin servers → launch UI → wait for shutdown.
 
+With no arguments in a terminal (GUI mode), Program changes to the executable's folder, runs the Setup Wizard on first run, loads the default modules.json one module at a time (skipping broken ones), and the admin console's File → Load Module loads more into the running host.
+
 ### AppSettingsManager
 
 Loads `appsettings.json` via Microsoft.Extensions.Configuration. Key settings: `BBS.Title`, `BBS.Channels`, `Telnet.Enabled/Port`, `Rlogin.Enabled/Port/RemoteIP`, `Database.File`, `Btrieve.CacheSize`, `Cleanup.Time`, `Module.DoLoginRoutine`.

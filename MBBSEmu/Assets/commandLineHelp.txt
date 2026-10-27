@@ -3,6 +3,10 @@ By: MBBSEmu Community @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
 https://github.com/mbbsemu/MBBSEmu
 -----------------------------------------------------------
+Run MBBSEmu with no options in a terminal to open the admin console. It keeps
+appsettings.json, modules.json and the BBS databases next to the MBBSEmu program;
+use File > Load Module to add a module.
+
 Command Line Options:
 -?                  This Help Screen
 -S <emulatorConfig> Specify an emulator configuration file. The included appsettings.json
