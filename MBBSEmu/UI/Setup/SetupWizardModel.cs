@@ -4,6 +4,8 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 
 namespace MBBSEmu.UI.Setup
 {
@@ -36,6 +38,22 @@ namespace MBBSEmu.UI.Setup
         public const bool DefaultRloginPortPerModule = true;
 
         private readonly List<string> _keys = new(DefaultKeys);
+
+        /// <summary>
+        ///     The appsettings.json keys the wizard edits. Only these are read from and written over an existing file;
+        ///     every other setting in it is kept as written.
+        /// </summary>
+        private static readonly string[] EditedKeys =
+        {
+            "BBS.Title", "BBS.Channels", "GSBL.BTURNO", "Cleanup.Time", "Module.DoLoginRoutine", "Telnet.Enabled",
+            "Telnet.Port", "Telnet.Heartbeat", "Rlogin.Enabled", "Rlogin.Port", "Rlogin.RemoteIP", "Rlogin.PortPerModule",
+            "Database.File", "Btrieve.CacheSize", "Account.DefaultKeys"
+        };
+
+        /// <summary>
+        ///     The settings file the wizard started from, or null for a new one
+        /// </summary>
+        private JsonObject _existing;
 
         public SetupWizardModel(Random random)
         {
@@ -187,7 +205,73 @@ namespace MBBSEmu.UI.Setup
         /// <summary>
         ///     The appsettings.json that will be written
         /// </summary>
-        public string ToJson() => JsonSerializer.Serialize(ToAppSettings(), new JsonSerializerOptions { WriteIndented = true });
+        public string ToJson()
+        {
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            if (_existing == null)
+                return JsonSerializer.Serialize(ToAppSettings(), options);
+
+            var edited = JsonSerializer.SerializeToNode(ToAppSettings())!.AsObject();
+            var merged = _existing.DeepClone().AsObject();
+            foreach (var key in EditedKeys)
+                merged[key] = edited[key]?.DeepClone();
+
+            return merged.ToJsonString(options);
+        }
+
+        /// <summary>
+        ///     Starts from an existing appsettings.json: its values for the settings the wizard edits, and everything
+        ///     else in it kept for when it is saved. Values that can't be used keep the wizard's defaults; text the
+        ///     wizard checks itself (ports, names) is taken as written and checked on Next.
+        /// </summary>
+        public void LoadFrom(JsonObject settings)
+        {
+            _existing = settings.DeepClone().AsObject();
+
+            if (Text(settings, "BBS.Title") is { } bbsName)
+                BbsName = bbsName;
+            if (Text(settings, "BBS.Channels") is { } channels)
+                Channels = channels;
+            if (Text(settings, "GSBL.BTURNO") is { } registrationNumber && Regex.IsMatch(registrationNumber, @"^\d{8}$"))
+                RegistrationNumber = registrationNumber;
+            if (TimeSpan.TryParseExact(Text(settings, "Cleanup.Time"), @"hh\:mm", CultureInfo.InvariantCulture, out var cleanupTime))
+                CleanupTime = cleanupTime;
+            if (bool.TryParse(Text(settings, "Module.DoLoginRoutine"), out var doLoginRoutine))
+                DoLoginRoutine = doLoginRoutine;
+
+            if (bool.TryParse(Text(settings, "Telnet.Enabled"), out var telnetEnabled))
+                TelnetEnabled = telnetEnabled;
+            if (Text(settings, "Telnet.Port") is { } telnetPort)
+                TelnetPort = telnetPort;
+            if (bool.TryParse(Text(settings, "Telnet.Heartbeat"), out var telnetHeartbeat))
+                TelnetHeartbeat = telnetHeartbeat;
+
+            if (bool.TryParse(Text(settings, "Rlogin.Enabled"), out var rloginEnabled))
+                RloginEnabled = rloginEnabled;
+            if (Text(settings, "Rlogin.Port") is { } rloginPort)
+                RloginPort = rloginPort;
+            if (Text(settings, "Rlogin.RemoteIP") is { } rloginRemoteIP)
+                RloginRemoteIP = rloginRemoteIP;
+            if (bool.TryParse(Text(settings, "Rlogin.PortPerModule"), out var rloginPortPerModule))
+                RloginPortPerModule = rloginPortPerModule;
+
+            if (Text(settings, "Database.File") is { } databaseFilename)
+                DatabaseFilename = databaseFilename;
+            if (Text(settings, "Btrieve.CacheSize") is { } btrieveCacheSize)
+                BtrieveCacheSize = btrieveCacheSize;
+
+            if (settings["Account.DefaultKeys"] is JsonArray keys)
+            {
+                _keys.Clear();
+                foreach (var key in keys.OfType<JsonValue>())
+                    AddKey(key.ToString());
+            }
+        }
+
+        /// <summary>
+        ///     A setting's value as text, whether the file has it as a string, a number or a boolean
+        /// </summary>
+        private static string Text(JsonObject settings, string key) => settings[key] is JsonValue value ? value.ToString() : null;
 
         private static void ValidatePort(string port, string requiredMessage, string invalidMessage, List<string> errors)
         {

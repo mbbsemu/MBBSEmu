@@ -19,12 +19,6 @@ namespace MBBSEmu.UI.Setup
         /// </summary>
         bool ConfirmWrite();
 
-        /// <summary>
-        ///     Asks where to save the settings
-        /// </summary>
-        /// <returns>The chosen path, or null if cancelled</returns>
-        string AskSavePath(string directory, string fileName);
-
         void ShowSaved(string path);
     }
 }

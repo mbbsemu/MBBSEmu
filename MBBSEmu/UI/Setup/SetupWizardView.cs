@@ -86,6 +86,7 @@ namespace MBBSEmu.UI.Setup
         private readonly SetupWizardModel _model;
         private readonly ISetupWizardDialogs _dialogs;
         private readonly Action<string, string> _writeFile;
+        private readonly string _settingsPath;
 
         private readonly Dictionary<WizardStep, EnumSetupStep> _stepIds = new();
         private readonly Dictionary<EnumSetupStep, View> _helpPanels = new();
@@ -126,12 +127,14 @@ namespace MBBSEmu.UI.Setup
         public SetupWizardResult Outcome { get; private set; }
 
         /// <param name="model">Values the wizard edits</param>
-        /// <param name="dialogs">Error, confirm and save dialogs</param>
+        /// <param name="dialogs">Error, confirm and saved dialogs</param>
+        /// <param name="settingsPath">The appsettings.json the settings are saved to</param>
         /// <param name="writeFile">Writes (path, contents) when the sysop saves</param>
-        public SetupWizardView(SetupWizardModel model, ISetupWizardDialogs dialogs, Action<string, string> writeFile)
+        public SetupWizardView(SetupWizardModel model, ISetupWizardDialogs dialogs, string settingsPath, Action<string, string> writeFile)
         {
             _model = model;
             _dialogs = dialogs;
+            _settingsPath = settingsPath;
             _writeFile = writeFile;
 
             Title = SetupWizardText.OuterTitle;
@@ -238,13 +241,7 @@ namespace MBBSEmu.UI.Setup
             if (!_dialogs.ConfirmWrite())
                 return;
 
-            var path = _dialogs.AskSavePath(Directory.GetCurrentDirectory(), SetupWizardText.DefaultFileName);
-            if (path == null)
-            {
-                End(new SetupWizardResult(false, null));
-                return;
-            }
-
+            var path = _settingsPath;
             try
             {
                 _writeFile(path, _model.ToJson());

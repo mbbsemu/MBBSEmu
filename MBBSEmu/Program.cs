@@ -151,7 +151,7 @@ namespace MBBSEmu
                     if (string.IsNullOrEmpty(response) || response == "Y")
                     {
                         Console.WriteLine("Starting MBBSEmu Setup Wizard...");
-                        var setupResult = SetupWizard.Run();
+                        var setupResult = SetupWizard.Run(Path.Combine(Directory.GetCurrentDirectory(), DefaultEmuSettingsFilename));
                         if (!setupResult.Saved)
                         {
                             Console.WriteLine(SetupWizardText.CancelledMessage);

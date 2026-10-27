@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MBBSEmu.UI.Setup;
 using System;
+using System.Text.Json.Nodes;
 using Xunit;
 
 namespace MBBSEmu.Tests.UI.Setup
@@ -8,6 +9,72 @@ namespace MBBSEmu.Tests.UI.Setup
     public class SetupWizardModel_Tests
     {
         private readonly SetupWizardModel _model = new(new Random(1234));
+
+        [Fact]
+        public void LoadFrom_ReadsTheSettingsFile()
+        {
+            _model.LoadFrom(JsonNode.Parse("""
+                {"BBS.Title":"My BBS","BBS.Channels":"4","Cleanup.Time":"04:30","GSBL.BTURNO":"12345678",
+                 "Module.DoLoginRoutine":"False","Telnet.Enabled":"False","Telnet.Port":"2323","Telnet.Heartbeat":"True",
+                 "Rlogin.Enabled":"True","Rlogin.Port":"5513","Rlogin.RemoteIP":"10.0.0.1","Rlogin.PortPerModule":"True",
+                 "Database.File":"bbs.db","Btrieve.CacheSize":"8","Account.DefaultKeys":["DEMO","SYSOP"]}
+                """)!.AsObject());
+
+            _model.BbsName.Should().Be("My BBS");
+            _model.Channels.Should().Be("4");
+            _model.CleanupTime.Should().Be(new TimeSpan(4, 30, 0));
+            _model.RegistrationNumber.Should().Be("12345678");
+            _model.DoLoginRoutine.Should().BeFalse();
+            _model.TelnetEnabled.Should().BeFalse();
+            _model.TelnetPort.Should().Be("2323");
+            _model.TelnetHeartbeat.Should().BeTrue();
+            _model.RloginEnabled.Should().BeTrue();
+            _model.RloginPort.Should().Be("5513");
+            _model.RloginRemoteIP.Should().Be("10.0.0.1");
+            _model.RloginPortPerModule.Should().BeTrue();
+            _model.DatabaseFilename.Should().Be("bbs.db");
+            _model.BtrieveCacheSize.Should().Be("8");
+            _model.Keys.Should().Equal("DEMO", "SYSOP");
+        }
+
+        [Fact]
+        public void LoadFrom_AcceptsJsonBooleansAndNumbers()
+        {
+            _model.TelnetEnabled = false;
+
+            _model.LoadFrom(JsonNode.Parse("""{"Telnet.Enabled":true,"Btrieve.CacheSize":8}""")!.AsObject());
+
+            _model.TelnetEnabled.Should().BeTrue();
+            _model.BtrieveCacheSize.Should().Be("8");
+        }
+
+        [Fact]
+        public void LoadFrom_IgnoresUnusableValues()
+        {
+            var registrationNumber = _model.RegistrationNumber;
+
+            _model.LoadFrom(JsonNode.Parse("""{"Cleanup.Time":"late","GSBL.BTURNO":"123","Telnet.Enabled":"maybe"}""")!.AsObject());
+
+            _model.CleanupTime.Should().Be(new TimeSpan(3, 0, 0));
+            _model.RegistrationNumber.Should().Be(registrationNumber);
+            _model.TelnetEnabled.Should().BeTrue();
+        }
+
+        [Fact]
+        public void ToJson_AfterLoadFrom_KeepsSettingsTheWizardDoesNotEdit()
+        {
+            _model.LoadFrom(JsonNode.Parse("""
+                {"BBS.Title":"Old","Telnet.ConvertCP437ToUTF8":"True","ANSI.Login":"login.ans","Timer.Hertz":"18"}
+                """)!.AsObject());
+            _model.BbsName = "New";
+
+            var saved = JsonNode.Parse(_model.ToJson())!.AsObject();
+
+            saved["Telnet.ConvertCP437ToUTF8"]!.GetValue<string>().Should().Be("True");
+            saved["ANSI.Login"]!.GetValue<string>().Should().Be("login.ans");
+            saved["Timer.Hertz"]!.GetValue<string>().Should().Be("18");
+            saved["BBS.Title"]!.GetValue<string>().Should().Be("New");
+        }
 
         [Fact]
         public void Defaults_MatchSpec()

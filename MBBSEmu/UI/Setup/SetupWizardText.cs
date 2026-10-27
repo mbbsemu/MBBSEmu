@@ -153,18 +153,12 @@ namespace MBBSEmu.UI.Setup
         public const string ConfirmTitle = "Confirm";
         public const string ConfirmMessage = "Are you sure you want to write these settings to appsettings.json?";
 
-        public const string SaveTitle = "Save Settings";
-        public const string SaveMessage = "Select the path and file name to save your settings.\n\nWe recommend using the filename \"appsettings.json\"";
-        public const string SaveExtension = ".json";
-        public const string DefaultFileName = "appsettings.json";
-
         public const string SuccessTitle = "Success";
 
         public const string CancelledMessage = "Setup cancelled";
         public const string TooSmallQuitHint = "Esc cancels setup.";
         public const string YesButton = "_Yes";
         public const string NoButton = "_No";
-        public const string JsonFiles = "JSON Files";
 
         public static string SuccessMessage(string path) => $"Settings were successfully written to:\n{path}";
 

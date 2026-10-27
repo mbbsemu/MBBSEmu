@@ -18,24 +18,18 @@ namespace MBBSEmu.Tests.UI.Setup
             public readonly List<(string Title, string Message)> Errors = new();
             public readonly Queue<bool> ConfirmAnswers = new();
             public readonly List<string> Saved = new();
-            public string SavePath;
-            public string AskedFileName;
 
             public void ShowError(string title, string message) => Errors.Add((title, message));
 
             public bool ConfirmWrite() => ConfirmAnswers.Count == 0 || ConfirmAnswers.Dequeue();
-
-            public string AskSavePath(string directory, string fileName)
-            {
-                AskedFileName = fileName;
-                return SavePath;
-            }
 
             public void ShowSaved(string path) => Saved.Add(path);
         }
 
         private readonly FakeDialogs _dialogs = new();
         private readonly SetupWizardModel _model = new(new Random(1));
+        private const string SettingsPath = "/home/appsettings.json";
+
         private readonly List<(string Path, string Contents)> _writes = new();
         private Exception _writeFailure;
         private SetupWizardView _view;
@@ -45,7 +39,7 @@ namespace MBBSEmu.Tests.UI.Setup
 
         private string[] Show(int width = 80, int height = 24)
         {
-            _view = new SetupWizardView(_model, _dialogs, (path, contents) =>
+            _view = new SetupWizardView(_model, _dialogs, SettingsPath, (path, contents) =>
             {
                 if (_writeFailure != null)
                     throw _writeFailure;
@@ -336,14 +330,12 @@ namespace MBBSEmu.Tests.UI.Setup
         {
             Show();
             GoTo(EnumSetupStep.Review);
-            _dialogs.SavePath = "/x/appsettings.json";
 
             Next();
 
-            _dialogs.AskedFileName.Should().Be("appsettings.json");
-            _writes.Should().Equal(("/x/appsettings.json", _model.ToJson()));
-            _dialogs.Saved.Should().Equal("/x/appsettings.json");
-            _view.Outcome.Should().Be(new SetupWizardResult(true, "/x/appsettings.json"));
+            _writes.Should().Equal((SettingsPath, _model.ToJson()));
+            _dialogs.Saved.Should().Equal(SettingsPath);
+            _view.Outcome.Should().Be(new SetupWizardResult(true, SettingsPath));
         }
 
         /// <summary>
@@ -354,28 +346,14 @@ namespace MBBSEmu.Tests.UI.Setup
         {
             Show();
             GoTo(EnumSetupStep.Review);
-            _dialogs.SavePath = "/x/appsettings.json";
             _writeFailure = new UnauthorizedAccessException("Access to the path is denied.");
 
             Next();
 
-            _dialogs.Errors.Should().Equal((SetupWizardText.ErrorTitle, "Unable to write /x/appsettings.json:\nAccess to the path is denied."));
+            _dialogs.Errors.Should().Equal((SetupWizardText.ErrorTitle, $"Unable to write {SettingsPath}:\nAccess to the path is denied."));
             _dialogs.Saved.Should().BeEmpty();
             _view.CurrentStep.Should().Be(EnumSetupStep.Review);
             _view.Outcome.Should().BeNull();
-        }
-
-        [Fact]
-        public void SaveCancelled_ReturnsNotSaved()
-        {
-            Show();
-            GoTo(EnumSetupStep.Review);
-            _dialogs.SavePath = null;
-
-            Next();
-
-            _writes.Should().BeEmpty();
-            _view.Outcome.Should().Be(new SetupWizardResult(false, null));
         }
 
         [Fact]
