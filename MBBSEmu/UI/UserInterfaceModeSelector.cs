@@ -28,6 +28,12 @@ namespace MBBSEmu.UI
                 : EnumUserInterfaceMode.Cli;
 
         /// <summary>
+        ///     Started with no arguments in a terminal, e.g. by double-clicking it: MBBSEmu runs from its own folder,
+        ///     sets itself up on first run and opens the Admin Console with the modules loaded last time
+        /// </summary>
+        public static bool IsGuiMode(int argumentCount, bool interactiveTerminal) => argumentCount == 0 && interactiveTerminal;
+
+        /// <summary>
         ///     True when the Admin Console would have run but there is no terminal, e.g. under systemd
         /// </summary>
         public static bool IsHeadlessFallback(bool cliRequested, bool consoleSessionRequested, bool apiReportRequested,

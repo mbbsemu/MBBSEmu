@@ -21,6 +21,7 @@ using MBBSEmu.Session.LocalConsole;
 using MBBSEmu.TextVariables;
 using MBBSEmu.UI;
 using MBBSEmu.UI.Main;
+using MBBSEmu.UI.Modules;
 using MBBSEmu.UI.Setup;
 using System;
 using System.Collections.Generic;
@@ -119,6 +120,24 @@ namespace MBBSEmu
         /// </summary>
         private readonly List<ModuleConfiguration> _moduleConfigurations = new();
 
+        /// <summary>
+        ///     Started with no arguments in a terminal: MBBSEmu runs from its own folder and remembers the modules
+        ///     loaded with File > Load Module in its default modules.json
+        /// </summary>
+        private bool _isGuiMode;
+
+        /// <summary>
+        ///     Where modules loaded with File > Load Module are remembered
+        /// </summary>
+        private ModuleSaving _moduleSaving;
+
+        /// <summary>
+        ///     Why the default modules.json couldn't be read, shown once the Admin Console is up
+        /// </summary>
+        private string _modulesFileProblem;
+
+        private ModuleLoader _moduleLoader;
+
         private readonly List<IStoppable> _runningServices = new();
         private int _cancellationRequests = 0;
 
@@ -137,35 +156,17 @@ namespace MBBSEmu
         {
             try
             {
-                if (args.Length == 0)
+                var interactive = TerminalEnvironment.IsInteractive();
+
+                // No terminal to run the Admin Console in (e.g. a service), so explain the options instead
+                if (args.Length == 0 && !interactive)
                 {
-                    // No terminal to run the wizard in (e.g. a service), so explain the options instead
-                    if (!TerminalEnvironment.IsInteractive())
-                    {
-                        PrintHelp(waitForKey: false);
-                        return;
-                    }
-
-                    Console.Write("Run the MBBSEmu Setup Wizard (Y/n): ");
-                    var response = Console.ReadLine()?.TrimEnd().ToUpper();
-                    if (string.IsNullOrEmpty(response) || response == "Y")
-                    {
-                        Console.WriteLine("Starting MBBSEmu Setup Wizard...");
-                        var setupResult = SetupWizard.Run(Path.Combine(Directory.GetCurrentDirectory(), DefaultEmuSettingsFilename));
-                        if (!setupResult.Saved)
-                        {
-                            Console.WriteLine(SetupWizardText.CancelledMessage);
-                            return;
-                        }
-
-                        Console.WriteLine("Setup Wizard Complete!");
-                        Console.WriteLine(
-                            "Restart MBBSEmu for the new settings to take effect. Use the Command Line Option -? for detailed help.");
-                        return;
-                    }
-
-                    args = new[] { "-?" };
+                    PrintHelp(waitForKey: false);
+                    return;
                 }
+
+                if (UserInterfaceModeSelector.IsGuiMode(args.Length, interactive) && !StartGuiMode())
+                    return;
 
                 string[] programArgs = args;
 
@@ -433,78 +434,11 @@ namespace MBBSEmu
                 }
                 else if (_isModuleConfigFile)
                 {
-                    var menuOptionKeys = new List<string>();
-                    var autoMenuOptionSeed = 1;
-
-                    var options = new JsonSerializerOptions
-                    {
-                        Converters = {
-            new JsonModuleConfigurationFileConverter(),  // Handles BasePath processing for Module
-                                                         // Configuration
-            new JsonBooleanConverter(),                  // Allows TRUE/FALSE values to be parsed
-            new JsonStringEnumConverter(),               // Allows Enums to be parsed from Strings
-            new JsonFarPtrConverter()                    // Allows FarPtr to be parsed from Strings
-          }
-                    };
-
-                    var moduleConfigurationFile = JsonSerializer.Deserialize<ModuleConfigurationFile>(
-                        File.ReadAllText(_moduleConfigFileName), options);
-
-                    foreach (var m in moduleConfigurationFile.Modules)
-                    {
-                        m.ModuleEnabled ??= true;
-
-                        // Check for Non Character/Number in MenuOptionKey and Length of 2 or less
-                        if (!string.IsNullOrEmpty(m.MenuOptionKey) &&
-                            !(m.MenuOptionKey).All(char.IsLetterOrDigit))
-                        {
-                            _logger.Error(
-                                $"Invalid menu option key character (NOT A-Z or 0-9) for {m.ModuleIdentifier}, auto assigning menu option key");
-                            m.MenuOptionKey = "";
-                        }
-
-                        // Check MenuOptionKey is Length of 2 or less
-                        if (!string.IsNullOrEmpty(m.MenuOptionKey) && m.MenuOptionKey.Length > 2)
-                        {
-                            _logger.Error(
-                                $"Invalid menu option key length (MAX Length: 2) {m.ModuleIdentifier}, auto assigning menu option key");
-                            m.MenuOptionKey = "";
-                        }
-
-                        // Check for duplicate MenuOptionKey
-                        if (!string.IsNullOrEmpty(m.MenuOptionKey) &&
-                            _moduleConfigurations.Any(x => x.MenuOptionKey == m.MenuOptionKey) &&
-                            menuOptionKeys.Any(x => x.Equals(m.MenuOptionKey)))
-                        {
-                            _logger.Error(
-                                $"Duplicate menu option key for {m.ModuleIdentifier}, auto assigning menu option key");
-                            m.MenuOptionKey = "";
-                        }
-
-                        // Check for duplicate module in moduleConfig
-                        if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m.ModuleIdentifier))
-                        {
-                            _logger.Error(
-                                $"Module {m.ModuleIdentifier} already loaded, duplicate instance not loaded");
-                            continue;
-                        }
-
-                        // If MenuOptionKey, add to list
-                        if (!string.IsNullOrEmpty(m.MenuOptionKey))
-                            menuOptionKeys.Add(m.MenuOptionKey);
-
-                        // Check for missing MenuOptionKey, assign, add to list
-                        if (string.IsNullOrEmpty(m.MenuOptionKey))
-                        {
-                            m.MenuOptionKey = autoMenuOptionSeed.ToString();
-                            autoMenuOptionSeed++;
-                            menuOptionKeys.Add(m.MenuOptionKey);
-                        }
-
-                        // Load Modules
-                        _logger.Info($"Loading {m.ModuleIdentifier}");
-                        _moduleConfigurations.Add(m);
-                    }
+                    LoadModuleConfigurationFile(_moduleConfigFileName);
+                }
+                else if (_isGuiMode)
+                {
+                    LoadDefaultModuleList();
                 }
                 else
                 {
@@ -518,6 +452,9 @@ namespace MBBSEmu
                     _logger.Info(TerminalEnvironment.NoTerminalMessage);
 
                 var host = _serviceResolver.GetService<IMbbsHost>();
+
+                if (_isGuiMode)
+                    _moduleLoader = CreateModuleLoader(host, configuration, _moduleSaving);
 
                 // API Report
                 if (_doApiReport)
@@ -550,11 +487,142 @@ namespace MBBSEmu
         }
 
         /// <summary>
+        ///     Adds the modules in a module configuration file (-C, or the default modules.json when run without
+        ///     arguments), checking their menu option keys and skipping duplicates
+        /// </summary>
+        private void LoadModuleConfigurationFile(string fileName)
+        {
+            var menuOptionKeys = new List<string>();
+            var autoMenuOptionSeed = 1;
+
+            var options = new JsonSerializerOptions
+            {
+                Converters =
+                {
+                    new JsonModuleConfigurationFileConverter(), // Handles BasePath processing for Module Configuration
+                    new JsonBooleanConverter(),                 // Allows TRUE/FALSE values to be parsed
+                    new JsonStringEnumConverter(),              // Allows Enums to be parsed from Strings
+                    new JsonFarPtrConverter()                   // Allows FarPtr to be parsed from Strings
+                }
+            };
+
+            var moduleConfigurationFile = JsonSerializer.Deserialize<ModuleConfigurationFile>(
+                File.ReadAllText(fileName), options);
+
+            foreach (var m in moduleConfigurationFile.Modules)
+            {
+                m.ModuleEnabled ??= true;
+
+                // Check for Non Character/Number in MenuOptionKey and Length of 2 or less
+                if (!string.IsNullOrEmpty(m.MenuOptionKey) &&
+                    !(m.MenuOptionKey).All(char.IsLetterOrDigit))
+                {
+                    _logger.Error(
+                        $"Invalid menu option key character (NOT A-Z or 0-9) for {m.ModuleIdentifier}, auto assigning menu option key");
+                    m.MenuOptionKey = "";
+                }
+
+                // Check MenuOptionKey is Length of 2 or less
+                if (!string.IsNullOrEmpty(m.MenuOptionKey) && m.MenuOptionKey.Length > 2)
+                {
+                    _logger.Error(
+                        $"Invalid menu option key length (MAX Length: 2) {m.ModuleIdentifier}, auto assigning menu option key");
+                    m.MenuOptionKey = "";
+                }
+
+                // Check for duplicate MenuOptionKey
+                if (!string.IsNullOrEmpty(m.MenuOptionKey) &&
+                    _moduleConfigurations.Any(x => x.MenuOptionKey == m.MenuOptionKey) &&
+                    menuOptionKeys.Any(x => x.Equals(m.MenuOptionKey)))
+                {
+                    _logger.Error(
+                        $"Duplicate menu option key for {m.ModuleIdentifier}, auto assigning menu option key");
+                    m.MenuOptionKey = "";
+                }
+
+                // Check for duplicate module in moduleConfig
+                if (_moduleConfigurations.Any(x => x.ModuleIdentifier == m.ModuleIdentifier))
+                {
+                    _logger.Error(
+                        $"Module {m.ModuleIdentifier} already loaded, duplicate instance not loaded");
+                    continue;
+                }
+
+                // If MenuOptionKey, add to list
+                if (!string.IsNullOrEmpty(m.MenuOptionKey))
+                    menuOptionKeys.Add(m.MenuOptionKey);
+
+                // Check for missing MenuOptionKey, assign, add to list
+                if (string.IsNullOrEmpty(m.MenuOptionKey))
+                {
+                    m.MenuOptionKey = autoMenuOptionSeed.ToString();
+                    autoMenuOptionSeed++;
+                    menuOptionKeys.Add(m.MenuOptionKey);
+                }
+
+                // Load Modules
+                _logger.Info($"Loading {m.ModuleIdentifier}");
+                _moduleConfigurations.Add(m);
+            }
+        }
+
+        /// <summary>
+        ///     Run without arguments: loads the modules saved by File > Load Module, if there are any. A file that
+        ///     can't be read loads nothing and is left alone; Load Module then works for this session only.
+        /// </summary>
+        private void LoadDefaultModuleList()
+        {
+            var modulesFile = Path.Combine(Directory.GetCurrentDirectory(), ModuleListFile.DefaultFileName);
+            _moduleSaving = ModuleSaving.To(modulesFile);
+
+            if (!File.Exists(modulesFile))
+                return;
+
+            try
+            {
+                LoadModuleConfigurationFile(modulesFile);
+            }
+            catch (Exception e) when (e is JsonException or IOException or UnauthorizedAccessException)
+            {
+                _moduleConfigurations.Clear();
+                _modulesFileProblem = ModuleLoadText.ModulesFileUnreadable(modulesFile, e.Message);
+                _moduleSaving = ModuleSaving.SessionOnly(ModuleLoadText.UnreadableModulesFileReason);
+                _logger.Warn(_modulesFileProblem);
+            }
+        }
+
+        /// <summary>
+        ///     Run without arguments in a terminal: works from the folder MBBSEmu is in, and runs the Setup Wizard
+        ///     first if MBBSEmu hasn't been set up there yet
+        /// </summary>
+        /// <returns>False if the sysop cancelled the Setup Wizard</returns>
+        private bool StartGuiMode()
+        {
+            var home = GuiStartup.HomeFolder;
+            Directory.SetCurrentDirectory(home);
+
+            // The sysop password is asked for afterwards, when the user database is created
+            if (GuiStartup.IsFirstRun(home))
+            {
+                Console.WriteLine("Starting MBBSEmu Setup Wizard...");
+                if (!SetupWizard.Run(Path.Combine(home, DefaultEmuSettingsFilename)).Saved)
+                {
+                    Console.WriteLine(SetupWizardText.CancelledMessage);
+                    return false;
+                }
+            }
+
+            _isGuiMode = true;
+            return true;
+        }
+
+        /// <summary>
         ///     Starts the MajorBBS host, then the Telnet and Rlogin servers
         /// </summary>
-        private void StartServices(IMbbsHost host, AppSettingsManager configuration)
+        /// <returns>Why saved modules were skipped when run without arguments; otherwise empty</returns>
+        private IReadOnlyList<string> StartServices(IMbbsHost host, AppSettingsManager configuration)
         {
-            host.Start(_moduleConfigurations);
+            var skipped = _isGuiMode ? StartGuiModules(host) : StartModules(host);
             AddRunningService(host);
 
             // Setup and Run Telnet Server
@@ -600,7 +668,59 @@ namespace MBBSEmu
 
             _logger.Info(
                 $"Started MBBSEmu Build #{new ResourceManager().GetString("MBBSEmu.Assets.version.txt")}");
+
+            return skipped;
         }
+
+        /// <summary>
+        ///     Starts the host with the modules from the command line or -C; any that can't load stop MBBSEmu
+        /// </summary>
+        private IReadOnlyList<string> StartModules(IMbbsHost host)
+        {
+            host.Start(_moduleConfigurations);
+            return Array.Empty<string>();
+        }
+
+        /// <summary>
+        ///     Run without arguments: starts the host, then loads the saved modules one at a time so one that can't
+        ///     load (moved, deleted, broken) is skipped rather than stopping MBBSEmu. Skipped modules stay in
+        ///     modules.json.
+        /// </summary>
+        /// <returns>A line for each module skipped, and for a modules.json that couldn't be read</returns>
+        private IReadOnlyList<string> StartGuiModules(IMbbsHost host)
+        {
+            host.Start(new List<ModuleConfiguration>());
+
+            var skipped = new List<string>();
+            if (_modulesFileProblem != null)
+                skipped.Add(_modulesFileProblem);
+
+            var saved = _moduleConfigurations.ToList();
+            _moduleConfigurations.Clear();
+            foreach (var module in saved)
+            {
+                var skippedLine = _moduleLoader.LoadSavedAsync(module).GetAwaiter().GetResult();
+                if (skippedLine == null)
+                {
+                    _moduleConfigurations.Add(module);
+                    continue;
+                }
+
+                _logger.Warn(skippedLine);
+                skipped.Add(skippedLine);
+            }
+
+            return skipped;
+        }
+
+        /// <summary>
+        ///     Loads modules picked with File > Load Module into the running host
+        /// </summary>
+        private ModuleLoader CreateModuleLoader(IMbbsHost host, AppSettingsManager configuration, ModuleSaving saving) =>
+            new(host.LoadModule, saving,
+                _moduleConfigurations.LastOrDefault()?.ModulePath ?? Directory.GetCurrentDirectory(),
+                ModuleLoadText.PlayHint(configuration.TelnetEnabled, configuration.TelnetPort, configuration.RloginEnabled,
+                    configuration.RloginPort));
 
         /// <summary>
         ///     Stops every running service and waits for the MajorBBS host to finish
@@ -642,9 +762,13 @@ namespace MBBSEmu
                 Console.WriteLine(startupWarning);
             }
 
+            //Started with modules from the command line or -C: loading more is for this session only
+            _moduleLoader ??= CreateModuleLoader(host, configuration,
+                ModuleSaving.SessionOnly(ModuleLoadText.StartedWithConfiguration));
+
             var logFactory = new LogFactory();
             IReadOnlyList<ChannelSession> sessions = Array.Empty<ChannelSession>();
-            var result = new AdminConsole(new AdminConsoleOptions
+            var console = new AdminConsole(new AdminConsoleOptions
             {
                 MessageLogger = logFactory.GetLogger<MessageLogger>(),
                 AuditLogger = logFactory.GetLogger<AuditLogger>(),
@@ -654,8 +778,15 @@ namespace MBBSEmu
                 ChannelCount = configuration.BBSChannels,
                 StatusRightText = StatusLine.RightText(configuration.TelnetEnabled, configuration.RloginEnabled, build),
                 Build = build,
-                StartupWarning = startupWarning
-            }).Run(() => StartServices(host, configuration), StopServices);
+                StartupWarning = startupWarning,
+                ModuleLoader = _moduleLoader
+            });
+            var result = console.Run(() =>
+            {
+                var skipped = StartServices(host, configuration);
+                if (skipped.Count > 0)
+                    console.ShowMessage(ModuleLoadText.SkippedTitle, string.Join("\n", skipped));
+            }, StopServices);
 
             switch (result.Outcome)
             {

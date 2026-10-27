@@ -18,6 +18,20 @@ namespace MBBSEmu.Tests.UI
             UserInterfaceModeSelector.Select(cli, console, apiReport, interactive).Should().Be(expected);
         }
 
+        /// <summary>
+        ///     Only a run with no arguments in a terminal opens the admin console from MBBSEmu's own folder; every
+        ///     command line keeps today's behavior
+        /// </summary>
+        [Theory]
+        [InlineData(0, true, true)]
+        [InlineData(0, false, false)]
+        [InlineData(1, true, false)]
+        [InlineData(4, true, false)]
+        public void IsGuiMode_OnlyWithNoArgumentsInATerminal(int argumentCount, bool interactive, bool expected)
+        {
+            UserInterfaceModeSelector.IsGuiMode(argumentCount, interactive).Should().Be(expected);
+        }
+
         [Theory]
         [InlineData(false, false, false, false, true)]
         [InlineData(true, false, false, false, false)]
