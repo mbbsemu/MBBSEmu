@@ -1,4 +1,5 @@
 using MBBSEmu.UI.Logging;
+using MBBSEmu.UI.Modules;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -37,6 +38,8 @@ namespace MBBSEmu.UI.Main
         private readonly ApplicationLogTableSource _applicationSource;
 
         private readonly MenuBar _menuBar;
+        private readonly Label _noModulesHint;
+        private bool _showNoModulesHint;
         private readonly FrameView _auditFrame;
         private readonly FrameView _applicationFrame;
         private readonly FrameView _channelsFrame;
@@ -59,11 +62,13 @@ namespace MBBSEmu.UI.Main
         ///     Raised when the sysop picks Server → Shutdown
         /// </summary>
         public event EventHandler ShutdownRequested;
+        public event EventHandler LoadModuleRequested;
 
         internal TableView ApplicationLogTable { get; }
         internal TableView AuditLogTable { get; }
         internal ListView ChannelListView { get; }
         internal MenuItem ShutdownMenuItem { get; }
+        internal MenuItem LoadModuleMenuItem { get; }
         internal MenuItem AboutMenuItem { get; }
 
         public int ApplicationLogCount => _applicationLog.Count;
@@ -79,10 +84,12 @@ namespace MBBSEmu.UI.Main
             BorderStyle = LineStyle.None;
             SetScheme(ConsoleTheme.Base);
 
+            LoadModuleMenuItem = new MenuItem("_Load Module…", "Ctrl+O", () => LoadModuleRequested?.Invoke(this, EventArgs.Empty), Key.Empty);
             ShutdownMenuItem = new MenuItem("_Shutdown", "Ctrl+Q", () => ShutdownRequested?.Invoke(this, EventArgs.Empty), Key.Empty);
             AboutMenuItem = new MenuItem("_About", string.Empty, () => _dialogs.ShowAbout(), Key.Empty);
             _menuBar = new MenuBar(new[]
             {
+                new MenuBarItem("_File", new View[] { LoadModuleMenuItem }),
                 new MenuBarItem("_Server", new View[] { ShutdownMenuItem }),
                 new MenuBarItem("_Help", new View[] { AboutMenuItem })
             })
@@ -92,6 +99,10 @@ namespace MBBSEmu.UI.Main
                 Width = Dim.Fill()
             };
             _menuBar.SetScheme(ConsoleTheme.Menu);
+
+            //Right-aligned on the menu bar, pointing at File > Load Module until a module is loaded
+            _noModulesHint = new Label { Y = 0, Text = ModuleLoadText.NoModulesHint, Visible = false, CanFocus = false };
+            _noModulesHint.SetScheme(ConsoleTheme.Menu);
 
             AuditLogTable = CreateTable(new AuditLogTableSource(_auditLog));
             AuditLogTable.Accepting += (_, e) =>
@@ -158,7 +169,7 @@ namespace MBBSEmu.UI.Main
             _tooSmall = new TooSmallView(AdminConsoleText.TooSmallQuitHint);
 
             //Tabs after the frames, so they draw over the frames' top borders
-            Add(_menuBar, _auditFrame, _applicationFrame, _channelsFrame, _auditTab, _applicationTab, _channelsTab, _statusBar,
+            Add(_menuBar, _noModulesHint, _auditFrame, _applicationFrame, _channelsFrame, _auditTab, _applicationTab, _channelsTab, _statusBar,
                 _tooSmall);
         }
 
@@ -173,6 +184,8 @@ namespace MBBSEmu.UI.Main
             var tooSmall = ScreenSize.IsBelowMinimum(width, height);
             foreach (var view in new View[] { _menuBar, _auditFrame, _applicationFrame, _channelsFrame, _auditTab, _applicationTab, _channelsTab, _statusBar })
                 view.Visible = !tooSmall;
+
+            PlaceNoModulesHint();
 
             if (tooSmall)
             {
@@ -232,6 +245,19 @@ namespace MBBSEmu.UI.Main
         /// <summary>
         ///     Replaces the status bar hints with "Shutting down…"
         /// </summary>
+        /// <summary>
+        ///     Shows or hides the hint pointing at File > Load Module
+        /// </summary>
+        public void SetNoModulesHint(bool show)
+        {
+            if (show == _showNoModulesHint)
+                return;
+
+            _showNoModulesHint = show;
+            PlaceNoModulesHint();
+            SetNeedsDraw();
+        }
+
         public void SetShuttingDown()
         {
             _shuttingDown = true;
@@ -416,6 +442,13 @@ namespace MBBSEmu.UI.Main
             }
 
             AddStatusLabel(Math.Max(0, _width - _statusRightText.Length - 1), _statusRightText, ConsoleTheme.Menu);
+        }
+
+        private void PlaceNoModulesHint()
+        {
+            //80 columns, the smallest the console is drawn at, leaves room for it beside the menus
+            _noModulesHint.X = Math.Max(0, _width - _noModulesHint.Text.Length - 1);
+            _noModulesHint.Visible = _showNoModulesHint && _width > 0 && !ScreenSize.IsBelowMinimum(_width, _height);
         }
 
         private void AddStatusLabel(int x, string text, Scheme scheme)

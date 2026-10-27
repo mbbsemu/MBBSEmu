@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MBBSEmu.UI.Main;
 using System;
+using System.IO;
 using Terminal.Gui.Input;
 using Terminal.Gui.Testing;
 using Xunit;
@@ -38,6 +39,60 @@ namespace MBBSEmu.Tests.UI.Main
                 _harness.App.RequestStop();
                 return false;
             });
+        }
+
+        /// <summary>
+        ///     Waits for the picker to show something, keeps what's on screen, then closes it without picking
+        /// </summary>
+        private Func<string> CloseWhenShown(string waitFor)
+        {
+            string screen = null;
+            var started = DateTime.UtcNow;
+            _harness.App.AddTimeout(TimeSpan.FromMilliseconds(100), () =>
+            {
+                _harness.App.LayoutAndDraw(true);
+                var current = _harness.App.ToString();
+                if (!current!.Contains(waitFor) && DateTime.UtcNow - started < TimeSpan.FromSeconds(3))
+                    return true;
+
+                screen = current;
+                _harness.App.RequestStop(_harness.App.TopRunnable);
+                return false;
+            });
+            return () => screen;
+        }
+
+        [Fact]
+        public void PickModuleDefinition_ShowsOnlyMdfFiles()
+        {
+            var folder = Path.Combine(Path.GetTempPath(), $"mbbsemu-picker-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            try
+            {
+                foreach (var file in new[] { "GAME.MDF", "GAME.DLL", "game2.mdf" })
+                    File.WriteAllText(Path.Combine(folder, file), "");
+                var screen = CloseWhenShown("GAME.MDF");
+
+                var picked = _dialogs.PickModuleDefinition(folder);
+
+                picked.Should().BeNull("the picker was closed without choosing");
+                screen().Should().Contain("GAME.MDF").And.Contain("game2.mdf").And.NotContain("GAME.DLL");
+            }
+            finally
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
+
+        [Fact]
+        public void PickModuleDefinition_MissingStartFolder_OpensAnyway()
+        {
+            var screen = CloseWhenShown("Load Module");
+
+            var picked = _dialogs.PickModuleDefinition(Path.Combine(Path.GetTempPath(), $"missing-{Guid.NewGuid():N}"));
+
+            picked.Should().BeNull();
+            screen().Should().Contain("Load Module");
         }
 
         [Fact]

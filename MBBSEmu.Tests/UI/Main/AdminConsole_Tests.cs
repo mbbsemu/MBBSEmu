@@ -3,6 +3,7 @@ using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.Logging.Targets;
 using MBBSEmu.UI.Main;
+using MBBSEmu.UI.Modules;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
@@ -42,6 +43,42 @@ namespace MBBSEmu.Tests.UI.Main
             public void ShowEntry(string title, string text) { }
 
             public void ShowAbout() { }
+
+            public readonly ConcurrentQueue<string> PickAnswers = new();
+            public readonly ConcurrentQueue<(string Title, string Message)> Messages = new();
+            public readonly ConcurrentQueue<(string Title, string Message)> Errors = new();
+            public int PickAsks;
+            public string LastStartFolder;
+
+            public string PickModuleDefinition(string startFolder)
+            {
+                Interlocked.Increment(ref PickAsks);
+                LastStartFolder = startFolder;
+                return PickAnswers.TryDequeue(out var answer) ? answer : null;
+            }
+
+            public void ShowMessage(string title, string message) => Messages.Enqueue((title, message));
+
+            public void ShowError(string title, string message) => Errors.Enqueue((title, message));
+        }
+
+        private sealed class FakeModuleLoader : IModuleLoader
+        {
+            public readonly ConcurrentQueue<string> Paths = new();
+            public volatile int Count;
+
+            public Task<ModuleLoadReport> NextResult { get; set; } =
+                Task.FromResult(new ModuleLoadReport(false, ModuleLoadText.LoadedTitle, "msg"));
+
+            public string StartFolder => "/start";
+
+            public int LoadedCount => Count;
+
+            public Task<ModuleLoadReport> LoadAsync(string mdfPath)
+            {
+                Paths.Enqueue(mdfPath);
+                return NextResult;
+            }
         }
 
         private static readonly DateTime StartTime = new(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc);
@@ -70,7 +107,7 @@ namespace MBBSEmu.Tests.UI.Main
         private void Stop() => Interlocked.Increment(ref _stops);
 
         private AdminConsoleResult Run(Action startServices, Action stopServices, string startupWarning = null,
-            bool realDialogs = false)
+            bool realDialogs = false, IModuleLoader moduleLoader = null)
         {
             _console = new AdminConsole(new AdminConsoleOptions
             {
@@ -81,6 +118,7 @@ namespace MBBSEmu.Tests.UI.Main
                 StatusRightText = StatusLine.RightText(true, false, "test"),
                 Build = "test",
                 StartupWarning = startupWarning,
+                ModuleLoader = moduleLoader,
                 CreateApplication = () =>
                 {
                     var app = Application.Create();
@@ -311,6 +349,152 @@ namespace MBBSEmu.Tests.UI.Main
             Run(Start, Stop, startupWarning: "W");
 
             queue.DequeueAll().Should().Contain(x => x[2] is LogLevel && (LogLevel)x[2] == LogLevel.Warning && (string)x[3] == "W");
+        }
+
+        [Fact]
+        public void CtrlO_PicksLoadsAndShowsTheResult()
+        {
+            var loader = new FakeModuleLoader();
+            _dialogs.PickAnswers.Enqueue("/m/MJWMUT.MDF");
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            KeyAt(100, Key.O.WithCtrl);
+            KeyAt(500, Key.Q.WithCtrl);
+
+            Run(Start, Stop, moduleLoader: loader);
+
+            _dialogs.LastStartFolder.Should().Be("/start");
+            loader.Paths.Should().Equal("/m/MJWMUT.MDF");
+            _dialogs.Messages.Should().Equal((ModuleLoadText.LoadedTitle, "msg"));
+            _dialogs.Errors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void CtrlO_PickerCancelled_LoadsNothing()
+        {
+            var loader = new FakeModuleLoader();
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            KeyAt(100, Key.O.WithCtrl);
+            KeyAt(400, Key.Q.WithCtrl);
+
+            Run(Start, Stop, moduleLoader: loader);
+
+            _dialogs.PickAsks.Should().Be(1);
+            loader.Paths.Should().BeEmpty();
+            _dialogs.Messages.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void CtrlO_WhileLoading_DoesNotPickAgain()
+        {
+            var pending = new TaskCompletionSource<ModuleLoadReport>();
+            var loader = new FakeModuleLoader { NextResult = pending.Task };
+            _dialogs.PickAnswers.Enqueue("/m/MJWMUT.MDF");
+            _dialogs.PickAnswers.Enqueue("/m/OTHER.MDF");
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            KeyAt(100, Key.O.WithCtrl);
+            KeyAt(300, Key.O.WithCtrl);
+            KeyAt(500, Key.Q.WithCtrl);
+
+            Run(Start, Stop, moduleLoader: loader);
+            //Finishing after the console has closed must not throw
+            pending.SetResult(new ModuleLoadReport(false, ModuleLoadText.LoadedTitle, "late"));
+
+            _dialogs.PickAsks.Should().Be(1);
+            loader.Paths.Should().Equal("/m/MJWMUT.MDF");
+        }
+
+        [Fact]
+        public void LoadError_IsShownAsAnError()
+        {
+            var loader = new FakeModuleLoader
+            {
+                NextResult = Task.FromResult(new ModuleLoadReport(true, ModuleLoadText.FailedTitle, "bad"))
+            };
+            _dialogs.PickAnswers.Enqueue("/m/MJWMUT.MDF");
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            KeyAt(100, Key.O.WithCtrl);
+            KeyAt(500, Key.Q.WithCtrl);
+
+            Run(Start, Stop, moduleLoader: loader);
+
+            _dialogs.Errors.Should().Equal((ModuleLoadText.FailedTitle, "bad"));
+            _dialogs.Messages.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void LoadFinishingDuringShutdown_ShowsNothing()
+        {
+            var pending = new TaskCompletionSource<ModuleLoadReport>();
+            var loader = new FakeModuleLoader { NextResult = pending.Task };
+            _dialogs.PickAnswers.Enqueue("/m/MJWMUT.MDF");
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            KeyAt(100, Key.O.WithCtrl);
+            KeyAt(300, Key.Q.WithCtrl);
+
+            Run(Start, () =>
+            {
+                //The load finishes while services are stopping
+                pending.SetResult(new ModuleLoadReport(false, ModuleLoadText.LoadedTitle, "msg"));
+                Thread.Sleep(500);
+                Stop();
+            }, moduleLoader: loader);
+
+            loader.Paths.Should().Equal("/m/MJWMUT.MDF");
+            _dialogs.Messages.Should().BeEmpty();
+            _dialogs.Errors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void NoModuleLoader_CtrlODoesNothing()
+        {
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            KeyAt(100, Key.O.WithCtrl);
+            KeyAt(300, Key.Q.WithCtrl);
+
+            Run(Start, Stop);
+
+            _dialogs.PickAsks.Should().Be(0);
+        }
+
+        [Fact]
+        public void ShowMessage_FromStartServices_ShowsDialog()
+        {
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            KeyAt(400, Key.Q.WithCtrl);
+
+            Run(() =>
+            {
+                Start();
+                _console.ShowMessage("t", "m");
+            }, Stop);
+
+            _dialogs.Messages.Should().Equal(("t", "m"));
+        }
+
+        [Fact]
+        public void NoModulesHint_ShownOnlyWhileNothingIsLoaded()
+        {
+            var loader = new FakeModuleLoader();
+            string withNothingLoaded = null;
+            string withAModuleLoaded = null;
+            _dialogs.ShutdownAnswers.Enqueue(true);
+            At(400, app =>
+            {
+                app.LayoutAndDraw(true);
+                withNothingLoaded = app.ToString();
+                loader.Count = 1;
+            });
+            At(1000, app =>
+            {
+                app.LayoutAndDraw(true);
+                withAModuleLoaded = app.ToString();
+            });
+            KeyAt(1100, Key.Q.WithCtrl);
+
+            Run(Start, Stop, moduleLoader: loader);
+
+            withNothingLoaded.Should().Contain(ModuleLoadText.NoModulesHint);
+            withAModuleLoaded.Should().NotContain(ModuleLoadText.NoModulesHint);
         }
     }
 }

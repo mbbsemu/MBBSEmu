@@ -17,7 +17,12 @@ namespace MBBSEmu.UI.Main
         /// <summary>
         ///     Ask to shut down MBBSEmu
         /// </summary>
-        Shutdown
+        Shutdown,
+
+        /// <summary>
+        ///     Pick a module to load (File > Load Module)
+        /// </summary>
+        LoadModule
     }
 
     /// <summary>
@@ -28,11 +33,14 @@ namespace MBBSEmu.UI.Main
         /// <summary>
         ///     Ctrl+Q and Ctrl+C ask to shut down. Esc (Terminal.Gui's default Quit key) and Ctrl+Z (its default
         ///     Suspend key on Linux and macOS) are swallowed: either would stop or freeze the BBS for every caller.
+        ///     Ctrl+O loads a module.
         /// </summary>
         public static EnumConsoleKeyAction Classify(Key key)
         {
             if (key.KeyCode == Key.Q.WithCtrl.KeyCode || key.KeyCode == Key.C.WithCtrl.KeyCode)
                 return EnumConsoleKeyAction.Shutdown;
+            if (key.KeyCode == Key.O.WithCtrl.KeyCode)
+                return EnumConsoleKeyAction.LoadModule;
 
             if (key.KeyCode == Key.Esc.KeyCode || key.KeyCode == Key.Z.WithCtrl.KeyCode)
                 return EnumConsoleKeyAction.Swallow;

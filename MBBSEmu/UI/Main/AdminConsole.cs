@@ -1,6 +1,7 @@
 using MBBSEmu.IO;
 using MBBSEmu.Logging;
 using MBBSEmu.UI.Logging;
+using MBBSEmu.UI.Modules;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -66,6 +67,11 @@ namespace MBBSEmu.UI.Main
         /// </summary>
         public string StartupWarning { get; init; }
 
+        /// <summary>
+        ///     Loads modules picked with File > Load Module, or null to leave loading off
+        /// </summary>
+        public IModuleLoader ModuleLoader { get; init; }
+
         public Func<IApplication> CreateApplication { get; init; } = () =>
         {
             var app = Application.Create();
@@ -104,6 +110,7 @@ namespace MBBSEmu.UI.Main
         private Exception _uiException;
         private string _forceQuitMessage;
         private bool _ending;
+        private bool _loadingModule;
 
         public AdminConsole(AdminConsoleOptions options)
         {
@@ -145,6 +152,7 @@ namespace MBBSEmu.UI.Main
 
                 _view = new AdminConsoleView(_dialogs, _options.StatusRightText);
                 _view.ShutdownRequested += (_, _) => RequestShutdown(unattended: false);
+                _view.LoadModuleRequested += (_, _) => LoadModule();
                 _app.ScreenChanged += (_, e) => _view.ApplyScreenSize(e.Value.Width, e.Value.Height);
                 _view.ApplyScreenSize(_app.Screen.Width, _app.Screen.Height);
                 _app.Keyboard.KeyDown += OnKeyDown;
@@ -223,6 +231,63 @@ namespace MBBSEmu.UI.Main
                     if (_dialogs.ConfirmForceQuit())
                         ForceExit(AdminConsoleText.ForceQuitExit);
                     break;
+            }
+        }
+
+        /// <summary>
+        ///     Shows a message box once the UI thread gets to it; callable from any thread. Nothing is shown once
+        ///     MBBSEmu is shutting down.
+        /// </summary>
+        public void ShowMessage(string title, string message) => InvokeWhileRunning(() => _dialogs.ShowMessage(title, message));
+
+        /// <summary>
+        ///     File > Load Module: asks for a module's .MDF and loads it in the background, then shows how it went.
+        ///     Must be called on the UI thread.
+        /// </summary>
+        private void LoadModule()
+        {
+            var loader = _options.ModuleLoader;
+            if (loader == null || _loadingModule || !IsRunning())
+                return;
+
+            var path = _dialogs.PickModuleDefinition(loader.StartFolder);
+            //A signal can start a shutdown while the picker is open
+            if (path == null || !IsRunning())
+                return;
+
+            _loadingModule = true;
+            loader.LoadAsync(path).ContinueWith(load => InvokeOnUiThread(() =>
+            {
+                _loadingModule = false;
+                if (!IsRunning())
+                    return;
+
+                if (load.IsFaulted)
+                    _dialogs.ShowError(ModuleLoadText.FailedTitle, load.Exception!.GetBaseException().Message);
+                else if (load.Result.IsError)
+                    _dialogs.ShowError(load.Result.Title, load.Result.Message);
+                else
+                    _dialogs.ShowMessage(load.Result.Title, load.Result.Message);
+            }), TaskScheduler.Default);
+        }
+
+        private bool IsRunning() => !_ending && _coordinator?.Phase == EnumShutdownPhase.Running;
+
+        private void InvokeWhileRunning(Action action) => InvokeOnUiThread(() =>
+        {
+            if (IsRunning())
+                action();
+        });
+
+        private void InvokeOnUiThread(Action action)
+        {
+            try
+            {
+                _app.Invoke(action);
+            }
+            catch (ObjectDisposedException)
+            {
+                //The console has already closed
             }
         }
 
@@ -315,6 +380,9 @@ namespace MBBSEmu.UI.Main
                     _capture.DrainAuditLog(),
                     ChannelList.Build(_options.ChannelCount, sessions),
                     ChannelList.CountOnline(_options.ChannelCount, sessions));
+                //Only once startup has loaded the saved modules, so the hint doesn't flash up first
+                _view.SetNoModulesHint(_options.ModuleLoader != null && _startTask?.IsCompleted == true &&
+                                       _startException == null && _options.ModuleLoader.LoadedCount == 0);
 
                 if (_startException != null || _coordinator.Phase == EnumShutdownPhase.Stopped)
                     EndLoop();
@@ -341,6 +409,10 @@ namespace MBBSEmu.UI.Main
                 case EnumConsoleKeyAction.Shutdown:
                     key.Handled = true;
                     RequestShutdown(unattended: false);
+                    break;
+                case EnumConsoleKeyAction.LoadModule:
+                    key.Handled = true;
+                    LoadModule();
                     break;
             }
         }

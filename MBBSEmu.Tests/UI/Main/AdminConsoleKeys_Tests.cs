@@ -12,6 +12,7 @@ namespace MBBSEmu.Tests.UI.Main
         {
             new object[] { Key.Q.WithCtrl, EnumConsoleKeyAction.Shutdown },
             new object[] { Key.C.WithCtrl, EnumConsoleKeyAction.Shutdown },
+            new object[] { Key.O.WithCtrl, EnumConsoleKeyAction.LoadModule },
             new object[] { Key.Esc, EnumConsoleKeyAction.Swallow },
             new object[] { Key.Z.WithCtrl, EnumConsoleKeyAction.Swallow },
             new object[] { Key.Tab, EnumConsoleKeyAction.None },
@@ -33,6 +34,7 @@ namespace MBBSEmu.Tests.UI.Main
             new object[] { Key.Esc, EnumConsoleKeyAction.None },
             new object[] { Key.Q.WithCtrl, EnumConsoleKeyAction.None },
             new object[] { Key.C.WithCtrl, EnumConsoleKeyAction.None },
+            new object[] { Key.O.WithCtrl, EnumConsoleKeyAction.None },
             new object[] { Key.Enter, EnumConsoleKeyAction.None }
         };
 

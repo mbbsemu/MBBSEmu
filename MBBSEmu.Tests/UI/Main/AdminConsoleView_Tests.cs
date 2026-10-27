@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MBBSEmu.UI.Logging;
 using MBBSEmu.UI.Main;
+using MBBSEmu.UI.Modules;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -23,6 +24,9 @@ namespace MBBSEmu.Tests.UI.Main
             public bool ConfirmForceQuit() => true;
             public void ShowEntry(string title, string text) => Entries.Add((title, text));
             public void ShowAbout() => AboutCalls++;
+            public string PickModuleDefinition(string startFolder) => null;
+            public void ShowMessage(string title, string message) { }
+            public void ShowError(string title, string message) { }
         }
 
         private static ApplicationLogEntry Entry(string time, string source, LogLevel level, string message) =>
@@ -227,6 +231,64 @@ namespace MBBSEmu.Tests.UI.Main
             _harness.Key(Key.Enter);
 
             _dialogs.Entries.Should().Equal(("Audit Entry", "Summary: LOGON\nDetail: SYSOP logged on from 127.0.0.1"));
+        }
+
+        [Fact]
+        public void Menu_ListsFileBeforeServerAndHelp()
+        {
+            var menuRow = Show(80, 24)[0];
+
+            var file = menuRow.IndexOf("File", StringComparison.Ordinal);
+            var server = menuRow.IndexOf("Server", StringComparison.Ordinal);
+            var help = menuRow.IndexOf("Help", StringComparison.Ordinal);
+            file.Should().BeGreaterThanOrEqualTo(0, menuRow);
+            server.Should().BeGreaterThan(file, menuRow);
+            help.Should().BeGreaterThan(server, menuRow);
+        }
+
+        [Fact]
+        public void LoadModuleMenuItem_RaisesLoadModuleRequested()
+        {
+            Show(80, 24);
+            var requests = 0;
+            _view.LoadModuleRequested += (_, _) => requests++;
+
+            _view.LoadModuleMenuItem.Action!();
+
+            requests.Should().Be(1);
+        }
+
+        [Fact]
+        public void NoModulesHint_ShownRightAlignedOnTheMenuRow()
+        {
+            Show(80, 24);
+
+            _view.SetNoModulesHint(true);
+
+            _harness.Screen()[0].TrimEnd().Should().EndWith(ModuleLoadText.NoModulesHint);
+        }
+
+        [Fact]
+        public void NoModulesHint_HiddenByDefaultAndAfterFalse()
+        {
+            Show(80, 24)[0].Should().NotContain(ModuleLoadText.NoModulesHint);
+
+            _view.SetNoModulesHint(true);
+            _view.SetNoModulesHint(false);
+
+            _harness.Screen()[0].Should().NotContain(ModuleLoadText.NoModulesHint);
+        }
+
+        [Fact]
+        public void NoModulesHint_FollowsResize()
+        {
+            Show(80, 24);
+            _view.SetNoModulesHint(true);
+
+            var screen = Resize(100, 30);
+
+            screen[0].TrimEnd().Should().EndWith(ModuleLoadText.NoModulesHint);
+            screen[0].Length.Should().BeGreaterThanOrEqualTo(100);
         }
 
         [Fact]

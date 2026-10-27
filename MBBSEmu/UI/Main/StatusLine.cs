@@ -15,6 +15,7 @@ namespace MBBSEmu.UI.Main
         public static readonly IReadOnlyList<StatusHint> AdminConsoleHints = new[]
         {
             new StatusHint("^Q", "Shutdown"),
+            new StatusHint("^O", "Load module"),
             new StatusHint("Enter", "View entry"),
             new StatusHint("Tab", "Next panel")
         };

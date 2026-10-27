@@ -1,3 +1,7 @@
+using MBBSEmu.UI.Modules;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
@@ -65,6 +69,36 @@ namespace MBBSEmu.UI.Main
 
         public void ShowAbout() =>
             MessageBox.Query(_app, AdminConsoleText.AboutTitle, AdminConsoleText.AboutMessage(_build), AdminConsoleText.OkButton);
+
+        /// <summary>
+        ///     File picker showing only module definitions; opens in the home folder if startFolder is gone
+        /// </summary>
+        public string PickModuleDefinition(string startFolder)
+        {
+            var folder = !string.IsNullOrEmpty(startFolder) && Directory.Exists(startFolder)
+                ? startFolder
+                : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+
+            using var dialog = new OpenDialog
+            {
+                Title = ModuleLoadText.PickerTitle,
+                OpenMode = OpenMode.File,
+                MustExist = true,
+                AllowedTypes = new List<IAllowedType> { new AllowedType(ModuleLoadText.MdfFiles, ".MDF", ".mdf") },
+                //A trailing separator opens the folder itself rather than selecting it in its parent
+                Path = Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar
+            };
+
+            _app.Run(dialog);
+
+            return dialog.Canceled || string.IsNullOrEmpty(dialog.Path) ? null : dialog.Path;
+        }
+
+        public void ShowMessage(string title, string message) =>
+            MessageBox.Query(_app, title, message, AdminConsoleText.OkButton);
+
+        public void ShowError(string title, string message) =>
+            MessageBox.ErrorQuery(_app, title, message, AdminConsoleText.OkButton);
 
         /// <summary>
         ///     Yes/No question that defaults to No; Esc or closing the dialog also counts as No

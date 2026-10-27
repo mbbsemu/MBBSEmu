@@ -24,5 +24,15 @@ namespace MBBSEmu.UI.Main
         void ShowEntry(string title, string text);
 
         void ShowAbout();
+
+        /// <summary>
+        ///     Asks for a module's .MDF file, starting in startFolder
+        /// </summary>
+        /// <returns>The chosen file's full path, or null if cancelled</returns>
+        string PickModuleDefinition(string startFolder);
+
+        void ShowMessage(string title, string message);
+
+        void ShowError(string title, string message);
     }
 }
