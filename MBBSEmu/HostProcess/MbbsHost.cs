@@ -844,7 +844,7 @@ namespace MBBSEmu.HostProcess
                     if (!value.Executed && value.Elapsed.ElapsedMilliseconds > value.Delay * 1000)
                     {
 #if DEBUG
-                        Logger.Info($"Running RTKICK-{key}: {value}");
+                        Logger.Debug($"Running RTKICK-{key}: {value}");
 #endif
                         Run(module.ModuleIdentifier, value, ushort.MaxValue);
 
