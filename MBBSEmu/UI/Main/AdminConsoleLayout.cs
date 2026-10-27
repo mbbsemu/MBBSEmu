@@ -39,6 +39,23 @@ namespace MBBSEmu.UI.Main
         private const double AuditHeightShare = 0.35;
 
         /// <summary>
+        ///     Audit Log Summary width on the narrowest terminals
+        /// </summary>
+        private const int MinimumAuditSummaryWidth = 10;
+
+        /// <summary>
+        ///     The longest audit trail summary a module can write (AUDBRIEFSIZ in the Worldgroup SDK's AUDAPI.H, less
+        ///     its nul)
+        /// </summary>
+        private const int MaximumAuditSummaryWidth = 32;
+
+        /// <summary>
+        ///     Detail characters kept before the Summary column widens: the 63-character detail of a classic MajorBBS
+        ///     audit trail record (AUDOLDDETSIZ in AUDAPI.H, less its two nuls)
+        /// </summary>
+        private const int AuditDetailWidthBeforeSummaryWidens = 63;
+
+        /// <summary>
         ///     Application Log interior width at which the Source column and milliseconds appear
         /// </summary>
         private const int SourceColumnMinimumInterior = 70;
@@ -65,12 +82,16 @@ namespace MBBSEmu.UI.Main
             var logInterior = leftWidth - 2;
             var showSource = logInterior >= SourceColumnMinimumInterior;
 
+            //Detail gets its classic 63 characters first, then Summary widens up to its 32, then Detail takes the rest
+            var auditSummaryWidth = Math.Clamp(logInterior - 1 - AuditDetailWidthBeforeSummaryWidens,
+                MinimumAuditSummaryWidth, MaximumAuditSummaryWidth);
+
             return new AdminConsoleLayout(
                 SidebarWidth: sidebarWidth,
                 LeftWidth: leftWidth,
                 AuditHeight: auditHeight,
                 ApplicationLogHeight: bodyHeight - auditHeight,
-                AuditSummaryWidth: leftWidth < 80 ? 10 : 14,
+                AuditSummaryWidth: auditSummaryWidth,
                 ShowSource: showSource,
                 SourceWidth: logInterior >= WideSourceMinimumInterior ? 20 : 14,
                 ShowMilliseconds: showSource);

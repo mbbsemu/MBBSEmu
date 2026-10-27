@@ -163,6 +163,17 @@ namespace MBBSEmu.Tests.UI.Main
             screen.Should().OnlyContain(x => x.Length <= 80);
         }
 
+        [Fact]
+        public void LongestAuditSummary_ShownInFullWhenThereIsRoom()
+        {
+            const string summary = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456";
+            Show(132, 40);
+
+            _view.Update(Array.Empty<ApplicationLogEntry>(), new[] { new AuditLogEntry(summary, "detail") }, SampleChannels, 1);
+
+            _harness.Screen().Should().Contain(x => x.Contains(summary + "│detail"));
+        }
+
         /// <summary>
         ///     Message and Detail take all the width left in their panel, however wide the terminal: a long line runs
         ///     to the panel's right border before it's cut off
