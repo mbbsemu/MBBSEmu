@@ -55,9 +55,12 @@ namespace MBBSEmu.Session
         /// A mapping between lineBuffer to rawBuffer.
         ///
         /// Each index in this array (which is a printable character) maps to
-        /// the data area where the character is in rawBuffer.
+        /// the data area where the character is in rawBuffer, or NOT_IN_RAW_BUFFER
+        /// if the character was already sent or was skipped over by a cursor movement.
         /// </summary>
         private readonly int[] _lineBufferToRawBuffer = new int[MAX_LINE];
+
+        private const int NOT_IN_RAW_BUFFER = -1;
 
         /// <summary>
         /// Contains all the bytes accumulated by parsing outgoing data,
@@ -175,6 +178,27 @@ namespace MBBSEmu.Session
             // output our raw buffer
             SendToClientMethod(_rawBuffer.AsSpan().Slice(0, _rawBufferLength).ToArray());
             _rawBufferLength = 0;
+
+            // the rest of the current line has been sent, so a line break can no longer be inserted into it
+            for (var i = 0; i < _lineBufferLength; ++i)
+            {
+                _lineBufferToRawBuffer[i] = NOT_IN_RAW_BUFFER;
+            }
+        }
+
+        /// <summary>
+        /// Moves the cursor to column (0-based) within the current line.
+        /// </summary>
+        private void moveCursorTo(int column)
+        {
+            column = Math.Clamp(column, 0, Math.Min(WordWrapWidth, MAX_LINE - 1));
+            // columns skipped over were never sent by us, so there is nothing to break at
+            for (var i = _lineBufferLength; i < column; ++i)
+            {
+                _lineBuffer[i] = 0;
+                _lineBufferToRawBuffer[i] = NOT_IN_RAW_BUFFER;
+            }
+            _lineBufferLength = column;
         }
 
         private void processAnsiCommand(char ansiCommand)
@@ -183,24 +207,24 @@ namespace MBBSEmu.Session
             {
                 // H resets position to 0,0 with no arguments
                 case 'H' when _values.Count == 0:
-                    _lineBufferLength = 0;
+                    moveCursorTo(0);
                     break;
                 // H/f move cursor to line/column
                 case 'H' when _values.Count == 2:
                 case 'f' when _values.Count == 2:
-                    _lineBufferLength = _values[1] - 1; // _values are line/column (1-based)
+                    moveCursorTo(_values[1] - 1); // _values are line/column (1-based)
                     break;
                 // move columns right
                 case 'C' when _values.Count == 1:
-                    _lineBufferLength += _values[0];
+                    moveCursorTo(_lineBufferLength + _values[0]);
                     break;
                 // move columns left
                 case 'D' when _values.Count == 1:
-                    _lineBufferLength = Math.Max(0, _lineBufferLength - _values[0]); // clamp to 0
+                    moveCursorTo(_lineBufferLength - _values[0]);
                     break;
                 // move to column
                 case 'G' when _values.Count == 1:
-                    _lineBufferLength = _values[0] - 1; // 1-based
+                    moveCursorTo(_values[0] - 1); // 1-based
                     break;
                 default:
                     // skip, we aren't interested in these ansi codes
@@ -224,16 +248,16 @@ namespace MBBSEmu.Session
             }
             else
             {
-                // scan for the last space to know where to break the line
+                // scan for the last space still in rawBuffer to know where to break the line
                 var lastSpaceIndex = _lineBufferLength - 1;
-                while ((lastSpaceIndex >= 0) && !char.IsWhiteSpace((char)_lineBuffer[lastSpaceIndex]))
+                while ((lastSpaceIndex >= 0) && (_lineBufferToRawBuffer[lastSpaceIndex] != NOT_IN_RAW_BUFFER) && !char.IsWhiteSpace((char)_lineBuffer[lastSpaceIndex]))
                 {
                     --lastSpaceIndex;
                 }
 
-                if (lastSpaceIndex < 0)
+                if (lastSpaceIndex < 0 || _lineBufferToRawBuffer[lastSpaceIndex] == NOT_IN_RAW_BUFFER)
                 {
-                    // no spaces = one huge line (shouldn't really happen), just break it up by inserting \r\n
+                    // no spaces we can still replace = one huge line, just break it up by inserting \r\n
                     _rawBuffer[_rawBufferLength - 1] = (byte)'\r';
                     _rawBuffer[_rawBufferLength] = (byte)'\n';
                     _rawBuffer[_rawBufferLength + 1] = b;
