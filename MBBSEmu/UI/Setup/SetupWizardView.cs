@@ -538,6 +538,13 @@ namespace MBBSEmu.UI.Setup
                 Labels = new[] { first, second },
                 Value = value ? 0 : 1
             };
+            //Enter selects the option under the cursor before pressing Next, and the cursor would start on the first
+            //option; put it on the selected one whenever the selector gets focus, so Enter keeps what is shown
+            options.HasFocusChanged += (_, e) =>
+            {
+                if (e.NewValue)
+                    options.FocusedItem = options.Value ?? 0;
+            };
             options.ValueChanged += (_, e) => set(e.NewValue == 0);
 
             AddControl(step, ref previous, labelText, help, options);

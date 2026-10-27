@@ -72,6 +72,23 @@ namespace MBBSEmu.Tests.UI.Setup
             _view.CurrentStep.Should().Be(step);
         }
 
+        /// <summary>
+        ///     Pressing Enter through the wizard accepts each step as shown; it must not also pick whichever option the
+        ///     focused selector's cursor is on (here turning a disabled Rlogin on)
+        /// </summary>
+        [Fact]
+        public void Enter_OnADisabledServiceStep_KeepsItDisabled()
+        {
+            Show();
+            GoTo(EnumSetupStep.Rlogin);
+            _model.RloginEnabled.Should().BeFalse();
+
+            _harness.Key(Key.Enter);
+
+            _model.RloginEnabled.Should().BeFalse();
+            _view.CurrentStep.Should().Be(EnumSetupStep.Advanced, "Enter presses Next");
+        }
+
         [Fact]
         public void At80x24_ShowsWizardInsideHostWindow()
         {
