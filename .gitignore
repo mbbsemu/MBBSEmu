@@ -359,3 +359,6 @@ MigrationBackup/
 docker/config/
 docker/config-test-*/
 docker/docker-compose.test.yml
+
+# Local modules for manual testing (e.g. modules/MJWMUT)
+/modules/

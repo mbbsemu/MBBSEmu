@@ -38,7 +38,7 @@ MBBSEmu/
 ├── IO/                     # Cross-platform file utilities, stream abstractions
 ├── Converters/             # JSON converters (bool, FarPtr, module config)
 ├── Resources/              # Embedded resource manager
-├── UI/                     # Terminal.Gui interface (MainView, SetupView)
+├── UI/                     # Terminal.Gui v2 admin console (AdminConsole, AdminConsoleView) and setup wizard (SetupWizard)
 ├── Util/                   # MessagingCenter, CRC32, LRU cache
 ├── Date/                   # IClock abstraction (SystemClock, FakeClock)
 ├── Reports/                # API usage report generation
@@ -266,6 +266,8 @@ Emulates the Intel 8253/8254 PIT. Port-mapped I/O on 0x40-0x43, supports all 6 t
 CLI argument parsing: `-M` (module), `-P` (path), `-K` (menu key), `-C` (config file), `-S` (settings), `-EXE` (run DOS executable), `-DBRESET`, `-DBREBUILD`, `-PWRESET`, `-APIREPORT`, `-CONSOLE`, `-CLI`, `-V` (version).
 
 Boot sequence: parse args → load AppSettings → build ServiceResolver → load modules (from CLI, directory scan, or modules.json) → create MbbsHost → start Telnet/Rlogin servers → launch UI → wait for shutdown.
+
+With no arguments in a terminal (GUI mode), Program changes to the executable's folder, runs the Setup Wizard on first run, loads the default modules.json one module at a time (skipping broken ones), and the admin console's Modules → Load Module loads more into the running host.
 
 ### AppSettingsManager
 

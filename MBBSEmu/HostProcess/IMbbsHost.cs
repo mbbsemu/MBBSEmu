@@ -5,6 +5,7 @@ using MBBSEmu.Server;
 using MBBSEmu.Session;
 using System.Collections.Generic;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MBBSEmu.HostProcess
 {
@@ -15,6 +16,15 @@ namespace MBBSEmu.HostProcess
         /// </summary>
         /// <param name="moduleConfigurations"></param>
         void Start(List<ModuleConfiguration> moduleConfigurations);
+
+        /// <summary>
+        ///     Loads a module while the host is running, without disconnecting anyone
+        ///
+        ///     The module is loaded on the host's worker thread between iterations of its loop; the task completes once
+        ///     it has loaded or failed. A missing, reserved (X) or already used menu option key is replaced with the
+        ///     next free one.
+        /// </summary>
+        Task<ModuleLoadResult> LoadModule(ModuleConfiguration moduleConfiguration);
 
         /// <summary>
         ///     Adds a Module to the MbbsHost Process and sets it up for use

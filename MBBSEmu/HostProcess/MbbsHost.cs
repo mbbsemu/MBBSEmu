@@ -27,6 +27,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MBBSEmu.HostProcess
 {
@@ -150,6 +151,18 @@ namespace MBBSEmu.HostProcess
         private readonly IFileUtility _fileUtility;
 
         /// <summary>
+        ///     Modules waiting for the worker thread to load them while the host runs, and whether new requests are
+        ///     accepted. Both are guarded by locking the queue.
+        /// </summary>
+        private readonly Queue<(ModuleConfiguration Configuration, TaskCompletionSource<ModuleLoadResult> Completion)> _moduleLoadRequests = new();
+        private bool _acceptingModuleLoads;
+
+        private const string NotRunningMessage = "MBBSEmu isn't running";
+        private const string ShuttingDownMessage = "MBBSEmu is shutting down";
+        private const string NoMenuKeysMessage = "Every main menu key is in use";
+        private const string NotInitializedMessage = "The module didn't initialize";
+
+        /// <summary>
         ///     Main Worker Thread that processes the main loop within MBBSEmu
         /// </summary>
         private Thread _workerThread;
@@ -270,6 +283,9 @@ namespace MBBSEmu.HostProcess
 
             _isRunning = true;
 
+            lock (_moduleLoadRequests)
+                _acceptingModuleLoads = true;
+
             if (_workerThread == null)
             {
                 _workerThread = new Thread(WorkerThread);
@@ -325,6 +341,8 @@ namespace MBBSEmu.HostProcess
             while (_isRunning)
             {
                 WaitForNextTick();
+
+                ProcessModuleLoadRequests();
 
                 ProcessNightlyCleanup();
 
@@ -472,6 +490,7 @@ namespace MBBSEmu.HostProcess
                     c.Value.Status.Dequeue();
             }
 
+            RejectModuleLoadRequests();
             Shutdown();
         }
 
@@ -824,7 +843,7 @@ namespace MBBSEmu.HostProcess
                     if (!value.Executed && value.Elapsed.ElapsedMilliseconds > value.Delay * 1000)
                     {
 #if DEBUG
-                        Logger.Info($"Running RTKICK-{key}: {value}");
+                        Logger.Debug($"Running RTKICK-{key}: {value}");
 #endif
                         Run(module.ModuleIdentifier, value, ushort.MaxValue);
 
@@ -1016,6 +1035,11 @@ namespace MBBSEmu.HostProcess
 
             Logger.Info($"Running auxiliary program: {cmdline}");
 
+            //While the Admin Console owns the terminal, the program's console output goes to the log instead
+            var uiActive = ConsoleOwnership.IsUiActive;
+            var stdout = uiActive ? new LogLineWriter(line => Logger.Info($"[{exe}] {line}")) : Console.Out;
+            var stderr = uiActive ? new LogLineWriter(line => Logger.Error($"[{exe}] {line}")) : Console.Error;
+
             var runtime = new ExeRuntime(
                             new Disassembler.MZFile(Path.Combine(modulePath, exe)),
                             Clock,
@@ -1023,13 +1047,19 @@ namespace MBBSEmu.HostProcess
                             _fileUtility,
                             modulePath,
                             sessionBase: null,
-                            new TextReaderStream(Console.In),
-                            new TextWriterStream(Console.Out),
-                            new TextWriterStream(Console.Error));
+                            new TextReaderStream(uiActive ? TextReader.Null : Console.In),
+                            new TextWriterStream(stdout),
+                            new TextWriterStream(stderr));
             runtime.Load(args);
             runtime.Run();
 
             runtime.Dispose();
+
+            if (uiActive)
+            {
+                stdout.Dispose();
+                stderr.Dispose();
+            }
         }
 
         /// <summary>
@@ -1091,6 +1121,127 @@ namespace MBBSEmu.HostProcess
 
             Logger.Info($"({module.ModuleIdentifier}) Module Added!");
         }
+
+        public Task<ModuleLoadResult> LoadModule(ModuleConfiguration moduleConfiguration)
+        {
+            //Completions run their continuations elsewhere, so nothing waiting on a load runs on the worker thread
+            var completion = new TaskCompletionSource<ModuleLoadResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            lock (_moduleLoadRequests)
+            {
+                if (!_acceptingModuleLoads)
+                    return Task.FromResult(Failed(moduleConfiguration.ModuleIdentifier, NotRunningMessage));
+
+                _moduleLoadRequests.Enqueue((moduleConfiguration, completion));
+            }
+
+            TriggerProcessing();
+            return completion.Task;
+        }
+
+        /// <summary>
+        ///     Loads the modules requested since the last iteration of the worker loop
+        /// </summary>
+        private void ProcessModuleLoadRequests()
+        {
+            while (true)
+            {
+                (ModuleConfiguration Configuration, TaskCompletionSource<ModuleLoadResult> Completion) request;
+                lock (_moduleLoadRequests)
+                {
+                    if (!_moduleLoadRequests.TryDequeue(out request))
+                        return;
+                }
+
+                request.Completion.SetResult(LoadModuleNow(request.Configuration));
+            }
+        }
+
+        /// <summary>
+        ///     Completes every request still waiting once the worker loop has ended, so nobody waits on a load forever
+        /// </summary>
+        private void RejectModuleLoadRequests()
+        {
+            List<(ModuleConfiguration Configuration, TaskCompletionSource<ModuleLoadResult> Completion)> pending;
+            lock (_moduleLoadRequests)
+            {
+                _acceptingModuleLoads = false;
+                pending = _moduleLoadRequests.ToList();
+                _moduleLoadRequests.Clear();
+            }
+
+            foreach (var (configuration, completion) in pending)
+                completion.SetResult(Failed(configuration.ModuleIdentifier, ShuttingDownMessage));
+        }
+
+        /// <summary>
+        ///     Loads a module on the worker thread; anything of a module that fails to load is removed again
+        /// </summary>
+        private ModuleLoadResult LoadModuleNow(ModuleConfiguration configuration)
+        {
+            var moduleIdentifier = configuration.ModuleIdentifier;
+
+            var loaded = _modules.Values.FirstOrDefault(m =>
+                string.Equals(m.ModuleIdentifier, moduleIdentifier, StringComparison.OrdinalIgnoreCase));
+            if (loaded != null)
+                return new ModuleLoadResult(EnumModuleLoadStatus.AlreadyLoaded, loaded.ModuleIdentifier, ModuleName(loaded),
+                    loaded.ModuleConfig.MenuOptionKey, null);
+
+            var modulePath = configuration.ModulePath;
+            if (!Directory.Exists(modulePath))
+                return new ModuleLoadResult(EnumModuleLoadStatus.NotFound, moduleIdentifier, null, null, modulePath);
+
+            var mdfFile = _fileUtility.FindFile(modulePath, $"{moduleIdentifier}.MDF");
+            if (!File.Exists(Path.Combine(modulePath, mdfFile)))
+                return new ModuleLoadResult(EnumModuleLoadStatus.NotFound, moduleIdentifier, null, null,
+                    Path.Combine(modulePath, $"{moduleIdentifier}.MDF"));
+
+            var usedKeys = _modules.Values.Select(m => m.ModuleConfig.MenuOptionKey).Append(ModuleMenuKeys.LogOffKey).ToList();
+            if (string.IsNullOrEmpty(configuration.MenuOptionKey) ||
+                usedKeys.Contains(configuration.MenuOptionKey, StringComparer.OrdinalIgnoreCase))
+            {
+                configuration.MenuOptionKey = ModuleMenuKeys.Next(usedKeys);
+                if (configuration.MenuOptionKey == null)
+                    return Failed(moduleIdentifier, NoMenuKeysMessage);
+            }
+
+            configuration.ModuleEnabled ??= true;
+
+            MbbsModule module;
+            try
+            {
+                module = new MbbsModule(_fileUtility, Clock, Logger, configuration, null, _messagingCenter);
+                AddModule(module);
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"({moduleIdentifier}) Unable to load module: {e.Message}");
+                RemoveModuleArtifacts(moduleIdentifier);
+                return Failed(moduleIdentifier, e.Message);
+            }
+
+            //The same check Start makes for modules loaded at startup
+            if (module.MainModuleDll.EntryPoints.Count == 1 && (bool)configuration.ModuleEnabled)
+            {
+                Logger.Error($"{moduleIdentifier} not properly initialized, removing");
+                RemoveModuleArtifacts(moduleIdentifier);
+                return Failed(moduleIdentifier, NotInitializedMessage);
+            }
+
+            return new ModuleLoadResult(EnumModuleLoadStatus.Loaded, moduleIdentifier, ModuleName(module),
+                configuration.MenuOptionKey, null);
+        }
+
+        private static ModuleLoadResult Failed(string moduleIdentifier, string reason) =>
+            new(EnumModuleLoadStatus.Failed, moduleIdentifier, null, null, reason);
+
+        /// <summary>
+        ///     The description the module registered for the main menu, or its MDF name if it registered none
+        /// </summary>
+        private static string ModuleName(MbbsModule module) =>
+            !string.IsNullOrWhiteSpace(module.ModuleDescription) ? module.ModuleDescription
+            : !string.IsNullOrWhiteSpace(module.Mdf?.ModuleName) ? module.Mdf.ModuleName
+            : module.ModuleIdentifier;
 
         /// <summary>
         ///     Gets the Registered instance of the specified Module within the MBBS Host Process

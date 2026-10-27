@@ -3,6 +3,10 @@ By: MBBSEmu Community @ The MajorBBS Emulation Project
 https://www.mbbsemu.com
 https://github.com/mbbsemu/MBBSEmu
 -----------------------------------------------------------
+Run MBBSEmu with no options in a terminal to open the admin console. It keeps
+appsettings.json, modules.json and the BBS databases next to the MBBSEmu program;
+use Modules > Load Module to add a module.
+
 Command Line Options:
 -?                  This Help Screen
 -S <emulatorConfig> Specify an emulator configuration file. The included appsettings.json
@@ -18,7 +22,11 @@ Command Line Options:
 -DBRESET <password> Reset the SQLite DB back to default (deletes everything), if no password
                     is specified, you will be prompted to enter one
 -CONSOLE            Login to local CONSOLE after MBBSEmu initialization (system will shutdown when you logoff)
+-CLI                Run without the admin console (logs print to the terminal). Used automatically when
+                    no terminal is attached
 -EXE <example.exe>  Run DOS executable, typically used for module utilties or module installers
+
+The admin console needs a UTF-8 terminal of at least 80x24.
 
 Examples:
 ./MBBSEmu -M MyModule -P c:\bbsv6\ -DBRESET sysop

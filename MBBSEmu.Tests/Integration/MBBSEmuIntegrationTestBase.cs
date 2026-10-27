@@ -132,6 +132,23 @@ namespace MBBSEmu.Tests.Integration
             RunHost(moduleIdentifier, testLogic);
         }
 
+        /// <summary>
+        ///     Starts the host with no modules, as the admin console does when run without arguments, with the
+        ///     MBBSEMU test module copied into _modulePath ready to load. The caller stops the host.
+        /// </summary>
+        protected IMbbsHost StartHostWithoutModules()
+        {
+            CopyModuleToTempPath(ResourceManager.GetTestResourceManager());
+
+            var resourceManager = _serviceResolver.GetService<IResourceManager>();
+            File.WriteAllBytes(Path.Combine(_modulePath, "BBSGEN.DB"), resourceManager.GetResource("MBBSEmu.Assets.BBSGEN.DB").ToArray());
+            File.WriteAllBytes(Path.Combine(_modulePath, "BBSUSR.DB"), resourceManager.GetResource("MBBSEmu.Assets.BBSUSR.DB").ToArray());
+
+            var host = _serviceResolver.GetService<IMbbsHost>();
+            host.Start(new List<ModuleConfiguration>());
+            return host;
+        }
+
         private void RunHost(string moduleIdentifier, TestLogic testLogic)
         {
             //Setup Generic Database

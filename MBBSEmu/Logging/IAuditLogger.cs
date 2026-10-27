@@ -5,7 +5,7 @@ namespace MBBSEmu.Logging
     public interface IAuditLogger
     {
         void Log(string summary, string detail);
-        void RemoveTarget<T>();
+        bool RemoveTarget<T>();
         void AddTarget(ILoggingTarget target);
     }
 }

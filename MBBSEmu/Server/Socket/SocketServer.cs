@@ -57,6 +57,19 @@ namespace MBBSEmu.Server.Socket
             _listenerSocket.Dispose();
         }
 
+        /// <summary>
+        ///     Whether an accept failed because Stop() closed the listener
+        ///
+        ///     Depending on the platform, closing the listener completes a pending accept with either
+        ///     ObjectDisposedException or SocketException(OperationAborted)
+        /// </summary>
+        internal static bool IsListenerClosed(Exception exception) => exception switch
+        {
+            ObjectDisposedException => true,
+            SocketException { SocketErrorCode: SocketError.OperationAborted or SocketError.Interrupted } => true,
+            _ => false
+        };
+
         private void OnNewConnection(IAsyncResult asyncResult)
         {
             System.Net.Sockets.Socket client;
@@ -64,7 +77,7 @@ namespace MBBSEmu.Server.Socket
             {
                 client = _listenerSocket.EndAccept(asyncResult);
             }
-            catch (ObjectDisposedException)
+            catch (Exception e) when (IsListenerClosed(e))
             {
                 // ignore, happens during shutdown
                 return;
@@ -72,7 +85,14 @@ namespace MBBSEmu.Server.Socket
 
             client.NoDelay = true;
 
-            _listenerSocket.BeginAccept(OnNewConnection, this);
+            try
+            {
+                _listenerSocket.BeginAccept(OnNewConnection, this);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Stop() ran while this connection was being accepted; serve it, but accept no more
+            }
 
             switch (_sessionType)
             {

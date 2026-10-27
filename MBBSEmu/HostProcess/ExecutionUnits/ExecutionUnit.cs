@@ -51,7 +51,8 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                 ExternalFunctionDelegate,
                 new List<IInterruptHandler>
                 {
-                    new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, fileUtility, null, null, new TextWriterStream(Console.Error), path),
+                    new Int21h(ModuleCpuRegisters, ModuleMemory, clock, logger, fileUtility, null, null,
+                        new TextWriterStream(new UiSafeConsoleWriter(() => Console.Error, logger.Error)), path),
                     new Int3Eh(),
                     new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock)
                 },
