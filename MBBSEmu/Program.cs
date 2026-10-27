@@ -784,6 +784,11 @@ namespace MBBSEmu
             var result = console.Run(() =>
             {
                 var skipped = StartServices(host, configuration);
+
+                //Modules from the command line or -C were loaded by the host itself, not the loader
+                if (!_isGuiMode)
+                    _moduleLoader.AddStartupModules(_moduleConfigurations.Count);
+
                 if (skipped.Count > 0)
                     console.ShowMessage(ModuleLoadText.SkippedTitle, string.Join("\n", skipped));
             }, StopServices);

@@ -88,6 +88,11 @@ namespace MBBSEmu.UI.Modules
         }
 
         /// <summary>
+        ///     Counts modules the host loaded at startup without the loader (from -C, -M or -P)
+        /// </summary>
+        public void AddStartupModules(int count) => Interlocked.Add(ref _loadedCount, count);
+
+        /// <summary>
         ///     Loads a module from the saved modules.json at startup; it is already saved, so nothing is written
         /// </summary>
         /// <returns>Null if it loaded, otherwise the line saying why it was skipped</returns>

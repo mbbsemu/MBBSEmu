@@ -159,6 +159,21 @@ namespace MBBSEmu.Tests.UI.Modules
             File.Exists(_modulesFile).Should().BeFalse("it's already in the saved list");
         }
 
+        /// <summary>
+        ///     Modules from -C, -M or -P are loaded by the host at startup, not through the loader, but still count:
+        ///     otherwise the console would say no modules are loaded while they're running
+        /// </summary>
+        [Fact]
+        public async Task AddStartupModules_CountsModulesLoadedWithoutTheLoader()
+        {
+            var loader = Loader(ModuleSaving.SessionOnly(ModuleLoadText.StartedWithConfiguration));
+
+            loader.AddStartupModules(2);
+            await loader.LoadAsync(_pickedMdf);
+
+            loader.LoadedCount.Should().Be(3);
+        }
+
         [Fact]
         public async Task LoadSavedAsync_NotFound_ReturnsSkipLine()
         {
