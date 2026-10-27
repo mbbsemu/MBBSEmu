@@ -330,6 +330,9 @@ namespace MBBSEmu.UI.Main
 
         private static void SetColumnWidth(TableView table, int column, int width)
         {
+            //Terminal.Gui caps every column at MaxCellWidth (100 by default), which would leave a wide panel half empty
+            table.MaxCellWidth = Math.Max(table.MaxCellWidth, width);
+
             var style = table.Style.GetOrCreateColumnStyle(column);
             style.MinWidth = width;
             style.MaxWidth = width;

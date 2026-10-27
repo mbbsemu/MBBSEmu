@@ -163,6 +163,31 @@ namespace MBBSEmu.Tests.UI.Main
             screen.Should().OnlyContain(x => x.Length <= 80);
         }
 
+        /// <summary>
+        ///     Message and Detail take all the width left in their panel, however wide the terminal: a long line runs
+        ///     to the panel's right border before it's cut off
+        /// </summary>
+        [Theory]
+        [InlineData(80, 24)]
+        [InlineData(132, 40)]
+        [InlineData(200, 40)]
+        [InlineData(300, 60)]
+        public void LongLines_FillTheirPanelAtAnyWidth(int width, int height)
+        {
+            Show(width, height);
+            AppendApplicationLog(new[] { "LONGMESSAGE-" + new string('x', 400) });
+            _view.Update(Array.Empty<ApplicationLogEntry>(), new[] { new AuditLogEntry("LONGDETAIL", "LONGDETAIL-" + new string('y', 400)) },
+                SampleChannels, 1);
+
+            var screen = _harness.Screen();
+            var panelBorder = screen[1].IndexOf('╗');
+
+            var message = screen.First(x => x.Contains("LONGMESSAGE-"));
+            message[panelBorder - 1].Should().Be('…', message);
+            var detail = screen.First(x => x.Contains("LONGDETAIL-"));
+            detail[panelBorder - 1].Should().Be('…', detail);
+        }
+
         [Fact]
         public void LongUsername_TruncatesInSidebar()
         {
