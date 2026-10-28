@@ -204,21 +204,28 @@ At ~8,400 lines, `Majorbbs.cs` implements the vast majority of the emulated SDK.
 
 ### SetState() — Session Context Switch
 
-Called before each module execution to load the target channel's data into module memory:
-1. Resets local variable ordinals
-2. Copies VDA (Volatile Data Area) from session to `VDA-{channel}` memory
-3. Sets `VDAPTR` to point to the channel's VDA
-4. Sets `USRNUM` to the channel number
-5. Sets `STATUS` to the session's current status
-6. Copies `UsrPtr`, `UsrAcc`, `ExtUsrAcc` into the USER/USRACC/EXTUSR arrays at the channel's index
-7. Updates `*USRPTR`, `USAPTR`, `EXTPTR` pointers
+Called before each module execution. It does what the MajorBBS dispatch loop does before calling a module routine:
+1. Resets local variable ordinals and the `setmbk()`/`setbtv()` save stacks
+2. Calls `LoadChannel()` for the channel (below)
+3. Sets `STATUS` to the session's current status, and remembers this channel as the one `STATUS` belongs to
+4. Resets `NXTCMD`, empties `PRFBUF`
+5. If input is waiting, copies it to `INPUT` and runs `parsin()`
+
+### LoadChannel() — curusr()
+
+Makes a channel the current user, like `curusr()` in MAJORBBS.C. `curusr()` saves the current channel and calls this:
+1. Copies VDA (Volatile Data Area) from session to `VDA-{channel}` memory and points `VDAPTR` at it
+2. Sets `USRNUM` to the channel number
+3. Copies `UsrPtr`, `UsrAcc`, `ExtUsrAcc` into the USER/USRACC/EXTUSR arrays at the channel's index
+4. Updates `*USRPTR`, `USAPTR`, `EXTPTR` and `*FSDSCB`
+
+It leaves `STATUS`, `INPUT`, `MARGV`, `NXTCMD` and `PRFBUF` alone, since they belong to the routine being run.
 
 ### UpdateSession() — Sync Back
 
 Called after execution to propagate changes back:
-1. Reads `STATUS` from memory — if changed, queues the new status
-2. Copies USER record back to session's `UsrPtr`
-3. Copies VDA back to session
+1. Copies the USER record and VDA back to the session, for the run's channel and for the channel `curusr()` last selected. A channel-independent run (`RTKICK`, etc.) saves only the latter
+2. Reads `STATUS` from memory — if changed, queues the new status for the channel the run was started for
 
 ## Galgsbl.cs — Screen/Keyboard I/O
 

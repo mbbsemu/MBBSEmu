@@ -112,6 +112,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private readonly IAccountRepository _accountRepository;
 
         /// <summary>
+        ///     Channel the running routine was started for, whose status is in STATUS
+        /// </summary>
+        private ushort _statusChannel = ushort.MaxValue;
+
+        /// <summary>
         ///     Index for SPR Variable
         /// </summary>
         private int _sprIndex;
@@ -331,19 +336,17 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
-        ///     Sets State for the Module Registers and the current Channel Number that's running
+        ///     Makes the specified channel the current user, like curusr() in MAJORBBS.C: USRNUM, *USRPTR,
+        ///     USAPTR, EXTPTR and VDAPTR point at the channel's entries, loaded from its Session
+        ///
+        ///     STATUS, INPUT, NXTCMD and PRFBUF are globals that belong to the routine being run, so
+        ///     they're left alone
         /// </summary>
         /// <param name="channelNumber"></param>
-        /// <param name="numberOfModules"></param>
-        public void SetState(ushort channelNumber)
+        private void LoadChannel(ushort channelNumber)
         {
-            ResetLocalVariableOrdinals();
             ChannelNumber = channelNumber;
 
-            _previousMcvFile.Clear();
-            _previousBtrieveFile.Clear();
-
-            //Bail if it's max value, not processing any input or status
             if (channelNumber == ushort.MaxValue)
                 return;
 
@@ -353,8 +356,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("VDAPTR"), vdaChannelPointer.Data);
             Module.Memory.SetWord(Module.Memory.GetVariablePointer("USRNUM"), channelNumber);
-
-            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort)ChannelDictionary[channelNumber].GetStatus());
 
             var userBasePointer = Module.Memory.GetVariablePointer("USER");
             var currentUserPointer = new FarPtr(userBasePointer.Data);
@@ -376,6 +377,35 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetArray(currentExtUserAccPointer, ChannelDictionary[channelNumber].ExtUsrAcc.Data);
             Module.Memory.SetArray(Module.Memory.GetVariablePointer("EXTPTR"), currentExtUserAccPointer.Data);
 
+            //Set FSDSCB Pointer for Current User
+            var channelFsdscb = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
+
+            Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
+        }
+
+        /// <summary>
+        ///     Sets State for the Module Registers and the current Channel Number that's running
+        ///
+        ///     This is the MajorBBS dispatch loop's work before it calls a module routine: set STATUS,
+        ///     curusr() to the channel, and read in its input. curusr() itself only does LoadChannel().
+        /// </summary>
+        /// <param name="channelNumber"></param>
+        /// <param name="numberOfModules"></param>
+        public void SetState(ushort channelNumber)
+        {
+            ResetLocalVariableOrdinals();
+            _statusChannel = channelNumber;
+            LoadChannel(channelNumber);
+
+            _previousMcvFile.Clear();
+            _previousBtrieveFile.Clear();
+
+            //Bail if it's max value, not processing any input or status
+            if (channelNumber == ushort.MaxValue)
+                return;
+
+            Module.Memory.SetWord(Module.Memory.GetVariablePointer("STATUS"), (ushort)ChannelDictionary[channelNumber].GetStatus());
+
             //Reset NXTCMD
             Module.Memory.SetPointer("NXTCMD", Module.Memory.GetVariablePointer("INPUT"));
 
@@ -383,11 +413,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.SetPointer("PRFPTR", Module.Memory.GetVariablePointer("PRFBUF"));
             Module.Memory.SetZero(Module.Memory.GetVariablePointer("PRFBUF"), 0x4000);
             _prfBufferSent = false;
-
-            //Set FSDSCB Pointer for Current User
-            var channelFsdscb = Module.Memory.GetOrAllocateVariablePointer($"FSD-Fsdscb-{ChannelNumber}", FsdscbStruct.Size);
-
-            Module.Memory.SetPointer("*FSDSCB", channelFsdscb);
 
             //Processing Channel Input
             if (ChannelDictionary[channelNumber].GetStatus() == EnumUserStatus.CR_TERMINATED_STRING_AVAILABLE)
@@ -426,9 +451,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="channel"></param>
         public void UpdateSession(ushort channel)
         {
-            //Don't process on RTKICK, etc. runs
+            //RTKICK, etc. runs don't belong to a channel, but they can curusr() to one and change it
             if (channel == ushort.MaxValue)
+            {
+                SaveChannelState(ChannelNumber);
                 return;
+            }
 
             //Modules aren't required to curusr() back to the original channel before returning,
             //so the active channel can differ from the channel this run was started for
@@ -441,6 +469,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             SaveChannelState(channel);
+            SaveChannelStatus(channel);
 
 #if DEBUG
             _logger.Debug($"({Module.ModuleIdentifier}) {channel}->status == {ChannelDictionary[channel].GetStatus()}");
@@ -458,17 +487,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (channel == ushort.MaxValue || !ChannelDictionary.ContainsKey(channel))
                 return;
 
-            //STATUS only holds the active channel's status
-            if (channel == ChannelNumber)
-            {
-                var resultStatus = (EnumUserStatus)Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
-
-                //If STATUS was changed programatically, queue it up
-                if (resultStatus != ChannelDictionary[channel].GetStatus())
-                    ChannelDictionary[channel].Status
-                        .Enqueue(resultStatus);
-            }
-
             //Save off the USRPTR area to the Channel
             var userPointer = Module.Memory.GetVariablePointer("USER");
             ChannelDictionary[channel].UsrPtr.Data = Module.Memory.GetArray(userPointer.Segment,
@@ -477,6 +495,26 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //We Verify it exists as Unit Tests won't call SetState() which would establish the VDA for that Channel
             if (Module.Memory.TryGetVariablePointer($"VDA-{channel}", out var vdaPointer))
                 ChannelDictionary[channel].VDA = Module.Memory.GetArray(vdaPointer, VOLATILE_DATA_SIZE).ToArray();
+        }
+
+        /// <summary>
+        ///     Queues STATUS for the channel if the module changed it
+        ///
+        ///     STATUS is a single global holding the status of the channel the routine was run for,
+        ///     and curusr() doesn't change it, so it's only saved for that channel
+        /// </summary>
+        /// <param name="channel"></param>
+        private void SaveChannelStatus(ushort channel)
+        {
+            if (channel != _statusChannel || !ChannelDictionary.ContainsKey(channel))
+                return;
+
+            var resultStatus = (EnumUserStatus)Module.Memory.GetWord(Module.Memory.GetVariablePointer("STATUS"));
+
+            //If STATUS was changed programatically, queue it up
+            if (resultStatus != ChannelDictionary[channel].GetStatus())
+                ChannelDictionary[channel].Status
+                    .Enqueue(resultStatus);
         }
 
         /// <summary>
@@ -5223,10 +5261,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             //Save the Current Channel
-            UpdateSession(ChannelNumber);
+            SaveChannelState(ChannelNumber);
 
             //Load the new Channel
-            SetState(newUserNumber);
+            LoadChannel(newUserNumber);
 
 #if DEBUG
             _logger.Debug($"Setting Current User to {newUserNumber}");
