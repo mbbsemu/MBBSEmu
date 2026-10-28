@@ -101,6 +101,8 @@ namespace MBBSEmu.Session.Rlogin
 
             _logger.Info($"Rlogin For User: {Username}");
 
+            WrapAtScreenWidth();
+
             if (!string.IsNullOrEmpty(ModuleIdentifier))
             {
                 if (_mbbsHost.GetModule(ModuleIdentifier).ModuleConfig.ModuleEnabled == false)

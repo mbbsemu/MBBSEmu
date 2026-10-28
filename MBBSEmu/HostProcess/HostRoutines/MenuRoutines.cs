@@ -282,6 +282,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.UsrAcc.sex = accountBtrieve.GetRecord().ElementAt(213);
 
             // Start Session
+            session.WrapAtScreenWidth();
             session.SessionState = EnumSessionState.LoginRoutines;
             session.EchoSecureEnabled = false;
             session.SessionTimer.Start();
@@ -661,6 +662,7 @@ namespace MBBSEmu.HostProcess.HostRoutines
             var _accountBtrieve = _globalCache.Get<BtrieveFileProcessor>("ACCBB-PROCESSOR");
             _accountBtrieve.Insert(new UserAccount(session.Username, (char)session.UsrAcc.sex).Data);
 
+            session.WrapAtScreenWidth();
             session.SessionState = EnumSessionState.LoginRoutines;
             session.InputBuffer.SetLength(0);
         }
