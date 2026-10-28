@@ -137,6 +137,55 @@ namespace MBBSEmu.Tests.Session
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("klmno");
         }
 
+        [Fact]
+        public void cursorPositionWithOnlyRowMovesToFirstColumn()
+        {
+            // Trade Wars 2002 starts each line of its framed text with ESC[<row>H
+            testSession.WordWrapWidth = 80;
+            testSession.SendToClient(new string('x', 60) + "\x1B[5H" + new string('y', 40) + "\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('x', 60) + "\x1B[5H" + new string('y', 40));
+        }
+
+        [Fact]
+        public void cursorPositionWithEmptyRowUsesColumn()
+        {
+            testSession.WordWrapWidth = 80;
+            testSession.SendToClient(new string('x', 60) + "\x1B[;42H" + new string('y', 30) + " " + new string('z', 14) + "\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('x', 60) + "\x1B[;42H" + new string('y', 30));
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('z', 14));
+        }
+
+        [Fact]
+        public void cursorRightWithoutCountMovesOneColumn()
+        {
+            // Trade Wars 2002 sends the spaces between words as ESC[C
+            testSession.WordWrapWidth = 80;
+            testSession.SendToClient(new string('a', 70) + string.Concat(System.Linq.Enumerable.Repeat("\x1B[Cb", 6)) + "\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('a', 70) + string.Concat(System.Linq.Enumerable.Repeat("\x1B[Cb", 5)) + "\x1B[C");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("b");
+        }
+
+        [Fact]
+        public void restoredCursorKeepsItsColumn()
+        {
+            // ESC[s CR LF ESC[u is how Trade Wars 2002 keeps lines short without moving the cursor
+            testSession.WordWrapWidth = 80;
+            testSession.SendToClient(new string('a', 60) + "\x1B[s\r\n\x1B[u" + "1234567890 1234567890 12\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('a', 60) + "\x1B[s");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("\x1B[u" + "1234567890");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("1234567890 12");
+        }
+
+        [Fact]
+        public void letterRightAfterBracketEndsSequence()
+        {
+            // ESC[H must not swallow the H of "Hello", or the CR after ESC[s
+            testSession.WordWrapWidth = 10;
+            testSession.SendToClient("\x1B[HHello there\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("\x1B[HHello");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("there");
+        }
+
         [Theory]
         [InlineData("\x1B[1;200H")]
         [InlineData("\x1B[1;0H")]
