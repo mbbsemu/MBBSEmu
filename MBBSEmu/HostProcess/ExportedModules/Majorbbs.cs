@@ -71,6 +71,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public const ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
         /// <summary>
+        ///     Maximum number of global command handlers (GLBMAX in MAJORBBS.H)
+        /// </summary>
+        public const ushort GLBMAX = 50;
+
+        /// <summary>
         ///     Free memory reported to modules by coreleft()/farcoreleft(), in bytes (16MB)
         ///
         ///     Modules treat the result as a signed long, so it must stay below 0x80000000. 16MB is
@@ -229,6 +234,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("NUMBYTP", sizeof(uint));
             Module.Memory.AllocateVariable("NUMDIRS", sizeof(uint));
             Module.Memory.AllocateVariable("NGLOBS", sizeof(ushort));
+            Module.Memory.AllocateVariable("GLOBS", GLBMAX * FarPtr.Size); //stays empty, MbbsHost calls global command handlers itself
+            Module.Memory.AllocateVariable("NUMCAT", sizeof(ushort));
             Module.Memory.AllocateVariable("FTG", FtgStruct.Size);
             Module.Memory.AllocateVariable("FTGPTR", FarPtr.Size);
             Module.Memory.SetPointer("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
@@ -590,6 +597,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return numdirs;
                 case 733:
                     return nglobs;
+                case 734:
+                    return globs;
+                case 717:
+                    return numcat;
                 case 304:
                     return ftgptr;
                 case 606:
@@ -7032,6 +7043,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         private ReadOnlySpan<byte> nglobs => Module.Memory.GetVariablePointer("NGLOBS").Data;
+
+        /// <summary>
+        ///     Array of pointers to global command handlers
+        ///
+        ///     Signature: int (*globs[GLBMAX])();
+        /// </summary>
+        private ReadOnlySpan<byte> globs => Module.Memory.GetVariablePointer("GLOBS").Data;
+
+        /// <summary>
+        ///     Number of concatenated commands so far
+        ///
+        ///     Signature: int numcat;
+        /// </summary>
+        private ReadOnlySpan<byte> numcat => Module.Memory.GetVariablePointer("NUMCAT").Data;
 
         /// <summary>
         ///     Retrieves a C-string containing the value of the environment variable whose name is specified in the argument
