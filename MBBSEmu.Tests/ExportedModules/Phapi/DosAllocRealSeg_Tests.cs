@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using MBBSEmu.Memory;
 using Xunit;
 
 namespace MBBSEmu.Tests.ExportedModules.Phapi
@@ -9,6 +10,27 @@ namespace MBBSEmu.Tests.ExportedModules.Phapi
     /// </summary>
     public class DosAllocRealSeg_Tests : PhapiTestBase
     {
+        [Theory]
+        [InlineData(230)] // galfree
+        [InlineData(202)] // farfree
+        public void AllocatedSegmentCanBeReleasedThroughTheHostFreeRoutine(ushort ordinal)
+        {
+            var selectorPointer = mbbsEmuMemoryCore.Malloc(2);
+            var segmentPointer = mbbsEmuMemoryCore.Malloc(2);
+            ExecuteApiTest(HostProcess.ExportedModules.Phapi.Segment, DOSALLOCREALSEG_ORDINAL, new List<ushort>
+            {
+                selectorPointer.Offset, selectorPointer.Segment,
+                segmentPointer.Offset, segmentPointer.Segment,
+                4096, 0
+            });
+            var pointer = new FarPtr(mbbsEmuMemoryCore.GetWord(selectorPointer), 0);
+            Assert.True(mbbsEmuProtectedModeMemoryCore.HasSegment(pointer.Segment));
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, ordinal, new List<FarPtr> { pointer });
+
+            Assert.False(mbbsEmuProtectedModeMemoryCore.HasSegment(pointer.Segment));
+        }
+
         [Fact]
         public void AllocatesARealModeSegmentAndWritesItToBothOutputPointers()
         {

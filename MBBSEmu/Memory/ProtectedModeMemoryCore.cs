@@ -25,6 +25,7 @@ namespace MBBSEmu.Memory
         private FarPtr _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
         private readonly PointerDictionary<Dictionary<ushort, FarPtr>> _bigMemoryBlocks = new();
         private readonly Dictionary<ushort, MemoryAllocator> _heapAllocators = new();
+        private readonly HashSet<ushort> _realModeSegments = new();
 
         public ProtectedModeMemoryCore(IMessageLogger logger) : base(logger)
         {
@@ -66,6 +67,13 @@ namespace MBBSEmu.Memory
             if (ptr.IsNull())
                 return;
 
+            // A real-mode allocation is a whole selector, not a block in the C heap.
+            if (ptr.Offset == 0 && _realModeSegments.Contains(ptr.Segment))
+            {
+                RemoveSegment(ptr.Segment);
+                return;
+            }
+
             if (!_heapAllocators.TryGetValue(ptr.Segment, out var memoryAllocator))
             {
                 _logger.Error($"Attempted to deallocate memory from an unknown segment {ptr}");
@@ -103,6 +111,7 @@ namespace MBBSEmu.Memory
             _currentRealModePointer = new FarPtr(REALMODE_BASE_SEGMENT, 0);
             _bigMemoryBlocks.Clear();
             _heapAllocators.Clear();
+            _realModeSegments.Clear();
         }
 
         /// <summary>
@@ -119,11 +128,12 @@ namespace MBBSEmu.Memory
         }
 
         /// <summary>
-        ///     Removes the specified segment. Typically only used by a test.
+        ///     Removes the specified segment and any real-mode allocation ownership.
         /// </summary>
         /// <param name="segment"></param>
         public void RemoveSegment(ushort segment)
         {
+            _realModeSegments.Remove(segment);
             _memorySegments[segment] = null;
             _segments[segment] = null;
             _decompiledSegments[segment] = null;
@@ -257,6 +267,7 @@ namespace MBBSEmu.Memory
             _currentRealModePointer.Segment++;
             var realModeSegment = new FarPtr(_currentRealModePointer);
             AddSegment(realModeSegment.Segment, segmentSize);
+            _realModeSegments.Add(realModeSegment.Segment);
             return realModeSegment;
         }
 
