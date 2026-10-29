@@ -1,4 +1,5 @@
-﻿using MBBSEmu.CPU;
+﻿using MBBSEmu.BIOS;
+using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.HostProcess.ExportedModules;
@@ -56,7 +57,10 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                     new Int3Eh(),
                     new Int1Ah(ModuleCpuRegisters, ModuleMemory, clock)
                 },
-                ioPortHandlers: null);
+                ioPortHandlers: new Dictionary<int, IIOPort>
+                {
+                    { InterruptMaskRegister.Port, new InterruptMaskRegister() }
+                });
         }
 
         public void Dispose()
