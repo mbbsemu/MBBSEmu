@@ -2029,24 +2029,38 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Converts string to a long integer
         ///
         ///     Signature: long int atol(const char *str)
-        ///     Return: AX = Offset in Segment
-        ///             DX = Host Segment
+        ///     Return: AX = Low Word of the result
+        ///             DX = High Word of the result
+        ///
+        ///     The kernel's ATOL is the Borland C++ run-time library routine: leading white space (tab, line feed,
+        ///     vertical tab, form feed, carriage return, space) is skipped, one optional '+' or '-' follows, then
+        ///     decimal digits are read with no limit and no overflow check, so the value wraps modulo 2^32
+        ///     ("4000000000" gives 0xEE6B2800, "4294967296" gives 0). Text with no digits gives 0.
         /// </summary>
         private void atol()
         {
-            var stringToLong = GetParameterString(0, true).Trim();
+            var input = GetParameterStringSpan(0, true);
+            var i = 0;
 
-            var result = GetLeadingNumberFromString(stringToLong, 10, -1);
+            while (i < input.Length && (input[i] == ' ' || (input[i] >= 0x09 && input[i] <= 0x0D)))
+                i++;
 
-            Registers.DX = (ushort)(result.Value >> 16);
-            Registers.AX = (ushort)(result.Value & 0xFFFF);
-
-            if (!result.Valid)
+            var negative = false;
+            if (i < input.Length && (input[i] == '+' || input[i] == '-'))
             {
-#if DEBUG
-                _logger.Warn($"({Module.ModuleIdentifier}) Unable to cast {stringToLong} ({GetParameterPointer(0)}) to long");
-#endif
+                negative = input[i] == '-';
+                i++;
             }
+
+            uint result = 0;
+            for (; i < input.Length && input[i] >= '0' && input[i] <= '9'; i++)
+                result = unchecked(result * 10 + (uint)(input[i] - '0'));
+
+            if (negative)
+                result = unchecked(0 - result);
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
         }
 
         /// <summary>
