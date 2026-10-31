@@ -7185,74 +7185,98 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Convert a string to a long integer
         ///
         ///     Signature: long strtol(const char *strP, char **suffixPP, int radix);
+        ///     Return: AX = Low Word of the result
+        ///             DX = High Word of the result
+        ///
+        ///     The kernel's STRTOL is the Borland C++ run-time library routine: leading white space (tab, line feed,
+        ///     vertical tab, form feed, carriage return, space) is skipped, one optional '+' or '-' follows, then the
+        ///     digits of the radix (2 to 36; letters in either case stand for 10 and up). Radix 0 reads "0x" or "0X"
+        ///     as hexadecimal, a leading "0" as octal and anything else as decimal; radix 16 also skips a "0x" prefix.
+        ///     Digits are read into 32 bits until one would carry past 2^32 (that digit is still read); the result then
+        ///     saturates to LONG_MAX or LONG_MIN. As in Borland's library, a negative zero gives LONG_MIN.
+        ///     *suffixPP is set to the first character not read, or to strP when no digit (and no "0x") was read or
+        ///     the radix is not valid.
         /// </summary>
         private void strtol()
         {
             var stringPointer = GetParameterPointer(0);
             var suffixPointer = GetParameterPointer(2);
-            var radix = GetParameter(4);
+            var radix = (short)GetParameter(4);
 
-            var stringContainingLongs = Encoding.ASCII.GetString(Module.Memory.GetString(stringPointer, stripNull: true));
+            var input = Module.Memory.GetString(stringPointer, stripNull: true);
+            var i = 0;
+            uint value = 0;
+            var negative = false;
+            var consumed = false;
+            var overflow = false;
 
-            if (stringContainingLongs == "")
+            if (radix == 0 || (radix >= 2 && radix <= 36))
             {
-                Registers.DX = 0;
-                Registers.AX = 0;
+                while (i < input.Length && (input[i] == ' ' || (input[i] >= 0x09 && input[i] <= 0x0D)))
+                    i++;
 
-                if (suffixPointer != FarPtr.Empty)
-                    Module.Memory.SetPointer(suffixPointer, new FarPtr(stringPointer.Segment, stringPointer.Offset));
+                if (i < input.Length && (input[i] == '+' || input[i] == '-'))
+                {
+                    negative = input[i] == '-';
+                    i++;
+                }
 
-                return;
-            }
-
-            var longToParse = stringContainingLongs.Split(' ', StringSplitOptions.RemoveEmptyEntries)[0];
-            var longToParseLength = longToParse.Length + (stringContainingLongs.Length - stringContainingLongs.TrimStart(' ').Length); //We do this as length might change with logic below and add back in leading spaces
-
-            if (longToParseLength == 0 || (radix == 10 && !longToParse.Any(char.IsDigit)))
-            {
-                Registers.DX = 0;
-                Registers.AX = 0;
-
-                if (suffixPointer != FarPtr.Empty)
-                    Module.Memory.SetPointer(suffixPointer, new FarPtr(stringPointer.Segment, stringPointer.Offset));
-
-                return;
-            }
-
-            if (radix == 0)
-            {
-                if (longToParse.StartsWith("0x"))
+                if ((radix == 0 || radix == 16) && i + 1 < input.Length && input[i] == '0' &&
+                    (input[i + 1] == 'x' || input[i + 1] == 'X'))
                 {
                     radix = 16;
+                    i += 2;
+                    consumed = true;
                 }
-                else
+                else if (radix == 0)
                 {
-                    radix = 10;
+                    radix = (short)(i < input.Length && input[i] == '0' ? 8 : 10);
+                }
+
+                for (; i < input.Length; i++)
+                {
+                    var c = input[i];
+                    var digit = c >= '0' && c <= '9' ? c - '0'
+                        : c >= 'a' && c <= 'z' ? c - 'a' + 10
+                        : c >= 'A' && c <= 'Z' ? c - 'A' + 10
+                        : radix;
+
+                    if (digit >= radix)
+                        break;
+
+                    consumed = true;
+                    var next = (ulong)value * (ulong)radix + (ulong)digit;
+                    if (next > uint.MaxValue)
+                    {
+                        overflow = true;
+                        i++;
+                        break;
+                    }
+
+                    value = (uint)next;
                 }
             }
 
-            var isNegative = false;
-
-            if (radix != 10 && longToParse.StartsWith('-'))
+            uint result;
+            if (!consumed)
             {
-                longToParse = longToParse.TrimStart('-');
-                isNegative = true;
+                result = 0;
+                i = 0;
+            }
+            else if (negative)
+            {
+                result = overflow || value == 0 || value > 0x80000000 ? 0x80000000 : 0 - value;
+            }
+            else
+            {
+                result = overflow || value > 0x7FFFFFFF ? 0x7FFFFFFF : value;
             }
 
-            if (radix != 10 && longToParse.StartsWith('+'))
-                longToParse = longToParse.TrimStart('+');
-
-            var resultLong = Convert.ToInt32(longToParse, radix);
-
-            if (isNegative)
-                resultLong *= -1;
-
-            Registers.DX = (ushort)(resultLong >> 16);
-            Registers.AX = (ushort)(resultLong & 0xFFFF);
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
 
             if (suffixPointer != FarPtr.Empty)
-                Module.Memory.SetPointer(suffixPointer,
-                    new FarPtr(stringPointer.Segment, (ushort)(stringPointer.Offset + longToParseLength + 1)));
+                Module.Memory.SetPointer(suffixPointer, stringPointer + i);
         }
 
         /// <summary>
