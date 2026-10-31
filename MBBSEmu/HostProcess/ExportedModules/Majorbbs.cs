@@ -2534,8 +2534,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
-            var outputDate = $"{month:D2}/{day:D2}/{year % 100}\0";
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("NCDATE"), (ushort)outputDate.Length);
+            //As the kernel: two digits each (the year modulo 100), and an empty string for a date of 0
+            var outputDate = packedDate == 0 ? "\0" : $"{month:D2}/{day:D2}/{year % 100:D2}\0";
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer(GetLocalVariableName("NCDATE"), 9);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(outputDate));
@@ -2562,9 +2563,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var year = ((packedDate >> 9) & 0x007F) + 1980;
             var month = (packedDate >> 5) & 0x000F;
             var day = packedDate & 0x001F;
-            var outputDate = $"{day:D2}/{month:D2}/{year % 100:D2}\0";
+            //As the kernel: "DD-MMM-YY" with the month's name in capitals, "000" for month 0 and "XXX" for 13 to 15
+            var monthName = month == 0 ? "000" : month > 12 ? "XXX" : "JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC".Substring((month - 1) * 3, 3);
+            var outputDate = $"{day:D2}-{monthName}-{year % 100:D2}\0";
 
-            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCEDAT", (ushort)outputDate.Length);
+            var variablePointer = Module.Memory.GetOrAllocateVariablePointer("NCEDAT", 10);
 
             Module.Memory.SetArray(variablePointer.Segment, variablePointer.Offset,
                 Encoding.Default.GetBytes(outputDate));
