@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.CPU;
 using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
@@ -38,10 +39,10 @@ namespace MBBSEmu.Tests.CPU
         }
 
         [Theory]
-        [InlineData(1d, .5d, .5d)]
-        [InlineData(10d, 5d, 5d)]
-        [InlineData(10.1d, .1d, 10d)]
-        public void FSUB_Test_M64(double value1, double value2, double expectedResult)
+        [InlineData(1d, .5d, (ushort)0x3FFE, 0x8000000000000000UL)]
+        [InlineData(10d, 5d, (ushort)0x4001, 0xA000000000000000UL)]
+        [InlineData(10.1d, .1d, (ushort)0x4002, 0x9FFFFFFFFFFFFE60UL)] //Extended precision: 10.1 - 0.1 is not 10 (coprocessor)
+        public void FSUB_Test_M64(double value1, double value2, ushort expectedSignExponent, ulong expectedSignificand)
         {
             //Reset the CPU
             Reset();
@@ -64,7 +65,7 @@ namespace MBBSEmu.Tests.CPU
 
             var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
 
-            Assert.Equal(expectedResult, result);
+            Assert.Equal(new Float80(expectedSignExponent, expectedSignificand), result);
         }
     }
 }
