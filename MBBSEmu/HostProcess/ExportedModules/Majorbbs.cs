@@ -4046,142 +4046,348 @@ namespace MBBSEmu.HostProcess.ExportedModules
             scanf(FromFileStream(fileStream), formatString, 4);
         }
 
-        private enum ScanfParseState
-        {
-            NORMAL,
-            PERCENT
-        };
-
-        private struct ScanfState
-        {
-            private ScanfParseState _scanfParseState = ScanfParseState.NORMAL;
-
-            public ScanfState()
-            {
-                Length = 0;
-                IsLongInteger = false;
-            }
-
-            public ScanfParseState State
-            {
-                get => _scanfParseState;
-                set
-                {
-                    _scanfParseState = value;
-                    Length = 0;
-                    IsLongInteger = false;
-                }
-            }
-            public int Length { get; set; }
-            public bool IsLongInteger { get; set; }
-        }
-
-        private int GetNumberBaseFromCharacter(char formatChar) => formatChar switch
-        {
-            'x' => 16,
-            'o' => 8,
-            _ => 10
-        };
-
+        /// <summary>
+        ///     Reads input according to a scanf() format, storing each conversion through the pointer arguments that
+        ///     start at startingParameterOrdinal. AX returns the number of conversions stored, or -1 (EOF) when the
+        ///     input ran out before the first one was stored.
+        ///
+        ///     The kernel's SSCANF and FSCANF are the Borland C++ run-time library's scanner, and this follows it:
+        ///     - white space in the format skips any white space in the input; any other character, and "%%", must
+        ///       match the next input character exactly (no white space is skipped before it);
+        ///     - conversions are %[*][width][F|h|l]type: '*' reads without storing (and without counting), the width
+        ///       limits the characters read (a sign and a "0x" prefix included), 'l' stores 32 bits, otherwise 16;
+        ///     - d, i, o, u, x, X skip white space, take one optional sign, then digits (i: "0x" means hexadecimal and a
+        ///       leading "0" octal; x: an optional "0x"); the value is kept in 32 bits and a '-' negates it, but a
+        ///       digit that would carry past 2^32 is the last one read and the value becomes LONG_MAX or LONG_MIN;
+        ///     - s skips white space and reads up to the next white space; c reads exactly width characters (1 by
+        ///       default) without skipping white space and stores no null; [set] and [^set] read characters in (or not
+        ///       in) the set, ranges like a-z included, without skipping white space; n stores the characters read so far;
+        ///     - a conversion that finds no input leaves its argument untouched (a [set] still stores an empty string),
+        ///       and the scan stops. The end of the input stops the scan when it is reached while skipping white space,
+        ///       after a sign, at the start of c, [set] or a literal, partway through c, or while reading a [set].
+        /// </summary>
         private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
         {
-            if (!input.MoveNext())
-            {
-                Registers.AX = 0;
-                return;
-            }
+            var more = input.MoveNext();
+            var consumed = 0;
+            var assigned = 0;
+            var atEnd = false;
+            var f = 0;
 
-            var matches = 0;
-            var parseState = new ScanfState();
-            var moreInput = true;
-
-            foreach (var formatChar in formatString)
+            while (f < formatString.Length)
             {
-                if (!moreInput)
+                var formatChar = formatString[f++];
+
+                if (formatChar == ' ' || (formatChar >= '\t' && formatChar <= '\r'))
+                {
+                    while (more && (input.Current == ' ' || (input.Current >= '\t' && input.Current <= '\r')))
+                    {
+                        more = input.MoveNext();
+                        consumed++;
+                    }
+
+                    if (!more)
+                    {
+                        atEnd = true;
+                        break;
+                    }
+
+                    continue;
+                }
+
+                if (formatChar != '%' || (f < formatString.Length && formatString[f] == '%'))
+                {
+                    if (formatChar == '%')
+                        f++;
+
+                    if (!more)
+                    {
+                        atEnd = true;
+                        break;
+                    }
+
+                    if (input.Current != formatChar)
+                        break;
+
+                    more = input.MoveNext();
+                    consumed++;
+                    continue;
+                }
+
+                var suppress = f < formatString.Length && formatString[f] == '*';
+                if (suppress)
+                    f++;
+
+                var width = 0;
+                while (f < formatString.Length && char.IsAsciiDigit(formatString[f]))
+                    width = width * 10 + formatString[f++] - '0';
+                var limit = width > 0 ? width : int.MaxValue;
+
+                var isLong = false;
+                while (f < formatString.Length && (formatString[f] == 'F' || formatString[f] == 'h' || formatString[f] == 'l'))
+                    isLong |= formatString[f++] == 'l';
+
+                if (f >= formatString.Length)
                     break;
 
-                switch (parseState.State)
+                var conversion = formatString[f++];
+
+                if (conversion == 'n')
                 {
-                    case ScanfParseState.NORMAL when char.IsWhiteSpace(formatChar):
-                        ConsumeWhitespace(input);
+                    if (!suppress)
+                    {
+                        var countPointer = GetParameterPointer(startingParameterOrdinal);
+                        if (isLong)
+                            Module.Memory.SetDWord(countPointer, (uint)consumed);
+                        else
+                            Module.Memory.SetWord(countPointer, (ushort)consumed);
+                        startingParameterOrdinal += 2;
+                    }
+
+                    continue;
+                }
+
+                if (conversion is 'd' or 'i' or 'o' or 'u' or 'x' or 'X')
+                {
+                    while (more && (input.Current == ' ' || (input.Current >= '\t' && input.Current <= '\r')))
+                    {
+                        more = input.MoveNext();
+                        consumed++;
+                    }
+
+                    if (!more)
+                    {
+                        atEnd = true;
                         break;
-                    case ScanfParseState.NORMAL when formatChar == '%':
-                        parseState.State = ScanfParseState.PERCENT;
-                        break;
-                    case ScanfParseState.NORMAL:
-                        // match a single character
-                        (moreInput, _) = ConsumeWhitespace(input);
-                        if (moreInput)
+                    }
+
+                    var taken = 0;
+                    var negative = false;
+                    if (input.Current == '+' || input.Current == '-')
+                    {
+                        negative = input.Current == '-';
+                        more = input.MoveNext();
+                        consumed++;
+                        taken++;
+
+                        if (!more)
                         {
-                            moreInput = (formatChar == input.Current);
-                            moreInput &= input.MoveNext();
+                            atEnd = true;
+                            break;
                         }
-                        break;
-                    case ScanfParseState.PERCENT when Char.IsAsciiDigit(formatChar):
-                        parseState.Length = parseState.Length * 10 + formatChar - '0';
-                        break;
-                    case ScanfParseState.PERCENT when formatChar == 'i' || formatChar == 'd' || formatChar == 'u' || formatChar == 'x':
-                        var result = GetLeadingNumberFromString(input, GetNumberBaseFromCharacter(formatChar), parseState.Length > 0 ? parseState.Length : -1);
-                        moreInput = result.MoreInput;
-                        if (parseState.IsLongInteger)
+                    }
+
+                    var radix = conversion switch { 'o' => 8, 'x' or 'X' => 16, 'i' => 0, _ => 10 };
+                    var digits = 0;
+
+                    if ((radix == 0 || radix == 16) && taken < limit && input.Current == '0')
+                    {
+                        more = input.MoveNext();
+                        consumed++;
+                        taken++;
+                        digits++;
+
+                        if (more && taken < limit && (input.Current == 'x' || input.Current == 'X'))
                         {
-                            // low word first followed by high word
-                            Module.Memory.SetWord(
-                                GetParameterPointer(startingParameterOrdinal),
-                                (ushort)((uint)result.Value & 0xFFFF));
-                            Module.Memory.SetWord(
-                                GetParameterPointer(startingParameterOrdinal) + 2,
-                                (ushort)((uint)result.Value >> 16));
+                            more = input.MoveNext();
+                            consumed++;
+                            taken++;
+                            radix = 16;
+                        }
+                        else if (radix == 0)
+                        {
+                            radix = 8;
+                        }
+                    }
+
+                    if (radix == 0)
+                        radix = 10;
+
+                    uint value = 0;
+                    var overflow = false;
+                    while (more && taken < limit)
+                    {
+                        var c = input.Current;
+                        var digit = c >= '0' && c <= '9' ? c - '0'
+                            : c >= 'a' && c <= 'z' ? c - 'a' + 10
+                            : c >= 'A' && c <= 'Z' ? c - 'A' + 10
+                            : radix;
+
+                        if (digit >= radix)
+                            break;
+
+                        more = input.MoveNext();
+                        consumed++;
+                        taken++;
+                        digits++;
+
+                        var next = (ulong)value * (ulong)radix + (ulong)digit;
+                        if (next > uint.MaxValue)
+                        {
+                            overflow = true;
+                            break;
+                        }
+
+                        value = (uint)next;
+                    }
+
+                    if (digits == 0)
+                        break;
+
+                    var result = overflow ? (negative ? 0x80000000u : 0x7FFFFFFFu) : negative ? unchecked(0 - value) : value;
+
+                    if (!suppress)
+                    {
+                        var destinationPointer = GetParameterPointer(startingParameterOrdinal);
+                        if (isLong)
+                            Module.Memory.SetDWord(destinationPointer, result);
+                        else
+                            Module.Memory.SetWord(destinationPointer, (ushort)(result & 0xFFFF));
+                        startingParameterOrdinal += 2;
+                        assigned++;
+                    }
+
+                    continue;
+                }
+
+                if (conversion == 's')
+                {
+                    while (more && (input.Current == ' ' || (input.Current >= '\t' && input.Current <= '\r')))
+                    {
+                        more = input.MoveNext();
+                        consumed++;
+                    }
+
+                    if (!more)
+                    {
+                        atEnd = true;
+                        break;
+                    }
+
+                    var text = new List<byte>();
+                    while (more && text.Count < limit && !(input.Current == ' ' || (input.Current >= '\t' && input.Current <= '\r')))
+                    {
+                        text.Add((byte)input.Current);
+                        more = input.MoveNext();
+                        consumed++;
+                    }
+
+                    if (!suppress)
+                    {
+                        text.Add(0);
+                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), text.ToArray());
+                        startingParameterOrdinal += 2;
+                        assigned++;
+                    }
+
+                    continue;
+                }
+
+                if (conversion == 'c')
+                {
+                    if (!more)
+                    {
+                        atEnd = true;
+                        break;
+                    }
+
+                    var count = width > 0 ? width : 1;
+                    var text = new List<byte>();
+                    while (more && text.Count < count)
+                    {
+                        text.Add((byte)input.Current);
+                        more = input.MoveNext();
+                        consumed++;
+                    }
+
+                    if (!suppress)
+                    {
+                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), text.ToArray());
+                        startingParameterOrdinal += 2;
+                    }
+
+                    if (text.Count < count)
+                    {
+                        atEnd = true;
+                        break;
+                    }
+
+                    if (!suppress)
+                        assigned++;
+
+                    continue;
+                }
+
+                if (conversion == '[')
+                {
+                    var exclude = f < formatString.Length && formatString[f] == '^';
+                    if (exclude)
+                        f++;
+
+                    var inSet = new bool[256];
+                    var setStart = f;
+                    var previous = -1;
+                    while (f < formatString.Length && (formatString[f] != ']' || f == setStart))
+                    {
+                        var setChar = formatString[f++];
+                        if (setChar == '-' && previous >= 0 && f < formatString.Length && formatString[f] != ']')
+                        {
+                            var last = formatString[f++] & 0xFF;
+                            for (var r = previous; r <= last; r++)
+                                inSet[r] = true;
+                            previous = -1;
                         }
                         else
                         {
-                            Module.Memory.SetWord(
-                                GetParameterPointer(startingParameterOrdinal),
-                                (ushort)result.Value);
+                            previous = setChar & 0xFF;
+                            inSet[previous] = true;
                         }
+                    }
 
-                        if (result.Valid)
-                            ++matches;
+                    if (f < formatString.Length)
+                        f++;
 
+                    if (!more)
+                    {
+                        atEnd = true;
+                        break;
+                    }
+
+                    var text = new List<byte>();
+                    while (more && text.Count < limit && inSet[input.Current & 0xFF] != exclude)
+                    {
+                        text.Add((byte)input.Current);
+                        more = input.MoveNext();
+                        consumed++;
+                    }
+
+                    var matched = text.Count;
+                    if (!suppress)
+                    {
+                        text.Add(0);
+                        Module.Memory.SetArray(GetParameterPointer(startingParameterOrdinal), text.ToArray());
                         startingParameterOrdinal += 2;
-                        parseState.State = ScanfParseState.NORMAL;
-                        break;
-                    case ScanfParseState.PERCENT when formatChar == 's' || formatChar == 'c':
-                        var defaultLength = (formatChar == 's') ? int.MaxValue : 1;
-                        var length = parseState.Length > 0 ? parseState.Length : defaultLength;
-                        var count = 0;
-                        (var stringValue, moreInput) = ReadString(input, c =>
-                        {
-                            return (count++ < length) ?
-                                ExportedModuleBase.CharacterAccepterResponse.ACCEPT :
-                                ExportedModuleBase.CharacterAccepterResponse.ABORT;
-                        });
+                    }
 
-                        var destinationPtr = GetParameterPointer(startingParameterOrdinal);
-                        // Latin1 maps each char (0-255) straight back to its original byte,
-                        // unlike ASCII which would collapse anything >= 0x80 to '?'.
-                        Module.Memory.SetArray(destinationPtr, Encoding.Latin1.GetBytes(stringValue));
-
-                        if (stringValue.Length > 0)
-                            ++matches;
-                        if (formatChar == 's') // null terminate
-                            Module.Memory.SetByte(destinationPtr + stringValue.Length, 0);
-
-                        startingParameterOrdinal += 2;
-                        parseState.State = ScanfParseState.NORMAL;
+                    if (matched == 0)
                         break;
-                    case ScanfParseState.PERCENT when formatChar == 'l':
-                        parseState.IsLongInteger = true;
+
+                    if (!suppress)
+                        assigned++;
+
+                    if (!more)
+                    {
+                        atEnd = true;
                         break;
-                    case ScanfParseState.PERCENT when formatChar == '%':
-                        parseState.State = ScanfParseState.NORMAL;
-                        goto case ScanfParseState.NORMAL; // yolo
-                    case ScanfParseState.PERCENT:
-                        throw new ArgumentException($"({Module.ModuleIdentifier}) Unsupported sscanf specifier: {formatChar}");
+                    }
+
+                    continue;
                 }
+
+                throw new ArgumentException($"({Module.ModuleIdentifier}) Unsupported sscanf specifier: {conversion}");
             }
 
-            Registers.AX = (ushort)matches;
+            Registers.AX = (ushort)(assigned == 0 && atEnd ? -1 : assigned);
         }
 
         /// <summary>

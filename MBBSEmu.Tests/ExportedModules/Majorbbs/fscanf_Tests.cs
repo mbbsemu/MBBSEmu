@@ -21,7 +21,9 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             const string FILE_CONTENTS = "{ 5 -2 4 testing abc }\r\n{ 5 -2 4 testing abc }\r\n"
                 + "{ 5 -2 4 testing abc }\r\n{ 5 -2 4 testing abc }\r\n"
                 + "{ 5 -2 4 testing abc }\r\n{ 5 -2 4 testing abc }\r\n";
-            const string FORMAT = "{ %d %d %d %s %s }";
+            //The leading space skips the line end left by the previous record: like the kernel's scanner, a literal
+            //character in the format does not skip white space in the input.
+            const string FORMAT = " { %d %d %d %s %s }";
 
             var filePath = CreateTextFile("file.txt", FILE_CONTENTS);
 
