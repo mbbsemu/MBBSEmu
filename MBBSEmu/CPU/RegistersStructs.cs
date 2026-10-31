@@ -12,7 +12,11 @@ namespace MBBSEmu.CPU
     /// </summary>
     public struct FpuRegistersStruct
     {
-        public ushort StatusWord { get; set; }
+        /// <summary>
+        ///     The status word: exception flags (bits 0-5), condition codes C0-C3 and the stack top (bits 11-13).
+        ///     A field, so the x87 operations (Float80) can record their flags in it directly.
+        /// </summary>
+        public ushort StatusWord;
 
         public ushort ControlWord { get; set; }
 
@@ -102,12 +106,12 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Clears Exception Flags from Status and Control Words
+        ///     Clears the exception flags, the stack fault, error summary and busy bits of the Status Word (FCLEX). The
+        ///     Control Word, which holds the exception masks, is not changed.
         /// </summary>
         public void ClearExceptions()
         {
-            StatusWord &= 0xFFC0;
-            ControlWord &= 0xFFC0;
+            StatusWord &= 0x7F00;
         }
 
         public static FpuRegistersStruct Create()

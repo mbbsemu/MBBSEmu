@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.CPU;
 using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
@@ -98,10 +99,10 @@ namespace MBBSEmu.Tests.CPU
         }
 
         [Theory]
-        [InlineData(0)]
-        [InlineData(long.MaxValue)]
-        [InlineData(long.MinValue)]
-        public void FILD_Test_M64(long valueToLoad)
+        [InlineData(0, (ushort)0x0000, 0x0000000000000000UL)]
+        [InlineData(long.MaxValue, (ushort)0x403D, 0xFFFFFFFFFFFFFFFEUL)] //Exact: 64 significant bits (coprocessor)
+        [InlineData(long.MinValue, (ushort)0xC03E, 0x8000000000000000UL)]
+        public void FILD_Test_M64(long valueToLoad, ushort expectedSignExponent, ulong expectedSignificand)
         {
             Reset();
 
@@ -115,13 +116,14 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(valueToLoad, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(new Float80(expectedSignExponent, expectedSignificand), mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }
 
         [Theory]
-        [InlineData(1, 2)]
-        [InlineData(long.MaxValue, long.MinValue)]
-        public void FILD_Multiple_Test_M64(long st0, long st1)
+        [InlineData(1, 2, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x4000, 0x8000000000000000UL)]
+        [InlineData(long.MaxValue, long.MinValue, (ushort)0x403D, 0xFFFFFFFFFFFFFFFEUL, (ushort)0xC03E, 0x8000000000000000UL)]
+        public void FILD_Multiple_Test_M64(long st0, long st1, ushort st0SignExponent, ulong st0Significand,
+            ushort st1SignExponent, ulong st1Significand)
         {
             Reset();
 
@@ -138,8 +140,8 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(st0, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
-            Assert.Equal(st1, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
+            Assert.Equal(new Float80(st0SignExponent, st0Significand), mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(new Float80(st1SignExponent, st1Significand), mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
         }
     }
 }

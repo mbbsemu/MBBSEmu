@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.CPU;
 using System;
 using System.Collections.Generic;
 using Xunit;
@@ -198,6 +199,34 @@ namespace MBBSEmu.Tests.CPU
 
             Assert.Equal(initialRegisterValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST0)]);
             Assert.Equal(initialRegisterValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
+        }
+
+        /// <summary>
+        ///     FLD m32/m64 is exact: a signalling NaN becomes quiet with IE, a denormal is normalized with DE
+        ///     (coprocessor)
+        /// </summary>
+        [Theory]
+        [InlineData(4, 0x7F800001UL, (ushort)0x7FFF, 0xC000010000000000UL, 0x0001)]
+        [InlineData(8, 0x0000000000000001UL, (ushort)0x3BCD, 0x8000000000000000UL, 0x0002)]
+        public void FLD_Memory_SignallingNaN_Denormal(int size, ulong bits, ushort expectedSignExponent,
+            ulong expectedSignificand, ushort expectedStatus)
+        {
+            Reset();
+
+            CreateDataSegment(size == 8 ? BitConverter.GetBytes(bits) : BitConverter.GetBytes((uint)bits), 2);
+            mbbsEmuCpuRegisters.DS = 2;
+
+            var instructions = new Assembler(16);
+            if (size == 8)
+                instructions.fld(__qword_ptr[0]);
+            else
+                instructions.fld(__dword_ptr[0]);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(new Float80(expectedSignExponent, expectedSignificand), mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(expectedStatus, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x023F);
         }
     }
 }

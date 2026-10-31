@@ -1,4 +1,5 @@
 using Iced.Intel;
+using MBBSEmu.CPU;
 using Xunit;
 
 namespace MBBSEmu.Tests.CPU
@@ -16,7 +17,8 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            Assert.Equal(3.3219280948873623d, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            //log2(10) to 64 bits, rounded to nearest (the coprocessor's FLDL2T under the default control word)
+            Assert.Equal(new Float80(0x4000, 0xD49A784BCD1B8AFE), mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }
     }
 }

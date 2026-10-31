@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.CPU;
 using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
@@ -57,6 +58,31 @@ namespace MBBSEmu.Tests.CPU
             var expectedValue = initialST0Value * valueToMultiply;
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+        }
+
+        /// <summary>
+        ///     The largest double times 2 stays finite in the extended exponent range: 43FF FFFFFFFFFFFFF800,
+        ///     no exception (coprocessor)
+        /// </summary>
+        [Fact]
+        public void FMUL_ExtendedRange()
+        {
+            Reset();
+
+            CreateDataSegment(new ReadOnlySpan<byte>(), 2);
+            mbbsEmuMemoryCore.SetArray(2, 0, BitConverter.GetBytes(2d));
+            mbbsEmuCpuRegisters.DS = 2;
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(0);
+            mbbsEmuCpuCore.FpuStack[0] = double.MaxValue;
+
+            var instructions = new Assembler(16);
+            instructions.fmul(__qword_ptr[0]);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(new Float80(0x43FF, 0xFFFFFFFFFFFFF800), mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
         }
     }
 }

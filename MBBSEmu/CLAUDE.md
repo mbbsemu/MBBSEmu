@@ -67,7 +67,7 @@ The main execution engine. The `Tick()` method is the hot loop:
 - `_currentOperationSize` — 1, 2, or 4 byte operation width
 - `_invokeExternalFunctionDelegate` — callback fired when CPU hits a `CALL FAR` to segment >= 0xFF00 (an exported module call)
 - `_interruptHandlers` — `Dictionary<int, IInterruptHandler>` for INT instructions
-- `FpuStack` — `double[8]` array for x87 FPU, indexed via StatusWord bits 11-13
+- `FpuStack` — `Float80[8]` array for x87 FPU (80-bit extended values), indexed via StatusWord bits 11-13
 
 **Stack:** Segment 0x0000, SP starts at 0xFFFE, grows downward. `uint.MaxValue` is pushed as an end-of-execution sentinel.
 
