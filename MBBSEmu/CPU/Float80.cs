@@ -1,6 +1,7 @@
 using System;
 using System.Buffers.Binary;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
 {
@@ -112,6 +113,16 @@ namespace MBBSEmu.CPU
             return (Significand & IntegerBit) != 0 ? Kind.Normal : Kind.Unsupported;
         }
 
+        /// <summary>
+        ///     A normal number (biased exponent 1 to 0x7FFE, integer bit set): the common case, which needs none of the
+        ///     special-operand rules
+        /// </summary>
+        private bool IsNormal
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (uint)((SignExponent & 0x7FFF) - 1) < 0x7FFE && (long)Significand < 0;
+        }
+
         public bool IsNegative => (SignExponent & 0x8000) != 0;
         public bool IsZero => GetKind() == Kind.Zero;
         public bool IsDenormal => GetKind() == Kind.Denormal;
@@ -134,6 +145,7 @@ namespace MBBSEmu.CPU
         ///     A finite non-zero value as (-1)^sign * significand * 2^exponent, the significand normalized (bit 63 set):
         ///     denormals and pseudo-denormals have the exponent of the smallest normal before normalization
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void Unpack(out ulong significand, out int exponent)
         {
             significand = Significand;
@@ -163,6 +175,7 @@ namespace MBBSEmu.CPU
         ///     value >> shift, rounded by the rounding control. sticky: something non-zero lies below the lowest bit of
         ///     value (the caller keeps it at least two bits below the bits rounded away).
         /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static UInt128 RoundShift(UInt128 value, int shift, bool sticky, bool negative, int roundingControl,
             out bool inexact, out bool roundedUp)
         {
@@ -184,7 +197,7 @@ namespace MBBSEmu.CPU
             {
                 result = shift == 128 ? UInt128.Zero : value >> shift;
                 half = ((value >> (shift - 1)) & UInt128.One) != UInt128.Zero;
-                below = sticky || (shift > 1 && (value & ((UInt128.One << (shift - 1)) - UInt128.One)) != UInt128.Zero);
+                below = sticky || (shift > 1 && value << (129 - shift) != UInt128.Zero);
             }
 
             inexact = half || below;
@@ -202,12 +215,13 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Rounds (-1)^negative * (value + sticky) * 2^exponent (value non-zero) to precision bits in a format whose
         ///     normal numbers have leading-bit exponents from minExponent to maxExponent. Returns false on overflow (the
-        ///     caller delivers the masked response); otherwise the rounded significand and the exponent of its lowest
-        ///     bit, with PE, UE and C1 added to flags.
+        ///     caller delivers the masked response); otherwise the rounded significand (at most precision bits; zero
+        ///     when everything was rounded away) and the exponents of its lowest and its leading bit, with PE, UE and
+        ///     C1 added to flags.
         /// </summary>
         private static bool Round(bool negative, UInt128 value, int exponent, bool sticky, int precision,
-            int minExponent, int maxExponent, int roundingControl, ref int flags, out UInt128 significand,
-            out int lowExponent)
+            int minExponent, int maxExponent, int roundingControl, ref int flags, out ulong significand,
+            out int lowExponent, out int leadExponent)
         {
             var bits = BitLength(value);
             var lead = exponent + bits - 1;
@@ -224,18 +238,23 @@ namespace MBBSEmu.CPU
             //The delivered rounding: precision bits, never below the denormal position (precision bits counted from
             //the smallest normal exponent)
             lowExponent = Math.Max(lead - precision + 1, minExponent - precision + 1);
-            significand = RoundShift(value, lowExponent - exponent, sticky, negative, roundingControl,
+            var rounded = RoundShift(value, lowExponent - exponent, sticky, negative, roundingControl,
                 out var inexact, out var roundedUp);
-            if (BitLength(significand) > precision)
+            var roundedBits = BitLength(rounded);
+            if (roundedBits > precision)
             {
-                significand >>= 1;
+                //Carried into a new leading bit: the significand was all ones
+                rounded >>= 1;
+                roundedBits--;
                 lowExponent++;
             }
 
+            significand = (ulong)rounded;
+            leadExponent = lowExponent + roundedBits - 1;
             if (inexact)
                 flags |= tiny ? PE | UE : PE;
 
-            if (significand != UInt128.Zero && lowExponent + BitLength(significand) - 1 > maxExponent)
+            if (significand != 0 && leadExponent > maxExponent)
                 return false;
 
             if (roundedUp)
@@ -264,22 +283,20 @@ namespace MBBSEmu.CPU
         {
             var sign = negative ? 0x8000 : 0;
             if (!Round(negative, value, exponent, sticky, precision, MinExponent, MaxExponent, roundingControl,
-                    ref flags, out var significand, out var lowExponent))
+                    ref flags, out var significand, out var lowExponent, out var lead))
             {
                 return OverflowsToInfinity(negative, roundingControl, ref flags)
                     ? new Float80((ushort)(sign | 0x7FFF), IntegerBit)
                     : new Float80((ushort)(sign | 0x7FFE), ulong.MaxValue << (64 - precision));
             }
 
-            if (significand == UInt128.Zero)
+            if (significand == 0)
                 return new Float80((ushort)sign, 0);
 
-            var bits = BitLength(significand);
-            var lead = lowExponent + bits - 1;
             if (lead < MinExponent)
-                return new Float80((ushort)sign, (ulong)significand << (lowExponent - (MinExponent - 63)));
+                return new Float80((ushort)sign, significand << (lowExponent - (MinExponent - 63)));
 
-            return new Float80((ushort)(sign | (lead + Bias)), (ulong)significand << (64 - bits));
+            return new Float80((ushort)(sign | (lead + Bias)), significand << (63 - (lead - lowExponent)));
         }
 
         /// <summary>
@@ -291,23 +308,21 @@ namespace MBBSEmu.CPU
             var fractionBits = precision - 1;
             var sign = negative ? 1UL << (fractionBits + (precision == 24 ? 8 : 11)) : 0;
             if (!Round(negative, value, exponent, false, precision, 1 - maxExponent, maxExponent, roundingControl,
-                    ref flags, out var significand, out var lowExponent))
+                    ref flags, out var significand, out var lowExponent, out var lead))
             {
                 return OverflowsToInfinity(negative, roundingControl, ref flags)
                     ? sign | ((ulong)(2 * maxExponent + 1) << fractionBits)
                     : sign | ((ulong)(2 * maxExponent) << fractionBits) | ((1UL << fractionBits) - 1);
             }
 
-            if (significand == UInt128.Zero)
+            if (significand == 0)
                 return sign;
 
-            var bits = BitLength(significand);
-            var lead = lowExponent + bits - 1;
             if (lead < 1 - maxExponent)
-                return sign | (ulong)significand;
+                return sign | significand;
 
             return sign | ((ulong)(lead + maxExponent) << fractionBits) |
-                   (((ulong)significand << (precision - bits)) & ((1UL << fractionBits) - 1));
+                   ((significand << (fractionBits - (lead - lowExponent))) & ((1UL << fractionBits) - 1));
         }
 
         /// <summary>
@@ -402,41 +417,48 @@ namespace MBBSEmu.CPU
         private static Float80 Add(Float80 a, Float80 b, bool subtract, ushort controlWord, bool memoryOperandDenormal,
             ref int flags)
         {
-            if (Screen(a, b, ref flags, out var nan))
-                return nan;
-
-            var ka = a.GetKind();
-            var kb = b.GetKind();
             var negativeA = a.IsNegative;
             var negativeB = b.IsNegative ^ subtract;
-            if (ka == Kind.Infinity || kb == Kind.Infinity)
+            var precision = Precision(controlWord);
+            var rounding = Rounding(controlWord);
+            if (!a.IsNormal || !b.IsNormal)
             {
-                if (ka == kb && negativeA != negativeB)
+                if (Screen(a, b, ref flags, out var nan))
+                    return nan;
+
+                var ka = a.GetKind();
+                var kb = b.GetKind();
+                if (ka == Kind.Infinity || kb == Kind.Infinity)
                 {
-                    flags |= IE;
-                    return Indefinite;
+                    if (ka == kb && negativeA != negativeB)
+                    {
+                        flags |= IE;
+                        return Indefinite;
+                    }
+
+                    flags |= DenormalFlag(ka, kb, memoryOperandDenormal);
+                    return Signed(ka == Kind.Infinity ? negativeA : negativeB, PositiveInfinity);
                 }
 
                 flags |= DenormalFlag(ka, kb, memoryOperandDenormal);
-                return Signed(ka == Kind.Infinity ? negativeA : negativeB, PositiveInfinity);
+                if (ka == Kind.Zero && kb == Kind.Zero)
+                    return negativeA == negativeB ? Signed(negativeA, Zero) : Signed(rounding == RoundDown, Zero);
+
+                if (ka == Kind.Zero)
+                {
+                    b.Unpack(out var onlyB, out var exponentB);
+                    return RoundExtended(negativeB, onlyB, exponentB, false, precision, rounding, ref flags);
+                }
+
+                if (kb == Kind.Zero)
+                {
+                    a.Unpack(out var onlyA, out var exponentA);
+                    return RoundExtended(negativeA, onlyA, exponentA, false, precision, rounding, ref flags);
+                }
             }
-
-            flags |= DenormalFlag(ka, kb, memoryOperandDenormal);
-            var precision = Precision(controlWord);
-            var rounding = Rounding(controlWord);
-            if (ka == Kind.Zero && kb == Kind.Zero)
-                return negativeA == negativeB ? Signed(negativeA, Zero) : Signed(rounding == RoundDown, Zero);
-
-            if (ka == Kind.Zero)
+            else if (memoryOperandDenormal)
             {
-                b.Unpack(out var onlyB, out var exponentB);
-                return RoundExtended(negativeB, onlyB, exponentB, false, precision, rounding, ref flags);
-            }
-
-            if (kb == Kind.Zero)
-            {
-                a.Unpack(out var onlyA, out var exponentA);
-                return RoundExtended(negativeA, onlyA, exponentA, false, precision, rounding, ref flags);
+                flags |= DE;
             }
 
             a.Unpack(out var significandA, out var lowA);
@@ -501,6 +523,15 @@ namespace MBBSEmu.CPU
         private static Float80 Multiply(Float80 a, Float80 b, ushort controlWord, bool memoryOperandDenormal,
             ref int flags)
         {
+            if (a.IsNormal && b.IsNormal)
+            {
+                if (memoryOperandDenormal)
+                    flags |= DE;
+                return RoundExtended(a.IsNegative ^ b.IsNegative, (UInt128)a.Significand * b.Significand,
+                    (a.SignExponent & 0x7FFF) + (b.SignExponent & 0x7FFF) - 2 * (Bias + 63), false,
+                    Precision(controlWord), Rounding(controlWord), ref flags);
+            }
+
             if (Screen(a, b, ref flags, out var nan))
                 return nan;
 
@@ -541,6 +572,13 @@ namespace MBBSEmu.CPU
         private static Float80 Divide(Float80 a, Float80 b, ushort controlWord, bool memoryOperandDenormal,
             ref int flags)
         {
+            if (a.IsNormal && b.IsNormal)
+            {
+                if (memoryOperandDenormal)
+                    flags |= DE;
+                return DivideFinite(a.IsNegative ^ b.IsNegative, a, b, controlWord, ref flags);
+            }
+
             if (Screen(a, b, ref flags, out var nan))
                 return nan;
 
@@ -570,15 +608,30 @@ namespace MBBSEmu.CPU
             if (kb == Kind.Infinity || ka == Kind.Zero)
                 return Signed(negative, Zero);
 
-            //Normalized significands: the quotient of a << 64 by b has 64 or 65 bits; two more bits of the long
-            //division and the remainder as a sticky bit round correctly at any precision
+            return DivideFinite(negative, a, b, controlWord, ref flags);
+        }
+
+        /// <summary>
+        ///     a / b of two finite non-zero values. The quotient of the normalized significands, a << 64 by b, has 64
+        ///     or 65 bits; two more bits of the long division and the remainder as a sticky bit round correctly at any
+        ///     precision.
+        /// </summary>
+        private static Float80 DivideFinite(bool negative, Float80 a, Float80 b, ushort controlWord, ref int flags)
+        {
             a.Unpack(out var significandA, out var exponentA);
             b.Unpack(out var significandB, out var exponentB);
-            var dividend = (UInt128)significandA << 64;
-            var quotient = dividend / significandB;
-            var remainder = dividend % significandB;
-            quotient = (quotient << 2) | ((remainder << 2) / significandB);
-            remainder = (remainder << 2) % significandB;
+            var (quotient, remainder) = UInt128.DivRem((UInt128)significandA << 64, significandB);
+            for (var i = 0; i < 2; i++)
+            {
+                remainder <<= 1;
+                quotient <<= 1;
+                if (remainder >= significandB)
+                {
+                    remainder -= significandB;
+                    quotient |= UInt128.One;
+                }
+            }
+
             return RoundExtended(negative, quotient, exponentA - exponentB - 66, remainder != UInt128.Zero,
                 Precision(controlWord), Rounding(controlWord), ref flags);
         }
