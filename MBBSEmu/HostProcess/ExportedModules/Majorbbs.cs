@@ -6097,6 +6097,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Expect an integer from the user
         ///
         ///     Signature: returnType n=cncint()
+        ///
+        ///     As in the kernel, cnclon() reads decimal digits only (no sign) with no limit on their number, keeping
+        ///     the value in 32 bits so it wraps modulo 2^32; cncint() returns the low 16 bits of that value; cncnum()
+        ///     copies one optional leading '-' and the digits that follow, at most 11 characters, into a null-terminated
+        ///     buffer. NXTCMD moves past what was read, and does not move when nothing was. Like the other cnc routines
+        ///     here, leading white space is skipped first (in the kernel morcnc() does that).
         /// </summary>
         private void cncint(CncIntegerReturnType returnType)
         {
@@ -6124,23 +6130,41 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var result = GetLeadingNumberFromString(charEnumerator, 10, -1);
+            var number = new StringBuilder();
+            uint value = 0;
+            do
+            {
+                var c = charEnumerator.Current;
+                if (returnType == CncIntegerReturnType.STRING)
+                {
+                    if (number.Length >= 11 || !(char.IsAsciiDigit(c) || (c == '-' && number.Length == 0)))
+                        break;
+                }
+                else if (!char.IsAsciiDigit(c))
+                {
+                    break;
+                }
 
-            if (result.StringValue.Length > 0)
-                Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + skipped + result.StringValue.Length);
+                number.Append(c);
+                if (char.IsAsciiDigit(c))
+                    value = unchecked(value * 10 + (uint)(c - '0'));
+            } while (charEnumerator.MoveNext());
+
+            if (number.Length > 0)
+                Module.Memory.SetPointer("NXTCMD", nxtcmdPointer + skipped + number.Length);
 
             switch (returnType)
             {
                 case CncIntegerReturnType.INT:
-                    Registers.AX = result.Valid ? (ushort)result.Value : (ushort)0;
+                    Registers.AX = (ushort)(value & 0xFFFF);
                     break;
                 case CncIntegerReturnType.LONG:
-                    Registers.AX = result.Valid ? (ushort)((uint)result.Value & 0xFFFF) : (ushort)0;
-                    Registers.DX = result.Valid ? (ushort)((uint)result.Value >> 16) : (ushort)0;
+                    Registers.AX = (ushort)(value & 0xFFFF);
+                    Registers.DX = (ushort)(value >> 16);
                     break;
                 case CncIntegerReturnType.STRING:
                     var cncNumArray = Module.Memory.GetOrAllocateVariablePointer("CNCNUM", 16);
-                    Module.Memory.SetArray(cncNumArray, Encoding.ASCII.GetBytes(result.StringValue));
+                    Module.Memory.SetArray(cncNumArray, Encoding.ASCII.GetBytes(number.ToString() + "\0"));
                     Registers.SetPointer(cncNumArray);
                     break;
             }
