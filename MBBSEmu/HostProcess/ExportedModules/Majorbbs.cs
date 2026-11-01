@@ -4500,18 +4500,44 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
+            //In text mode the kernel's run-time library drops every CR as it reads (so CRs do not count toward
+            //num), and a ^Z ends the file (the file stays at the ^Z)
+            var textMode = (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0;
+            var endOfText = false;
             using var valueFromFile = new MemoryStream(maxCharactersToRead);
-            for (var i = 0; i < (maxCharactersToRead - 1); i++)
+            while (valueFromFile.Length < maxCharactersToRead - 1)
             {
-                var inputValue = (byte)fileStream.ReadByte();
+                var inputValue = fileStream.ReadByte();
+                if (inputValue < 0)
+                    break;
 
-                if (inputValue == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
+                if (textMode && inputValue == '\r')
                     continue;
 
-                valueFromFile.WriteByte(inputValue);
+                if (textMode && inputValue == 0x1A)
+                {
+                    fileStream.Seek(-1, SeekOrigin.Current);
+                    endOfText = true;
+                    break;
+                }
+
+                valueFromFile.WriteByte((byte)inputValue);
 
                 if (inputValue == '\n' || fileStream.Position == fileStream.Length)
                     break;
+            }
+
+            if (endOfText)
+            {
+                fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
+                Module.Memory.SetArray(fileStructPointer, fileStruct.Data);
+
+                if (valueFromFile.Length == 0)
+                {
+                    Registers.AX = 0;
+                    Registers.DX = 0;
+                    return;
+                }
             }
 
             valueFromFile.WriteByte(0);
@@ -5826,11 +5852,24 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             var characterRead = fileStream.ReadByte();
 
-            if (characterRead == '\r' && (fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
-                characterRead = '\n';
+            //In text mode the kernel's run-time library drops every CR as it reads, and a ^Z ends the file (the
+            //file stays at the ^Z)
+            var endOfText = false;
+            if ((fileStruct.flags & (ushort)FileStruct.EnumFileFlags.Binary) == 0)
+            {
+                while (characterRead == '\r')
+                    characterRead = fileStream.ReadByte();
+
+                if (characterRead == 0x1A)
+                {
+                    fileStream.Seek(-1, SeekOrigin.Current);
+                    characterRead = -1;
+                    endOfText = true;
+                }
+            }
 
             //Update EOF Flag if required
-            if (fileStream.Position == fileStream.Length)
+            if (fileStream.Position == fileStream.Length || endOfText)
             {
                 fileStruct.flags |= (ushort)FileStruct.EnumFileFlags.EOF;
                 Module.Memory.SetArray(fileStructPointer, fileStruct.Data);

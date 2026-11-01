@@ -771,5 +771,70 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             Assert.Equal(0xFFFF, mbbsEmuCpuRegisters.AX);
         }
+
+        /// <summary>
+        ///     fgetc() on a file opened in text mode: every value it returns, until EOF twice. Expected values are those of
+        ///     the original kernels' FGETC reading the same bytes through their run-time library (The Major BBS 6.x and
+        ///     Worldgroup MAJORBBS.EXE give identical results): every CR is dropped and a ^Z ends the file.
+        /// </summary>
+        [Theory]
+        [InlineData("ab\r\ncd\r\n", new[] { 97, 98, 10, 99, 100, 10, -1, -1 })]
+        [InlineData("a\rb\n", new[] { 97, 98, 10, -1, -1 })]
+        [InlineData("ab\u001Acd", new[] { 97, 98, -1, -1 })]
+        [InlineData("ab", new[] { 97, 98, -1, -1 })]
+        [InlineData("", new[] { -1, -1 })]
+        [InlineData("\u00E9\u00FF\r\n", new[] { 233, 255, 10, -1, -1 })]
+        [InlineData("a\r\r\nb", new[] { 97, 10, 98, -1, -1 })]
+        public void fgetc_TextModeMatchesKernel(string contents, int[] expectedValues)
+        {
+            Reset();
+
+            File.WriteAllBytes(Path.Join(mbbsModule.ModulePath, "file.txt"), Encoding.Latin1.GetBytes(contents));
+            var filep = fopen("FILE.TXT", "rt");
+
+            foreach (var expectedValue in expectedValues)
+                Assert.Equal(expectedValue, (short)fgetc(filep));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        /// <summary>
+        ///     fgets() on a file opened in text mode: the string of each call (null for a null pointer). Expected values are
+        ///     those of the original kernels' FGETS, as in fgetc_TextModeMatchesKernel: CRs are dropped as they are read,
+        ///     so they do not count toward num, and a ^Z ends the file.
+        /// </summary>
+        [Theory]
+        [InlineData("abc\r\ndef\r\n", 8, new[] { "abc\n", "def\n", null })]
+        [InlineData("a\rb\rc\rd\re\r\n", 4, new[] { "abc", "de\n", null })]
+        [InlineData("ab\r\n", 1, new[] { "", "", "" })]
+        [InlineData("ab\r\n", 2, new[] { "a", "b", "\n", null })]
+        [InlineData("abc\r\n", 4, new[] { "abc", "\n", null })]
+        [InlineData("abcdefghij\r\n", 4, new[] { "abc", "def", "ghi", "j\n", null })]
+        [InlineData("abc", 8, new[] { "abc", null })]
+        [InlineData("ab\u001Acd\r\n", 8, new[] { "ab", null })]
+        public void fgets_TextModeMatchesKernel(string contents, ushort num, string[] expectedStrings)
+        {
+            Reset();
+
+            File.WriteAllBytes(Path.Join(mbbsModule.ModulePath, "file.txt"), Encoding.Latin1.GetBytes(contents));
+            var filep = fopen("FILE.TXT", "rt");
+            var stringPointer = mbbsEmuMemoryCore.AllocateVariable("STRING", 16);
+
+            foreach (var expectedString in expectedStrings)
+            {
+                var result = fgets(stringPointer, num, filep);
+                if (expectedString == null)
+                {
+                    Assert.Equal(FarPtr.Empty, result);
+                }
+                else
+                {
+                    Assert.Equal(stringPointer, result);
+                    Assert.Equal(expectedString, Encoding.Latin1.GetString(mbbsEmuMemoryCore.GetString(stringPointer, stripNull: true)));
+                }
+            }
+
+            Assert.Equal(0, fclose(filep));
+        }
     }
 }
