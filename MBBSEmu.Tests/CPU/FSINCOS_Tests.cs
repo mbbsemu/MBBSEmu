@@ -77,5 +77,33 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(2, mbbsEmuCpuRegisters.Fpu.GetStackTop());
             Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code2));
         }
+
+        /// <summary>
+        ///     An infinity is an invalid operand: ST(0) and the pushed value become the real indefinite, IE, C2 cleared (an x87
+        ///     coprocessor)
+        /// </summary>
+        [Theory]
+        [InlineData(double.PositiveInfinity)]
+        [InlineData(double.NegativeInfinity)]
+        public void FSINCOS_Infinity_IsInvalid(double ST0Value)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = ST0Value;
+            mbbsEmuCpuRegisters.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+
+            var instructions = new Assembler(16);
+            instructions.fsincos();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(2, mbbsEmuCpuRegisters.Fpu.GetStackTop());
+            Assert.Equal(Float80.Indefinite, mbbsEmuCpuCore.FpuStack[2]);
+            Assert.Equal(Float80.Indefinite, mbbsEmuCpuCore.FpuStack[1]);
+            Assert.Equal(0x01, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
+            Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code2));
+        }
     }
 }

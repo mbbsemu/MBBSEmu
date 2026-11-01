@@ -4501,6 +4501,7 @@ namespace MBBSEmu.CPU
         ///     Floating Point Sine (x87)
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE).
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -4521,7 +4522,10 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }
@@ -4534,6 +4538,7 @@ namespace MBBSEmu.CPU
         ///     Floating Point Cosine (x87)
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE).
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -4554,7 +4559,10 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }
@@ -4851,6 +4859,7 @@ namespace MBBSEmu.CPU
         ///     Computes both the sine and the cosine of ST(0), stores the sine in ST(0), and pushes the cosine onto the register stack.
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE).
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -4871,7 +4880,12 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.PushStackTop();
+                    FpuStack[Registers.Fpu.GetStackTop()] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }
@@ -5004,6 +5018,7 @@ namespace MBBSEmu.CPU
         ///     Computes the tangent of ST(0), stores the result in ST(0), and pushes a 1.0 onto the register stack.
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE).
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -5024,7 +5039,12 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.PushStackTop();
+                    FpuStack[Registers.Fpu.GetStackTop()] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }
