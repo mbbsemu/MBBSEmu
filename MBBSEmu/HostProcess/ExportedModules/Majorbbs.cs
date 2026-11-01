@@ -4956,10 +4956,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Converts all lowercase characters in a string to uppercase
         ///
         ///     Signature: char *upper=strupr(char *string)
+        ///
+        ///     As in the kernel, only the letters 'a' to 'z' change: other bytes, those above 0x7F included, stay as
+        ///     they are whatever the host's culture.
         /// </summary>
         private void strupr()
         {
-            strmod(Char.ToUpper);
+            strmod(c => char.IsAsciiLetterLower(c) ? (char)(c - 0x20) : c);
         }
 
         private void strmod(Func<char, char> modifier)
@@ -8207,10 +8210,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     Result buffer is 1k
         ///
         ///     Signature: char *lower=strlwr(char *string);
+        ///
+        ///     As in the kernel, only the letters 'A' to 'Z' change: other bytes, those above 0x7F included, stay as
+        ///     they are whatever the host's culture.
         /// </summary>
         private void strlwr()
         {
-            strmod(Char.ToLower);
+            strmod(c => char.IsAsciiLetterUpper(c) ? (char)(c + 0x20) : c);
         }
 
         /// <summary>
