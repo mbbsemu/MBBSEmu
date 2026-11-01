@@ -80,5 +80,35 @@ namespace MBBSEmu.Tests.CPU
             Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
             Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x05);
         }
+
+        /// <summary>
+        ///     The transcendentals ignore the precision control: the result keeps 64 bits, rounded to the rounding
+        ///     control. Expected values: an x87 coprocessor, compared to 52 bits.
+        /// </summary>
+        [Theory]
+        [InlineData((ushort)0x007F, (ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x3FFD, 0xA4D3C25E68DC57F2UL)] //PC 24: log2(1.25)
+        [InlineData((ushort)0x027F, (ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x3FFD, 0xA4D3C25E68DC57F2UL)] //PC 53: log2(1.25)
+        [InlineData((ushort)0x0C7F, (ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x3FFD, 0xA4D3C25E68DC57F2UL)] //PC 24, toward zero: log2(1.25)
+        [InlineData((ushort)0x007F, (ushort)0xBFFD, 0x8000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0xBFFD, 0xD47FCB8C0852F0C1UL)] //PC 24: log2(0.75)
+        public void FYL2XP1_IgnoresPrecisionControl(ushort controlWord, ushort ST0SignExponent, ulong ST0Significand,
+            ushort ST1SignExponent, ulong ST1Significand, ushort expectedSignExponent, ulong expectedSignificand)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.ControlWord = controlWord;
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand); //ST0
+            mbbsEmuCpuCore.FpuStack[0] = new Float80(ST1SignExponent, ST1Significand); //ST1
+
+            var instructions = new Assembler(16);
+            instructions.fyl2xp1();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
+            Assert.Equal(expectedSignExponent, result.SignExponent);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+        }
     }
 }
