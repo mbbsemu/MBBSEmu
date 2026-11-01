@@ -4975,7 +4975,8 @@ namespace MBBSEmu.CPU
         ///     last bits. For ST(0) in [0.5, 2) it is log2(1 + d) with d = ST(0) - 1, which is exact, so that a value
         ///     next to 1 keeps the digits a double would round away. The product with ST(1) is rounded once in
         ///     extended precision to the rounding control (like a 387, the transcendentals ignore the precision
-        ///     control), so neither operand is limited to double's range.
+        ///     control), so neither operand is limited to double's range. A zero or infinite ST(1) takes only the
+        ///     logarithm's sign, so its result is exact and raises no precision exception.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2x()
@@ -5002,9 +5003,13 @@ namespace MBBSEmu.CPU
                 ushort offsetStatusWord = 0;
                 var offset = Float80.Subtract(ST0x, Float80.One, 0x037F, ref offsetStatusWord);
                 var argument = 1.0 + (double)offset;
-                log2 = Float80.Multiply(offset,
-                    argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
-                    ref Registers.Fpu.StatusWord);
+
+                //A zero or infinite ST(1) needs only the logarithm's sign, which is the offset's
+                log2 = ST1y.IsZero || ST1y.IsInfinity
+                    ? offset
+                    : Float80.Multiply(offset,
+                        argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
+                        ref Registers.Fpu.StatusWord);
             }
             else
             {
@@ -5029,7 +5034,8 @@ namespace MBBSEmu.CPU
         ///     small ST(0) keeps its precision (u == 1: the factor is log2(e)); the result may differ from a 387's in
         ///     the last bits. The products with ST(0) and ST(1) are rounded in extended precision to the rounding
         ///     control (like a 387, the transcendentals ignore the precision control), so ST(1) is not limited to
-        ///     double's range.
+        ///     double's range. A zero or infinite ST(1) takes only the logarithm's sign, so its result is exact and
+        ///     raises no precision exception.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
@@ -5051,11 +5057,15 @@ namespace MBBSEmu.CPU
             //Extended precision whatever the precision control, rounded to the rounding control
             var controlWord = (ushort)(Registers.Fpu.ControlWord | 0x0300);
 
-            //An infinite u (ST(0) = +infinity, outside the instruction's range) gives log2(u) itself: +infinity
-            var log2 = double.IsPositiveInfinity(argument)
-                ? argument
-                : Float80.Multiply(ST0, argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0),
-                    controlWord, ref Registers.Fpu.StatusWord);
+            //A zero or infinite ST(1) needs only the sign of log2(u), which is ST(0)'s (zero for a zero ST(0)). An
+            //infinite u (ST(0) = +infinity, outside the instruction's range) gives log2(u) itself: +infinity
+            var log2 = ST1y.IsZero || ST1y.IsInfinity
+                ? ST0
+                : double.IsPositiveInfinity(argument)
+                    ? argument
+                    : Float80.Multiply(ST0,
+                        argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
+                        ref Registers.Fpu.StatusWord);
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
                 Float80.Multiply(ST1y, log2, controlWord, ref Registers.Fpu.StatusWord);
 
