@@ -283,5 +283,71 @@ namespace MBBSEmu.Tests.CPU
             Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
             Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x0F);
         }
+
+        /// <summary>
+        ///     A denormal ST(0) only a few units long: the result is rounded to a denormal once, as on a 387 (rounding
+        ///     ST(1) * ST(0) first gave 0 for ST(1) = 0.5 and 3 units for 1.5). Expected values: an x87 coprocessor,
+        ///     the result exactly and DE.
+        /// </summary>
+        [Theory]
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFE, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000001UL)] //1 unit of the smallest denormal, ST(1) 0.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFF, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000002UL)] //1 unit of the smallest denormal, ST(1) 1.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000000UL)] //1 unit of the smallest denormal, ST(1) 0.25
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFE, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000001UL)] //1 unit of the smallest denormal, ST(1) 0.75
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x4000, 0xA000000000000000UL, (ushort)0x0000, 0x0000000000000004UL)] //1 unit of the smallest denormal, ST(1) 2.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x4000, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000004UL)] //1 unit of the smallest denormal, ST(1) 3
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFD, 0x999999999999999AUL, (ushort)0x0000, 0x0000000000000000UL)] //1 unit of the smallest denormal, ST(1) 0.3
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFF, 0x8000000000000001UL, (ushort)0x0000, 0x0000000000000001UL)] //1 unit of the smallest denormal, ST(1) 1 + 2^-63
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x3FFE, 0x8000000000000000UL, (ushort)0x8000, 0x0000000000000001UL)] //-1 unit of the smallest denormal, ST(1) 0.5
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x3FFF, 0xC000000000000000UL, (ushort)0x8000, 0x0000000000000002UL)] //-1 unit of the smallest denormal, ST(1) 1.5
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x8000, 0x0000000000000000UL)] //-1 unit of the smallest denormal, ST(1) 0.25
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x3FFE, 0xC000000000000000UL, (ushort)0x8000, 0x0000000000000001UL)] //-1 unit of the smallest denormal, ST(1) 0.75
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x4000, 0xA000000000000000UL, (ushort)0x8000, 0x0000000000000004UL)] //-1 unit of the smallest denormal, ST(1) 2.5
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x4000, 0xC000000000000000UL, (ushort)0x8000, 0x0000000000000004UL)] //-1 unit of the smallest denormal, ST(1) 3
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x3FFD, 0x999999999999999AUL, (ushort)0x8000, 0x0000000000000000UL)] //-1 unit of the smallest denormal, ST(1) 0.3
+        [InlineData((ushort)0x037F, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x3FFF, 0x8000000000000001UL, (ushort)0x8000, 0x0000000000000001UL)] //-1 unit of the smallest denormal, ST(1) 1 + 2^-63
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x3FFE, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000002UL)] //3 units of the smallest denormal, ST(1) 0.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x3FFF, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000006UL)] //3 units of the smallest denormal, ST(1) 1.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000001UL)] //3 units of the smallest denormal, ST(1) 0.25
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x3FFE, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000003UL)] //3 units of the smallest denormal, ST(1) 0.75
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x4000, 0xA000000000000000UL, (ushort)0x0000, 0x000000000000000BUL)] //3 units of the smallest denormal, ST(1) 2.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x4000, 0xC000000000000000UL, (ushort)0x0000, 0x000000000000000DUL)] //3 units of the smallest denormal, ST(1) 3
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x3FFD, 0x999999999999999AUL, (ushort)0x0000, 0x0000000000000001UL)] //3 units of the smallest denormal, ST(1) 0.3
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000003UL, (ushort)0x3FFF, 0x8000000000000001UL, (ushort)0x0000, 0x0000000000000004UL)] //3 units of the smallest denormal, ST(1) 1 + 2^-63
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x3FFE, 0x8000000000000000UL, (ushort)0x0000, 0x000000000000000CUL)] //16 units of the smallest denormal, ST(1) 0.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x3FFF, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000023UL)] //16 units of the smallest denormal, ST(1) 1.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000006UL)] //16 units of the smallest denormal, ST(1) 0.25
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x3FFE, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000011UL)] //16 units of the smallest denormal, ST(1) 0.75
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x4000, 0xA000000000000000UL, (ushort)0x0000, 0x000000000000003AUL)] //16 units of the smallest denormal, ST(1) 2.5
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x4000, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000045UL)] //16 units of the smallest denormal, ST(1) 3
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x3FFD, 0x999999999999999AUL, (ushort)0x0000, 0x0000000000000007UL)] //16 units of the smallest denormal, ST(1) 0.3
+        [InlineData((ushort)0x037F, (ushort)0x0000, 0x0000000000000010UL, (ushort)0x3FFF, 0x8000000000000001UL, (ushort)0x0000, 0x0000000000000017UL)] //16 units of the smallest denormal, ST(1) 1 + 2^-63
+        [InlineData((ushort)0x0F7F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFE, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000000UL)] //1 unit of the smallest denormal, ST(1) 0.5, toward zero
+        [InlineData((ushort)0x0F7F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFF, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000002UL)] //1 unit of the smallest denormal, ST(1) 1.5, toward zero
+        [InlineData((ushort)0x077F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFE, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000000UL)] //1 unit of the smallest denormal, ST(1) 0.5, down
+        [InlineData((ushort)0x077F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFF, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000002UL)] //1 unit of the smallest denormal, ST(1) 1.5, down
+        [InlineData((ushort)0x0B7F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFE, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000001UL)] //1 unit of the smallest denormal, ST(1) 0.5, up
+        [InlineData((ushort)0x0B7F, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFF, 0xC000000000000000UL, (ushort)0x0000, 0x0000000000000003UL)] //1 unit of the smallest denormal, ST(1) 1.5, up
+        public void FYL2XP1_DenormalRoundedOnce(ushort controlWord, ushort ST0SignExponent, ulong ST0Significand,
+            ushort ST1SignExponent, ulong ST1Significand, ushort expectedSignExponent, ulong expectedSignificand)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.ControlWord = controlWord;
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand); //ST0
+            mbbsEmuCpuCore.FpuStack[0] = new Float80(ST1SignExponent, ST1Significand); //ST1
+
+            var instructions = new Assembler(16);
+            instructions.fyl2xp1();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(new Float80(expectedSignExponent, expectedSignificand),
+                mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.True(
+                mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.DenormalizedOperandException));
+        }
     }
 }

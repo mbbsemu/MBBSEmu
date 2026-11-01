@@ -5194,8 +5194,8 @@ namespace MBBSEmu.CPU
         ///     the last bits. The products with ST(0) and ST(1) are rounded in extended precision to the rounding
         ///     control (like a 387, the transcendentals ignore the precision control), so ST(1) is not limited to
         ///     double's range. A zero or infinite ST(1) takes only the logarithm's sign, so its result is exact and
-        ///     raises no precision exception. A denormal ST(0) is multiplied by ST(1) before log2(e), so that the
-        ///     product keeps more than a denormal's bits.
+        ///     raises no precision exception. For a denormal ST(0) the products work on ST(0) * 2^64 and the result
+        ///     is scaled back, so that it is rounded to a denormal only once.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
@@ -5226,13 +5226,17 @@ namespace MBBSEmu.CPU
             //Extended precision whatever the precision control, rounded to the rounding control
             var controlWord = (ushort)(Registers.Fpu.ControlWord | 0x0300);
 
-            //A denormal ST(0): log2(1 + ST(0)) is ST(0) * log2(e), but rounding that product to a denormal would keep
-            //only the denormal's few bits, so ST(1) * ST(0) comes first (it cannot overflow: ST(0) < 2^-16382)
+            //A denormal ST(0): log2(1 + ST(0)) is ST(0) * log2(e), but a product rounded to a denormal before the end
+            //keeps only a denormal's few bits, so both products work on ST(0) * 2^64 (exact, a normal number; DE) and
+            //the result is scaled back, rounded once (the products cannot overflow: ST(0) < 2^-16382)
             if (ST0.IsDenormal && !ST1y.IsZero && !ST1y.IsInfinity)
             {
-                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Multiply(
-                    Float80.Multiply(ST1y, ST0, controlWord, ref Registers.Fpu.StatusWord), Float80.Log2E(0x037F),
+                var scaled = Float80.Scale(ST0, Float80.FromInt64(64), controlWord, ref Registers.Fpu.StatusWord);
+                var product = Float80.Multiply(
+                    Float80.Multiply(ST1y, scaled, controlWord, ref Registers.Fpu.StatusWord), Float80.Log2E(0x037F),
                     controlWord, ref Registers.Fpu.StatusWord);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                    Float80.Scale(product, Float80.FromInt64(-64), controlWord, ref Registers.Fpu.StatusWord);
                 Registers.Fpu.PopStackTop();
                 return;
             }
