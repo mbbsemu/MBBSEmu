@@ -227,5 +227,61 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
             Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code1));
         }
+
+        /// <summary>
+        ///     A denormal ST(0) keeps its result: ST(1) * ST(0) * log2(e). Expected values: an x87 coprocessor,
+        ///     compared to 52 bits; IE, DE, ZE and OE exactly.
+        /// </summary>
+        [Theory]
+        [InlineData((ushort)0x0000, 0x0000000000000001UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x0000000000000001UL, (ushort)0x7FAC, 0x92394F1D8F513FE4UL, (ushort)0x3F6F, 0xD2F4D96D3B4EA573UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x0000000000000001UL, (ushort)0xC042, 0xE0CCF40B0E1807CCUL, (ushort)0x8006, 0xA228CB758F68F118UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x0000000000000001UL, (ushort)0x403C, 0xEB25E514C53C6171UL, (ushort)0x0000, 0x54CFCD146381BAE3UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x0000000000000001UL, (ushort)0xC007, 0xD4F0D45780BC974CUL, (ushort)0x8000, 0x0000000000000266UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x0000000000000001UL, (ushort)0x7FFE, 0xFFFFFFFFFFFFFFFFUL, (ushort)0x3FC2, 0xB8AA3B295C17F0BBUL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x0000000000000001UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x0000000000000001UL, (ushort)0x7FAC, 0x92394F1D8F513FE4UL, (ushort)0xBF6F, 0xD2F4D96D3B4EA573UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x0000000000000001UL, (ushort)0xC042, 0xE0CCF40B0E1807CCUL, (ushort)0x0006, 0xA228CB758F68F118UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x0000000000000001UL, (ushort)0x403C, 0xEB25E514C53C6171UL, (ushort)0x8000, 0x54CFCD146381BAE3UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x0000000000000001UL, (ushort)0xC007, 0xD4F0D45780BC974CUL, (ushort)0x0000, 0x0000000000000266UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x0000000000000001UL, (ushort)0x7FFE, 0xFFFFFFFFFFFFFFFFUL, (ushort)0xBFC2, 0xB8AA3B295C17F0BBUL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x4000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x0000, 0x5C551D94AE0BF85EUL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x4000000000000000UL, (ushort)0x7FAC, 0x92394F1D8F513FE4UL, (ushort)0x3FAD, 0xD2F4D96D3B4EA573UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x4000000000000000UL, (ushort)0xC042, 0xE0CCF40B0E1807CCUL, (ushort)0x8044, 0xA228CB758F68F118UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x4000000000000000UL, (ushort)0x403C, 0xEB25E514C53C6171UL, (ushort)0x003E, 0xA99F9A28C70375C5UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x4000000000000000UL, (ushort)0xC007, 0xD4F0D45780BC974CUL, (ushort)0x8009, 0x999AB1C1CEBFACDBUL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x4000000000000000UL, (ushort)0x7FFE, 0xFFFFFFFFFFFFFFFFUL, (ushort)0x4000, 0xB8AA3B295C17F0BBUL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x7FFFFFFFFFFFFFFFUL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x8001, 0xB8AA3B295C17F0BAUL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x7FFFFFFFFFFFFFFFUL, (ushort)0x7FAC, 0x92394F1D8F513FE4UL, (ushort)0xBFAE, 0xD2F4D96D3B4EA572UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x7FFFFFFFFFFFFFFFUL, (ushort)0xC042, 0xE0CCF40B0E1807CCUL, (ushort)0x0045, 0xA228CB758F68F116UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x7FFFFFFFFFFFFFFFUL, (ushort)0x403C, 0xEB25E514C53C6171UL, (ushort)0x803F, 0xA99F9A28C70375C4UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x7FFFFFFFFFFFFFFFUL, (ushort)0xC007, 0xD4F0D45780BC974CUL, (ushort)0x000A, 0x999AB1C1CEBFACD9UL, (ushort)0x02)]
+        [InlineData((ushort)0x8000, 0x7FFFFFFFFFFFFFFFUL, (ushort)0x7FFE, 0xFFFFFFFFFFFFFFFFUL, (ushort)0xC001, 0xB8AA3B295C17F0BAUL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x8000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x0001, 0xB8AA3B295C17F0BCUL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x8000000000000000UL, (ushort)0x7FAC, 0x92394F1D8F513FE4UL, (ushort)0x3FAE, 0xD2F4D96D3B4EA573UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x8000000000000000UL, (ushort)0xC042, 0xE0CCF40B0E1807CCUL, (ushort)0x8045, 0xA228CB758F68F118UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x8000000000000000UL, (ushort)0x403C, 0xEB25E514C53C6171UL, (ushort)0x003F, 0xA99F9A28C70375C5UL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x8000000000000000UL, (ushort)0xC007, 0xD4F0D45780BC974CUL, (ushort)0x800A, 0x999AB1C1CEBFACDBUL, (ushort)0x02)]
+        [InlineData((ushort)0x0000, 0x8000000000000000UL, (ushort)0x7FFE, 0xFFFFFFFFFFFFFFFFUL, (ushort)0x4001, 0xB8AA3B295C17F0BBUL, (ushort)0x02)]
+        public void FYL2XP1_DenormalOperand(ushort ST0SignExponent, ulong ST0Significand, ushort ST1SignExponent,
+            ulong ST1Significand, ushort expectedSignExponent, ulong expectedSignificand, ushort expectedExceptions)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand); //ST0
+            mbbsEmuCpuCore.FpuStack[0] = new Float80(ST1SignExponent, ST1Significand); //ST1
+
+            var instructions = new Assembler(16);
+            instructions.fyl2xp1();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
+            Assert.Equal(expectedSignExponent, result.SignExponent);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+            Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x0F);
+        }
     }
 }
