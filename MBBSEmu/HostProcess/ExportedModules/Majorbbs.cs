@@ -1569,22 +1569,29 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
         private void tfspfx()
         {
-            // sets tfspst from tfsbuf
-            var prefix = GetParameterString(0, stripNull: true);
-            var line = Encoding.ASCII.GetString(Module.Memory.GetString(_tfsbuf, stripNull: true));
+            // sets tfspst from tfsbuf, as the kernel's sameto() and skpwht(): the prefix matches when tfsbuf starts
+            // with it, ASCII letters in either case; tfspst then points past the spaces (only spaces) after it, and
+            // TRUE means something follows them
+            var prefix = GetParameterStringSpan(0, stripNull: true);
+            var line = Module.Memory.GetString(_tfsbuf, stripNull: true);
 
-            if (!line.StartsWith(prefix))
+            var matches = line.Length >= prefix.Length;
+            for (var i = 0; matches && i < prefix.Length; i++)
+                matches = line[i] == prefix[i] || (char.IsAsciiLetter((char)prefix[i]) && line[i] == (prefix[i] ^ 0x20));
+
+            if (!matches)
             {
                 Registers.AX = 0; // FALSE
                 Module.Memory.SetArray(_tfspst, FarPtr.Empty.Data); // tfspst = NULL
                 return;
             }
 
-            var rest = line.Substring(prefix.Length).Trim();
-            var newTfspst = _tfsbuf + (line.Length - rest.Length);
+            var offset = prefix.Length;
+            while (offset < line.Length && line[offset] == ' ')
+                offset++;
 
-            Module.Memory.SetArray(_tfspst, newTfspst.Data);
-            Registers.AX = rest.Length > 0 ? (ushort)1 : (ushort)0;
+            Module.Memory.SetArray(_tfspst, (_tfsbuf + offset).Data);
+            Registers.AX = offset < line.Length ? (ushort)1 : (ushort)0;
         }
 
         private void tfsabt()
