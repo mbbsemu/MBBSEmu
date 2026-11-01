@@ -120,6 +120,43 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(0, fclose(filep));
         }
 
+        /// <summary>
+        ///     The kernel's scanner counts the characters it reads in 16 bits: %n stores the count and %ln stores it with
+        ///     a zero high word, so after 65,536 characters the count starts again from 0. Measured on the original
+        ///     kernels' SSCANF, which shares the scanner (The Major BBS 6.x and Worldgroup MAJORBBS.EXE give identical
+        ///     results): 40,000 spaces then "1x" store 40,001 (0x9C41) with a zero high word, and a count of 98,303
+        ///     stores 32,767.
+        /// </summary>
+        [Theory]
+        [InlineData(40000, 0x9C41)]
+        [InlineData(65536, 1)]
+        [InlineData(70000, 4465)]
+        public void fscanf_CharacterCountIsSixteenBits(int spaces, int expectedCount)
+        {
+            Reset();
+
+            CreateTextFile("file.txt", new string(' ', spaces) + "1x");
+            var filep = fopen("file.txt", "rb");
+
+            const string FORMAT = "%d%n%ln";
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(FORMAT.Length + 1));
+            mbbsEmuMemoryCore.SetArray(formatPointer, Encoding.ASCII.GetBytes(FORMAT + "\0"));
+            var valuePointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+            var countPointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+            var longCountPointer = mbbsEmuMemoryCore.AllocateVariable(null, 4);
+            mbbsEmuMemoryCore.SetArray(longCountPointer, new byte[] { 0xEE, 0xEE, 0xEE, 0xEE });
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL,
+                new List<FarPtr> { filep, formatPointer, valuePointer, countPointer, longCountPointer });
+
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(1, mbbsEmuMemoryCore.GetWord(valuePointer));
+            Assert.Equal(expectedCount, mbbsEmuMemoryCore.GetWord(countPointer));
+            Assert.Equal((uint)expectedCount, mbbsEmuMemoryCore.GetDWord(longCountPointer));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
         [Fact]
         public void fscanf_PreservesNonAsciiBytesInStringConversion()
         {
