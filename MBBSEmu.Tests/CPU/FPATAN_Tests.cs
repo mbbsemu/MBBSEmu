@@ -67,7 +67,9 @@ namespace MBBSEmu.Tests.CPU
 
             var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
             Assert.Equal(expectedSignExponent, result.SignExponent);
-            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+            //52 bits of the expected value: exact for a zero or a denormal shorter than that
+            var tolerance = (long)(expectedSignificand >> 51);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -tolerance, tolerance);
         }
 
         /// <summary>
@@ -153,7 +155,9 @@ namespace MBBSEmu.Tests.CPU
 
             var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
             Assert.Equal(expectedSignExponent, result.SignExponent);
-            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+            //52 bits of the expected value: exact for a zero or a denormal shorter than that
+            var tolerance = (long)(expectedSignificand >> 51);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -tolerance, tolerance);
             Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x1F);
         }
 
