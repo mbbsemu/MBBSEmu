@@ -21,6 +21,7 @@ This directory implements the emulated 16-bit x86 CPU core. It is the innermost 
 | `EnumFpuControlWordFlags.cs` | 18 | `[Flags]` enum for x87 FPU ControlWord exception masks |
 | `EnumArithmeticOperation.cs` | 18 | Enum used by flag evaluation: Addition, Subtraction, Multiplication, Division, shift variants |
 | `EnumOperandType.cs` | 13 | Enum identifying operand role: Destination, Source, Count, None |
+| `Float80.cs` | ~1,150 | x87 80-bit extended value: exact add/subtract/multiply/divide/square root, FRNDINT, FPREM, FSCALE, FXTRACT, compare, the constants, conversions to and from every memory size; one rounding per operation to the control word's precision and rounding control; masked exception responses and status flags as the 80387 delivers them |
 
 ## Class Hierarchy
 
