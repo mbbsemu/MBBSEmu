@@ -4513,6 +4513,8 @@ namespace MBBSEmu.CPU
         ///     Floating Point Sine (x87)
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives ST(0) itself, normalized, with PE unless it is zero,
+        ///     as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE), C1 and C2 are cleared.
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
         ///     (IE), C1 and C2 cleared.
@@ -4542,6 +4544,20 @@ namespace MBBSEmu.CPU
                 return;
             }
 
+            //|ST(0)| < 2^-68, zeros and denormals too: the sine is ST(0) itself, normalized (DE for a denormal),
+            //with PE unless it is zero and UE when it is a denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(FpuStack[top].IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
             var valueToSin = (double)FpuStack[top];
 
             switch (valueToSin)
@@ -4563,6 +4579,7 @@ namespace MBBSEmu.CPU
         ///     Floating Point Cosine (x87)
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives 1, with PE unless ST(0) is zero, as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE), C1 and C2 are cleared.
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
         ///     (IE), C1 and C2 cleared.
@@ -4589,6 +4606,20 @@ namespace MBBSEmu.CPU
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //|ST(0)| < 2^-68, zeros and denormals too: the cosine is 1, with PE unless ST(0) is zero and DE for a
+            //denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                if (FpuStack[top].IsDenormal)
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.DenormalizedOperandException);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.PrecisionException);
+                FpuStack[top] = Float80.One;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 return;
             }
 
@@ -4897,6 +4928,8 @@ namespace MBBSEmu.CPU
         ///     Computes both the sine and the cosine of ST(0), stores the sine in ST(0), and pushes the cosine onto the register stack.
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives ST(0) itself, normalized, and a pushed 1, with PE
+        ///     unless ST(0) is zero, as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE),
         ///     and C1 and C2 are cleared.
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
@@ -4926,6 +4959,22 @@ namespace MBBSEmu.CPU
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //|ST(0)| < 2^-68, zeros and denormals too: the sine is ST(0) itself, normalized (DE for a denormal),
+            //with PE unless it is zero and UE when it is a denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(FpuStack[top].IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                Registers.Fpu.PushStackTop();
+                FpuStack[Registers.Fpu.GetStackTop()] = Float80.One;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 return;
             }
 
@@ -5144,6 +5193,8 @@ namespace MBBSEmu.CPU
         ///     Computes the tangent of ST(0), stores the result in ST(0), and pushes a 1.0 onto the register stack.
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives ST(0) itself, normalized, and a pushed 1, with PE
+        ///     unless ST(0) is zero, as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE),
         ///     and C1 and C2 are cleared.
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
@@ -5173,6 +5224,22 @@ namespace MBBSEmu.CPU
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //|ST(0)| < 2^-68, zeros and denormals too: the tangent is ST(0) itself, normalized (DE for a denormal),
+            //with PE unless it is zero and UE when it is a denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(FpuStack[top].IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                Registers.Fpu.PushStackTop();
+                FpuStack[Registers.Fpu.GetStackTop()] = Float80.One;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 return;
             }
 
