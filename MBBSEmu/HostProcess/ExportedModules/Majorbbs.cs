@@ -4016,7 +4016,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             // Decoded via Latin1 (not ASCII) so each byte maps 1:1 to a char (0-255)
             // instead of collapsing anything >= 0x80 to '?' before scanf() parses it.
             var inputString = Encoding.Latin1.GetString(GetParameterStringSpan(0, stripNull: true));
-            var formatString = GetParameterString(2, stripNull: true);
+            var formatString = Encoding.Latin1.GetString(GetParameterStringSpan(2, stripNull: true));
             scanf(inputString.GetEnumerator(), formatString, 4);
         }
 
@@ -4035,7 +4035,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private void fscanf()
         {
             var fileStructPointer = GetParameterPointer(0);
-            var formatString = GetParameterString(2, stripNull: true);
+            var formatString = Encoding.Latin1.GetString(GetParameterStringSpan(2, stripNull: true));
 
             var fileStruct = new FileStruct(Module.Memory.GetArray(fileStructPointer, FileStruct.Size));
 
@@ -4046,19 +4046,27 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            scanf(FromFileStream(fileStream), formatString, 4);
+            //Like the kernel's scanner, leave the character read ahead (and not used) in the file
+            if (scanf(FromFileStream(fileStream), formatString, 4))
+                fileStream.Seek(-1, SeekOrigin.Current);
         }
 
         /// <summary>
         ///     Reads input according to a scanf() format, storing each conversion through the pointer arguments that
         ///     start at startingParameterOrdinal. AX returns the number of conversions stored, or -1 (EOF) when the
-        ///     input ran out before the first one was stored.
+        ///     input ran out before the first one was stored. Returns true when a character was read from the input
+        ///     and not used (the kernel's scanner pushes it back; fscanf() puts it back into the file).
         ///
         ///     The kernel's SSCANF and FSCANF are the Borland C++ run-time library's scanner, and this follows it:
         ///     - white space in the format skips any white space in the input; any other character, and "%%", must
         ///       match the next input character exactly (no white space is skipped before it);
         ///     - conversions are %[*][width][F|h|l]type: '*' reads without storing (and without counting), the width
         ///       limits the characters read (a sign and a "0x" prefix included), 'l' stores 32 bits, otherwise 16;
+        ///     - the width is a 16-bit int whose digits wrap at 65,536; c takes it as it is (1 when it is missing or
+        ///       above 32,767), every other conversion its low 15 bits (32,767 when it is missing). A width of 0 reads
+        ///       nothing: s (after skipping white space) and [set] store an empty string and c stores nothing, each
+        ///       counted, c and [set] even at the end of the input; a number fails, as it does when a sign takes the
+        ///       whole width (the sign stays in the input);
         ///     - d, i, o, u, x, X skip white space, take one optional sign, then digits (i: "0x" means hexadecimal and a
         ///       leading "0" octal; x: an optional "0x"); the value is kept in 32 bits and a '-' negates it, but a
         ///       digit that would carry past 2^32 is the last one read and the value becomes LONG_MAX or LONG_MIN;
@@ -4069,7 +4077,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///       and the scan stops. The end of the input stops the scan when it is reached while skipping white space,
         ///       after a sign, at the start of c, [set] or a literal, partway through c, or while reading a [set].
         /// </summary>
-        private void scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
+        private bool scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
         {
             var more = input.MoveNext();
             var consumed = 0;
@@ -4121,10 +4129,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (suppress)
                     f++;
 
-                var width = 0;
-                while (f < formatString.Length && char.IsAsciiDigit(formatString[f]))
-                    width = width * 10 + formatString[f++] - '0';
-                var limit = width > 0 ? width : int.MaxValue;
+                short width = -1;
+                if (f < formatString.Length && char.IsAsciiDigit(formatString[f]))
+                {
+                    width = 0;
+                    while (f < formatString.Length && char.IsAsciiDigit(formatString[f]))
+                        width = unchecked((short)(width * 10 + formatString[f++] - '0'));
+                }
+
+                var limit = width & 0x7FFF;
 
                 var isLong = false;
                 while (f < formatString.Length && (formatString[f] == 'F' || formatString[f] == 'h' || formatString[f] == 'l'))
@@ -4140,10 +4153,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (!suppress)
                     {
                         var countPointer = GetParameterPointer(startingParameterOrdinal);
+                        Module.Memory.SetWord(countPointer, (ushort)consumed);
                         if (isLong)
-                            Module.Memory.SetDWord(countPointer, (uint)consumed);
-                        else
-                            Module.Memory.SetWord(countPointer, (ushort)consumed);
+                            Module.Memory.SetWord(countPointer + 2, 0);
                         startingParameterOrdinal += 2;
                     }
 
@@ -4168,6 +4180,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     var negative = false;
                     if (input.Current == '+' || input.Current == '-')
                     {
+                        if (limit <= 1)
+                            break;
+
                         negative = input.Current == '-';
                         more = input.MoveNext();
                         consumed++;
@@ -4242,10 +4257,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (!suppress)
                     {
                         var destinationPointer = GetParameterPointer(startingParameterOrdinal);
+                        Module.Memory.SetWord(destinationPointer, (ushort)(result & 0xFFFF));
                         if (isLong)
-                            Module.Memory.SetDWord(destinationPointer, result);
-                        else
-                            Module.Memory.SetWord(destinationPointer, (ushort)(result & 0xFFFF));
+                            Module.Memory.SetWord(destinationPointer + 2, (ushort)(result >> 16));
                         startingParameterOrdinal += 2;
                         assigned++;
                     }
@@ -4267,10 +4281,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         break;
                     }
 
-                    var text = new List<byte>();
-                    while (more && text.Count < limit && !(input.Current == ' ' || (input.Current >= '\t' && input.Current <= '\r')))
+                    var text = suppress ? null : new List<byte>();
+                    var read = 0;
+                    while (more && read < limit && !(input.Current == ' ' || (input.Current >= '\t' && input.Current <= '\r')))
                     {
-                        text.Add((byte)input.Current);
+                        text?.Add((byte)input.Current);
+                        read++;
                         more = input.MoveNext();
                         consumed++;
                     }
@@ -4288,17 +4304,19 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 if (conversion == 'c')
                 {
-                    if (!more)
+                    var count = width < 0 ? 1 : width;
+                    if (!more && count > 0)
                     {
                         atEnd = true;
                         break;
                     }
 
-                    var count = width > 0 ? width : 1;
-                    var text = new List<byte>();
-                    while (more && text.Count < count)
+                    var text = suppress ? null : new List<byte>();
+                    var read = 0;
+                    while (more && read < count)
                     {
-                        text.Add((byte)input.Current);
+                        text?.Add((byte)input.Current);
+                        read++;
                         more = input.MoveNext();
                         consumed++;
                     }
@@ -4309,7 +4327,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         startingParameterOrdinal += 2;
                     }
 
-                    if (text.Count < count)
+                    if (read < count)
                     {
                         atEnd = true;
                         break;
@@ -4350,21 +4368,22 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (f < formatString.Length)
                         f++;
 
-                    if (!more)
+                    if (!more && limit > 0)
                     {
                         atEnd = true;
                         break;
                     }
 
-                    var text = new List<byte>();
-                    while (more && text.Count < limit && inSet[input.Current & 0xFF] != exclude)
+                    var text = suppress ? null : new List<byte>();
+                    var matched = 0;
+                    while (more && matched < limit && inSet[input.Current & 0xFF] != exclude)
                     {
-                        text.Add((byte)input.Current);
+                        text?.Add((byte)input.Current);
+                        matched++;
                         more = input.MoveNext();
                         consumed++;
                     }
 
-                    var matched = text.Count;
                     if (!suppress)
                     {
                         text.Add(0);
@@ -4372,7 +4391,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         startingParameterOrdinal += 2;
                     }
 
-                    if (matched == 0)
+                    if (matched == 0 && limit > 0)
                         break;
 
                     if (!suppress)
@@ -4391,6 +4410,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             }
 
             Registers.AX = (ushort)(assigned == 0 && atEnd ? -1 : assigned);
+            return more;
         }
 
         /// <summary>

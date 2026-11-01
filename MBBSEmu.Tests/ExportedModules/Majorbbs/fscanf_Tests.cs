@@ -69,6 +69,103 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             Assert.Equal(6, lines);
         }
 
+        /// <summary>
+        ///     The character fscanf() reads ahead and does not use stays in the file, as with the kernel's scanner, which
+        ///     pushes it back. The return values of the successive calls and the next character in the file are those
+        ///     of the original kernels' FSCANF on a FILE holding the same text (The Major BBS 6.x and Worldgroup
+        ///     MAJORBBS.EXE give identical results).
+        /// </summary>
+        [Theory]
+        [InlineData("12x#", "%d", "1", 'x')]
+        [InlineData("12 x#", "%d", "1", ' ')]
+        [InlineData("{ 5 }\r\n{ 6 }##", "{ %d }", "1,0", '\r')]
+        [InlineData("{ 5 }\r\n{ 6 }##", " { %d }", "1,1", '#')]
+        [InlineData("abc def ;", "%s", "1,1", ' ')]
+        [InlineData("ab#", "%c", "1,1", '#')]
+        [InlineData("x5#", "%d", "0", 'x')]
+        [InlineData("  -x#", "%d", "0", 'x')]
+        [InlineData("0xg#", "%x", "1", 'g')]
+        [InlineData("12345#", "%3d", "1,1", '#')]
+        [InlineData("1,2#", "%d,%d", "2", '#')]
+        [InlineData("1 ,2#", "%d,%d", "1", ' ')]
+        [InlineData("abc,def#", "%[a-z]", "1", ',')]
+        [InlineData("12 34#", "%d%d", "2", '#')]
+        [InlineData("5 #", "%d ", "1", '#')]
+        [InlineData("ab#", "%2c", "1", '#')]
+        [InlineData("x#", "x", "0", '#')]
+        [InlineData("y#", "x", "0", 'y')]
+        [InlineData("-5#", "%0d", "0", '-')]
+        [InlineData("-5#", "%1d", "0", '-')]
+        [InlineData("+#", "%1d", "0", '+')]
+        [InlineData("0x5#", "%1x", "1", 'x')]
+        [InlineData("ab#", "%0s", "1", 'a')]
+        [InlineData("ab#", "%0[a-z]", "1", 'a')]
+        [InlineData("ab#", "%0c", "1", 'a')]
+        [InlineData("  ab#", "%0s", "1", 'a')]
+        [InlineData("12#", "%0d", "0", '1')]
+        public void fscanf_LeavesUnusedCharacterInFile(string contents, string format, string expectedResults, char expectedNext)
+        {
+            Reset();
+
+            //Binary mode, so fgetc() returns the next byte as it is (the kernel run read a raw buffer)
+            CreateTextFile("file.txt", contents);
+            var filep = fopen("file.txt", "rb");
+
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(format.Length + 1));
+            mbbsEmuMemoryCore.SetArray(formatPointer, Encoding.ASCII.GetBytes(format + "\0"));
+            var outputs = new List<FarPtr> { filep, formatPointer };
+            for (var i = 0; i < 3; i++)
+                outputs.Add(mbbsEmuMemoryCore.AllocateVariable(null, 16));
+
+            foreach (var expectedResult in expectedResults.Split(','))
+            {
+                ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL, outputs);
+                Assert.Equal(int.Parse(expectedResult), (short)mbbsEmuCpuRegisters.AX);
+            }
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FGETC_ORDINAL, new List<FarPtr> { filep });
+            Assert.Equal((ushort)expectedNext, mbbsEmuCpuRegisters.AX);
+
+            Assert.Equal(0, fclose(filep));
+        }
+
+        /// <summary>
+        ///     The kernel's scanner counts the characters it reads in 16 bits: %n stores the count and %ln stores it with
+        ///     a zero high word, so after 65,536 characters the count starts again from 0. Measured on the original
+        ///     kernels' SSCANF, which shares the scanner (The Major BBS 6.x and Worldgroup MAJORBBS.EXE give identical
+        ///     results): 40,000 spaces then "1x" store 40,001 (0x9C41) with a zero high word, and a count of 98,303
+        ///     stores 32,767.
+        /// </summary>
+        [Theory]
+        [InlineData(40000, 0x9C41)]
+        [InlineData(65536, 1)]
+        [InlineData(70000, 4465)]
+        public void fscanf_CharacterCountIsSixteenBits(int spaces, int expectedCount)
+        {
+            Reset();
+
+            CreateTextFile("file.txt", new string(' ', spaces) + "1x");
+            var filep = fopen("file.txt", "rb");
+
+            const string FORMAT = "%d%n%ln";
+            var formatPointer = mbbsEmuMemoryCore.AllocateVariable(null, (ushort)(FORMAT.Length + 1));
+            mbbsEmuMemoryCore.SetArray(formatPointer, Encoding.ASCII.GetBytes(FORMAT + "\0"));
+            var valuePointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+            var countPointer = mbbsEmuMemoryCore.AllocateVariable(null, 2);
+            var longCountPointer = mbbsEmuMemoryCore.AllocateVariable(null, 4);
+            mbbsEmuMemoryCore.SetArray(longCountPointer, new byte[] { 0xEE, 0xEE, 0xEE, 0xEE });
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, FSCANF_ORDINAL,
+                new List<FarPtr> { filep, formatPointer, valuePointer, countPointer, longCountPointer });
+
+            Assert.Equal(1, mbbsEmuCpuRegisters.AX);
+            Assert.Equal(1, mbbsEmuMemoryCore.GetWord(valuePointer));
+            Assert.Equal(expectedCount, mbbsEmuMemoryCore.GetWord(countPointer));
+            Assert.Equal((uint)expectedCount, mbbsEmuMemoryCore.GetDWord(longCountPointer));
+
+            Assert.Equal(0, fclose(filep));
+        }
+
         [Fact]
         public void fscanf_PreservesNonAsciiBytesInStringConversion()
         {
