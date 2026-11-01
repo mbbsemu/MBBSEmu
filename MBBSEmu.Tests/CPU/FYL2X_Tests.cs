@@ -237,5 +237,46 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
             Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code1));
         }
+
+        /// <summary>
+        ///     A zero ST(0): the infinity of ST(1)'s opposite sign, with ZE unless ST(1) is infinite and no DE for a
+        ///     denormal ST(1); C1 cleared. Expected values: an x87 coprocessor, the result and every flag exactly.
+        /// </summary>
+        [Theory]
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x0000, 0x0000000000000001UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) the smallest denormal
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) -(the smallest denormal)
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) 1
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0xBFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) -1
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) +0, ST(1) +infinity
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) +0, ST(1) -infinity
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x0000, 0x4000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) a denormal
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x0000, 0x0000000000000001UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) the smallest denormal
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) -(the smallest denormal)
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) 1
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0xBFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) -1
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) -0, ST(1) +infinity
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) -0, ST(1) -infinity
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x0000, 0x4000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) a denormal
+        public void FYL2X_ZeroST0(ushort ST0SignExponent, ulong ST0Significand, ushort ST1SignExponent,
+            ulong ST1Significand, ushort expectedSignExponent, ulong expectedSignificand, ushort expectedExceptions)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand); //ST0
+            mbbsEmuCpuCore.FpuStack[0] = new Float80(ST1SignExponent, ST1Significand); //ST1
+            mbbsEmuCpuRegisters.Fpu.SetFlag(EnumFpuStatusFlags.Code1);
+
+            var instructions = new Assembler(16);
+            instructions.fyl2x();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(new Float80(expectedSignExponent, expectedSignificand),
+                mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
+            Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code1));
+        }
     }
 }

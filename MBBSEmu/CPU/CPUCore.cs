@@ -5078,7 +5078,9 @@ namespace MBBSEmu.CPU
         ///     arithmetic. A negative ST(0), or the indeterminate 0 * infinity, is an invalid operation and gives the
         ///     real indefinite (IE). The stack pops either way.
         ///
-        ///     log2(ST(0)) is its exponent plus log2 of its significand (FXTRACT; a zero raises ZE), the logarithm of
+        ///     A zero ST(0) gives the infinity of ST(1)'s opposite sign, with ZE unless ST(1) is infinite.
+        ///
+        ///     log2(ST(0)) is its exponent plus log2 of its significand (FXTRACT), the logarithm of
         ///     the significand computed through double precision (Math): the result may differ from a 387's in the
         ///     last bits. For ST(0) in [0.5, 2) it is log2(1 + d) with d = ST(0) - 1, which is exact, so that a value
         ///     next to 1 keeps the digits a double would round away. The product with ST(1) is rounded once in
@@ -5106,6 +5108,19 @@ namespace MBBSEmu.CPU
             {
                 FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Indefinite;
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            //A zero ST(0): log2 is -infinity, so the result is the infinity of ST(1)'s opposite sign, with ZE unless
+            //ST(1) is itself infinite and no DE for a denormal ST(1), as a 387 gives it
+            if (ST0x.IsZero)
+            {
+                if (!ST1y.IsInfinity)
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.ZeroDivideException);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                    ST1y.IsNegative ? Float80.PositiveInfinity : Float80.NegativeInfinity;
                 Registers.Fpu.PopStackTop();
                 return;
             }
