@@ -103,6 +103,10 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         [InlineData("ab#", "%0c", "1", 'a')]
         [InlineData("  ab#", "%0s", "1", 'a')]
         [InlineData("12#", "%0d", "0", '1')]
+        [InlineData("b#", "%[a]", "0", 'b')]
+        [InlineData("bc#", "%[a]%c", "1", 'c')]
+        [InlineData("bc#", "%[a]%[a]", "0,0", 'b')]
+        [InlineData("ab#", "%[b]%c", "1", 'b')]
         public void fscanf_LeavesUnusedCharacterInFile(string contents, string format, string expectedResults, char expectedNext)
         {
             Reset();
