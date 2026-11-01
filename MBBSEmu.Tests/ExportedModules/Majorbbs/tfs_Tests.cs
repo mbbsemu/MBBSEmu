@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using MBBSEmu.Memory;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using Xunit;
 
@@ -201,6 +202,49 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
             tfsrdl().Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSLIN);
             tfstate.Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSLIN);
             tfsbuf.Should().Be(FILE_CONTENTS.Substring(0, 128));
+
+            tfsabt();
+        }
+
+        /// <summary>
+        ///     tfsrdl() over a whole file: every line tfsbuf holds until tfsrdl() returns TFSEOF. Expected values are those
+        ///     of the original kernels' TFSRDL reading the same bytes through their run-time library's text-mode read
+        ///     (The Major BBS 6.x and Worldgroup MAJORBBS.EXE give identical results): every CR is dropped, a ^Z ends the
+        ///     file, a line longer than 128 characters goes on at the next call, and only ASCII white space is removed
+        ///     from the end of a line.
+        /// </summary>
+        [Theory]
+        [InlineData("one\r\ntwo\r\n", new string[] { "one", "two" })]
+        [InlineData("ab\rcd\r\nef\n", new string[] { "abcd", "ef" })]
+        [InlineData("one\ntwo\n", new string[] { "one", "two" })]
+        [InlineData("one\r\ntwo", new string[] { "one", "two" })]
+        [InlineData("", new string[0])]
+        [InlineData("one\r\ntw\u001Ao\r\nthree\r\n", new string[] { "one", "tw" })]
+        [InlineData("\u001Aone\r\n", new string[0])]
+        [InlineData("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmn\r\nnext\r\n", new string[] { "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx", "yzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuv", "wxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmn", "next" })]
+        [InlineData("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\r\nx\r\n", new string[] { "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC", "", "x" })]
+        [InlineData("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\r\n", new string[] { "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" })]
+        [InlineData("EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\rEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\rEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE\r\n", new string[] { "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE", "EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE" })]
+        [InlineData("abc \t\v\f \r\n  lead \u00A0\r\nhi\u0085\r\n", new string[] { "abc", "  lead \u00A0", "hi\u0085" })]
+        [InlineData("\u00C9\u00E9\u00B3\u00FF\u0080\r\n", new string[] { "\u00C9\u00E9\u00B3\u00FF\u0080" })]
+        [InlineData("\r\n\r\n  \r\nx\r\n", new string[] { "", "", "", "x" })]
+        [InlineData("ab\0cd  \r\nnext\r\n", new string[] { "ab", "next" })]
+        [InlineData("ab  \0cd\r\nx\r\n", new string[] { "ab", "x" })]
+        [InlineData("one\r\n\u001A", new string[] { "one" })]
+        public void tfsrdl_MatchesKernel(string contents, string[] expectedLines)
+        {
+            Reset();
+
+            File.WriteAllBytes(Path.Join(mbbsModule.ModulePath, "file.txt"), Encoding.Latin1.GetBytes(contents));
+            tfsopn("file.txt").Should().Be(1);
+            tfsrdl().Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSBOF);
+
+            var lines = new List<string>();
+            while (tfsrdl() == HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSLIN)
+                lines.Add(Encoding.Latin1.GetString(mbbsEmuMemoryCore.GetString(GetOrdinalAddress(HostProcess.ExportedModules.Majorbbs.Segment, TFSBUF_ORDINAL), stripNull: true)));
+
+            tfstate.Should().Be(HostProcess.ExportedModules.Majorbbs.TFStateCodes.TFSEOF);
+            lines.Should().Equal(expectedLines);
 
             tfsabt();
         }
