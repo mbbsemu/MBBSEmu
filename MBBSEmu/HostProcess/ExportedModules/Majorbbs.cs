@@ -4110,8 +4110,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///     - s skips white space and reads up to the next white space; c reads exactly width characters (1 by
         ///       default) without skipping white space and stores no null; [set] and [^set] read characters in (or not
         ///       in) the set, ranges like a-z included, without skipping white space; n stores the characters read so far;
-        ///     - a conversion that finds no input leaves its argument untouched (a [set] still stores an empty string),
-        ///       and the scan stops. The end of the input stops the scan when it is reached while skipping white space,
+        ///     - a conversion that finds no input leaves its argument untouched and the scan stops, except [set]: one
+        ///       that matches nothing stores an empty string, is not counted, and the scan goes on. The end of the input stops the scan when it is reached while skipping white space,
         ///       after a sign, at the start of c, [set] or a literal, partway through c, or while reading a [set].
         /// </summary>
         private bool scanf(IEnumerator<char> input, string formatString, int startingParameterOrdinal)
@@ -4428,10 +4428,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         startingParameterOrdinal += 2;
                     }
 
-                    if (matched == 0 && limit > 0)
-                        break;
-
-                    if (!suppress)
+                    if (!suppress && (matched > 0 || limit == 0))
                         assigned++;
 
                     if (!more)
