@@ -50,7 +50,35 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             Assert.Equal(double.NaN, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
-            Assert.True(mbbsEmuCpuRegisters.Fpu.ControlWord.IsFlagSet((ushort)EnumFpuControlWordFlags.InvalidOperation));
+            Assert.True(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.InvalidOperationException));
+        }
+
+        /// <summary>
+        ///     Operands outside double's range. Expected values: an x87 coprocessor, compared to 52 bits (the logarithm
+        ///     is computed through double); the IE and ZE flags exactly.
+        /// </summary>
+        [Theory]
+        [InlineData((ushort)0x3FFD, 0x8000000000000000UL, (ushort)0x43FF, 0x8000000000000000UL, (ushort)0x43FD, 0xA4D3C25E68DC57F2UL, (ushort)0)] //2^1024 * log2(1.25)
+        [InlineData((ushort)0xBFFD, 0x8000000000000000UL, (ushort)0x444B, 0x8000000000000000UL, (ushort)0xC449, 0xD47FCB8C0852F0C1UL, (ushort)0)] //2^1100 * log2(0.75)
+        public void FYL2XP1_OutsideDoubleRange(ushort ST0SignExponent, ulong ST0Significand, ushort ST1SignExponent,
+            ulong ST1Significand, ushort expectedSignExponent, ulong expectedSignificand, ushort expectedExceptions)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand); //ST0
+            mbbsEmuCpuCore.FpuStack[0] = new Float80(ST1SignExponent, ST1Significand); //ST1
+
+            var instructions = new Assembler(16);
+            instructions.fyl2xp1();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
+            Assert.Equal(expectedSignExponent, result.SignExponent);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+            Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x05);
         }
     }
 }

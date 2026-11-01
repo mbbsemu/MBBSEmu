@@ -4109,13 +4109,21 @@ namespace MBBSEmu.CPU
         ///     The FPATAN instruction returns the angle between the X axis and the line from the origin to the point (X,Y), where Y (the ordinate) is ST(1) and X (the abscissa) is ST(0).
         ///
         ///     Computed through double precision (Math.Atan2) on the operands rounded to double: the result may differ
-        ///     from a 387's in the last bits.
+        ///     from a 387's in the last bits. Both operands are first scaled by the same power of two (FSCALE: exact,
+        ///     and a zero, an infinity or a NaN stays as it is), so that finite values outside double's range keep
+        ///     their ratio.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fpatan()
         {
-            var ST0x = (double)FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1y = (double)FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var largestExponent = Math.Max(ST0.IsInfinity || ST0.IsNaN ? 0 : ST0.SignExponent & 0x7FFF,
+                ST1.IsInfinity || ST1.IsNaN ? 0 : ST1.SignExponent & 0x7FFF);
+            var scale = Float80.FromInt64(0x3FFF - largestExponent);
+            ushort scaleStatusWord = 0;
+            var ST0x = (double)Float80.Scale(ST0, scale, Registers.Fpu.ControlWord, ref scaleStatusWord);
+            var ST1y = (double)Float80.Scale(ST1, scale, Registers.Fpu.ControlWord, ref scaleStatusWord);
             var result = (ST0x, ST1y)
             switch
             {
@@ -4492,13 +4500,22 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Sine (x87)
         ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsin()
         {
-            var valueToSin = (double)FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var valueToSin = (double)FpuStack[top];
 
             switch (valueToSin)
             {
@@ -4509,12 +4526,14 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(valueToSin);
+            FpuStack[top] = Math.Sin(valueToSin);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
 
         /// <summary>
         ///     Floating Point Cosine (x87)
+        ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -4522,7 +4541,14 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fcos()
         {
-            var valueToCos = (double)FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var valueToCos = (double)FpuStack[top];
 
             switch (valueToCos)
             {
@@ -4533,7 +4559,7 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(valueToCos);
+            FpuStack[top] = Math.Cos(valueToCos);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
 
@@ -4824,13 +4850,22 @@ namespace MBBSEmu.CPU
         ///
         ///     Computes both the sine and the cosine of ST(0), stores the sine in ST(0), and pushes the cosine onto the register stack.
         ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsincos()
         {
-            var value = (double)FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var value = (double)FpuStack[top];
 
             switch (value)
             {
@@ -4841,7 +4876,7 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(value);
+            FpuStack[top] = Math.Sin(value);
             Registers.Fpu.PushStackTop();
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(value);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
@@ -4901,17 +4936,19 @@ namespace MBBSEmu.CPU
         ///     ST(0)/ST(1), or an indeterminate 0 * Infinity combination, is an invalid operation and yields
         ///     a NaN result (the stack still pops).
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     log2(ST(0)) is its exponent plus log2 of its significand (FXTRACT; a zero raises ZE), the logarithm of
+        ///     the significand computed through double precision (Math): the result may differ from a 387's in the
+        ///     last bits. The product with ST(1) is rounded once in extended precision, so neither operand is limited
+        ///     to double's range.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2x()
         {
-            var ST0x = (double)FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1y = (double)FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
-            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || ST0x < 0 ||
-                (ST0x == 0 && ST1y == 0) || (double.IsPositiveInfinity(ST0x) && ST1y == 0))
+            if (ST0x.IsNaN || ST1y.IsNaN || (ST0x.IsNegative && !ST0x.IsZero) ||
+                (ST0x.IsZero && ST1y.IsZero) || (ST0x.IsInfinity && ST1y.IsZero))
             {
                 FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Indefinite;
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
@@ -4919,7 +4956,10 @@ namespace MBBSEmu.CPU
                 return;
             }
 
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(ST0x);
+            var significand = Float80.Extract(ST0x, out var exponent, ref Registers.Fpu.StatusWord);
+            var log2 = (double)exponent + Math.Log2((double)significand);
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                Float80.Multiply(ST1y, log2, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
@@ -4931,18 +4971,20 @@ namespace MBBSEmu.CPU
         ///     Same invalid-operation guards as FYL2X, applied to (ST(0) + 1.0) since that is the value being
         ///     passed to log2.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     log2(ST(0) + 1.0) is computed through double precision (Math) on ST(0) rounded to double (the
+        ///     instruction's operand range, |ST(0)| < 1 - sqrt(2)/2, lies within double's): the result may differ from
+        ///     a 387's in the last bits. The product with ST(1) is rounded once in extended precision, so ST(1) is not
+        ///     limited to double's range.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
         {
             var ST0x = (double)FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1y = (double)FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
             var argument = ST0x + 1.0;
 
-            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || argument < 0 ||
-                (argument == 0 && ST1y == 0) || (double.IsPositiveInfinity(argument) && ST1y == 0))
+            if (double.IsNaN(ST0x) || ST1y.IsNaN || argument < 0 ||
+                (argument == 0 && ST1y.IsZero) || (double.IsPositiveInfinity(argument) && ST1y.IsZero))
             {
                 FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Indefinite;
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
@@ -4950,7 +4992,8 @@ namespace MBBSEmu.CPU
                 return;
             }
 
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(argument);
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                Float80.Multiply(ST1y, Math.Log2(argument), Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
@@ -4960,13 +5003,22 @@ namespace MBBSEmu.CPU
         ///
         ///     Computes the tangent of ST(0), stores the result in ST(0), and pushes a 1.0 onto the register stack.
         ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fptan()
         {
-            var value = (double)FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var value = (double)FpuStack[top];
 
             switch (value)
             {
@@ -4977,9 +5029,10 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Tan(value);
+            FpuStack[top] = Math.Tan(value);
             Registers.Fpu.PushStackTop();
             FpuStack[Registers.Fpu.GetStackTop()] = Float80.One;
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
 
         /// <summary>
