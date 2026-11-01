@@ -193,14 +193,9 @@ namespace MBBSEmu.Module
 
                 LoadModuleDll(Mdf.DLLFiles[0].Trim());
 
-                if (Mdf.MSGFiles.Count > 0)
-                {
-                    Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
-                    foreach (var m in Mdf.MSGFiles)
-                    {
-                        Msgs.Add(new MsgFile(_fileUtility, ModulePath, m));
-                    }
-                }
+                Msgs = new List<MsgFile>(Mdf.MSGFiles.Count);
+                foreach (var m in Mdf.MSGFiles)
+                    Msgs.Add(new MsgFile(_fileUtility, ModulePath, m));
             }
 
             //Set Initial Values
@@ -232,37 +227,40 @@ namespace MBBSEmu.Module
                     return;
                 }
 
-                //Setup _INIT_ Entrypoint
-                FarPtr initEntryPointPointer;
-                var initResidentName = dll.File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
-                if (initResidentName == null)
-                {
-                    //This only happens with MajorMUD -- I have no idea why it's a special little snowflake ¯\_(ツ)_/¯
-                    _logger.Warn($"({moduleConfig.ModuleIdentifier}) Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
-
-                    var initNonResidentName = dll.File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
-
-                    if (initNonResidentName == null)
-                    {
-                        _logger.Error($"Unable to locate _INIT__ entry in Resident Name Table for {dll.File.FileName}");
-                        continue;
-                    }
-
-                    var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
-
-                    initEntryPointPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
-
-                }
-                else
-                {
-                    var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
-                    initEntryPointPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
-                }
-
-
-                _logger.Debug($"({ModuleIdentifier}) Located _INIT__: {initEntryPointPointer}");
-                dll.EntryPoints["_INIT_"] = initEntryPointPointer;
+                LocateInit(dll);
             }
+        }
+
+        /// <summary>
+        ///     Records the DLL's _INIT_ entry, adjusted into this module's segment space.
+        /// </summary>
+        private void LocateInit(MbbsDll dll)
+        {
+            FarPtr initEntryPointPointer;
+            var initResidentName = dll.File.ResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
+            if (initResidentName == null)
+            {
+                // MajorMUD exports _INIT_ from the non-resident name table.
+                _logger.Warn($"({ModuleIdentifier}) Unable to locate _INIT_ in Resident Name Table, checking Non-Resident Name Table...");
+
+                var initNonResidentName = dll.File.NonResidentNameTable.FirstOrDefault(x => x.Name.StartsWith("_INIT__"));
+                if (initNonResidentName == null)
+                {
+                    _logger.Error($"Unable to locate _INIT__ entry in Resident Name Table for {dll.File.FileName}");
+                    return;
+                }
+
+                var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initNonResidentName.IndexIntoEntryTable);
+                initEntryPointPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+            }
+            else
+            {
+                var initEntryPoint = dll.File.EntryTable.First(x => x.Ordinal == initResidentName.IndexIntoEntryTable);
+                initEntryPointPointer = new FarPtr((ushort)(initEntryPoint.SegmentNumber + dll.SegmentOffset), initEntryPoint.Offset);
+            }
+
+            _logger.Debug($"({ModuleIdentifier}) Located _INIT_: {initEntryPointPointer}");
+            dll.EntryPoints["_INIT_"] = initEntryPointPointer;
         }
 
         public void Dispose()
@@ -368,6 +366,77 @@ namespace MBBSEmu.Module
                     LoadModuleDll(import);
             }
         }
+
+        /// <summary>
+        ///     Loads an Internal companion DLL into this module's address space.
+        ///     The host DLL is already resident, so the companion's imports bind to
+        ///     that copy instead of a second one with its own globals.
+        ///
+        ///     Does not map segments or run _INIT_. The host does that after relocation,
+        ///     and only for the DLLs this call adds.
+        /// </summary>
+        /// <returns>DLLs added by this call. Empty when the companion is missing or already loaded.</returns>
+        public List<MbbsDll> LoadCompanion(string companion)
+        {
+            var added = new List<MbbsDll>();
+            if (string.IsNullOrWhiteSpace(companion))
+                return added;
+
+            if (ModuleDlls.Any(x => DllBaseName(x) == companion.ToUpperInvariant()))
+                return added;
+
+            var companionDllName = _fileUtility.FindFile(ModulePath, $"{companion}.DLL");
+            if (!File.Exists(Path.Combine(ModulePath, companionDllName)))
+            {
+                _logger.Warn($"({ModuleIdentifier}) Companion {companion} was not found, skipping");
+                return added;
+            }
+
+            var before = ModuleDlls.Count;
+            LoadModuleDll(companion);
+
+            // LoadModuleDll walks the host DLL's reference table. Also walk the
+            // companion's own references, and skip any DLL already in this module
+            // so the host image is not loaded a second time.
+            if (before < ModuleDlls.Count)
+            {
+                foreach (var import in ModuleDlls[before].File.ModuleReferenceTable
+                    .Where(x => GetAllExportedModules().All(e => e != x.Name))
+                    .Select(x => x.Name))
+                {
+                    if (ModuleDlls.All(x => DllBaseName(x) != import.ToUpperInvariant()))
+                        LoadModuleDll(import);
+                }
+            }
+
+            for (var i = before; i < ModuleDlls.Count; i++)
+            {
+                LocateInit(ModuleDlls[i]);
+                added.Add(ModuleDlls[i]);
+            }
+
+            var companionMdfName = _fileUtility.FindFile(ModulePath, $"{companion}.MDF");
+            var companionMdfPath = Path.Combine(ModulePath, companionMdfName);
+            if (!File.Exists(companionMdfPath))
+                return added;
+
+            var companionMdf = new MdfFile(companionMdfPath);
+            foreach (var msg in companionMdf.MSGFiles)
+            {
+                if (Mdf.MSGFiles.Any(existing => existing.Equals(msg, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                if (Msgs.Any(existing => existing.FileName.Equals($"{msg}.MSG", StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                Mdf.MSGFiles.Add(msg);
+                Msgs.Add(new MsgFile(_fileUtility, ModulePath, msg));
+            }
+
+            return added;
+        }
+
+        private static string DllBaseName(MbbsDll dll) =>
+            dll.File.FileName.ToUpperInvariant().Split('.')[0];
 
         /// <summary>
         ///     Returns a list of each Class which Implements IExportedModule
