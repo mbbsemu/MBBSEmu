@@ -4513,7 +4513,8 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Sine (x87)
         ///
-        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE), C1 and C2 are cleared.
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -4525,6 +4526,7 @@ namespace MBBSEmu.CPU
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                 return;
             }
 
@@ -4534,7 +4536,11 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }
@@ -4546,7 +4552,8 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Cosine (x87)
         ///
-        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE), C1 and C2 are cleared.
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -4558,6 +4565,7 @@ namespace MBBSEmu.CPU
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                 return;
             }
 
@@ -4567,7 +4575,11 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }
@@ -4863,7 +4875,9 @@ namespace MBBSEmu.CPU
         ///
         ///     Computes both the sine and the cosine of ST(0), stores the sine in ST(0), and pushes the cosine onto the register stack.
         ///
-        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE),
+        ///     and C1 and C2 are cleared.
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -4875,6 +4889,7 @@ namespace MBBSEmu.CPU
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                 return;
             }
 
@@ -4884,7 +4899,13 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.PushStackTop();
+                    FpuStack[Registers.Fpu.GetStackTop()] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }
@@ -4954,7 +4975,8 @@ namespace MBBSEmu.CPU
         ///     last bits. For ST(0) in [0.5, 2) it is log2(1 + d) with d = ST(0) - 1, which is exact, so that a value
         ///     next to 1 keeps the digits a double would round away. The product with ST(1) is rounded once in
         ///     extended precision to the rounding control (like a 387, the transcendentals ignore the precision
-        ///     control), so neither operand is limited to double's range.
+        ///     control), so neither operand is limited to double's range. A zero or infinite ST(1) takes only the
+        ///     logarithm's sign, so its result is exact and raises no precision exception.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2x()
@@ -4981,9 +5003,13 @@ namespace MBBSEmu.CPU
                 ushort offsetStatusWord = 0;
                 var offset = Float80.Subtract(ST0x, Float80.One, 0x037F, ref offsetStatusWord);
                 var argument = 1.0 + (double)offset;
-                log2 = Float80.Multiply(offset,
-                    argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
-                    ref Registers.Fpu.StatusWord);
+
+                //A zero or infinite ST(1) needs only the logarithm's sign, which is the offset's
+                log2 = ST1y.IsZero || ST1y.IsInfinity
+                    ? offset
+                    : Float80.Multiply(offset,
+                        argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
+                        ref Registers.Fpu.StatusWord);
             }
             else
             {
@@ -5003,16 +5029,19 @@ namespace MBBSEmu.CPU
         ///     Same invalid-operation guards as FYL2X, applied to (ST(0) + 1.0) since that is the value being
         ///     passed to log2.
         ///
-        ///     log2(ST(0) + 1.0) is computed through double precision (Math) on ST(0) rounded to double (the
-        ///     instruction's operand range, |ST(0)| < 1 - sqrt(2)/2, lies within double's): the result may differ from
-        ///     a 387's in the last bits. The product with ST(1) is rounded once in extended precision to the rounding
+        ///     log2(ST(0) + 1.0) is computed as ST(0) * log2(u) / (u - 1), with u = ST(0) + 1.0 rounded to double and
+        ///     the logarithm through double precision (Math): u - 1 is exact, so the rounding of u cancels out and a
+        ///     small ST(0) keeps its precision (u == 1: the factor is log2(e)); the result may differ from a 387's in
+        ///     the last bits. The products with ST(0) and ST(1) are rounded in extended precision to the rounding
         ///     control (like a 387, the transcendentals ignore the precision control), so ST(1) is not limited to
-        ///     double's range.
+        ///     double's range. A zero or infinite ST(1) takes only the logarithm's sign, so its result is exact and
+        ///     raises no precision exception.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
         {
-            var ST0x = (double)FpuStack[Registers.Fpu.GetStackTop()];
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST0x = (double)ST0;
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
             var argument = ST0x + 1.0;
 
@@ -5026,8 +5055,19 @@ namespace MBBSEmu.CPU
             }
 
             //Extended precision whatever the precision control, rounded to the rounding control
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Multiply(ST1y, Math.Log2(argument),
-                (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+            var controlWord = (ushort)(Registers.Fpu.ControlWord | 0x0300);
+
+            //A zero or infinite ST(1) needs only the sign of log2(u), which is ST(0)'s (zero for a zero ST(0)). An
+            //infinite u (ST(0) = +infinity, outside the instruction's range) gives log2(u) itself: +infinity
+            var log2 = ST1y.IsZero || ST1y.IsInfinity
+                ? ST0
+                : double.IsPositiveInfinity(argument)
+                    ? argument
+                    : Float80.Multiply(ST0,
+                        argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
+                        ref Registers.Fpu.StatusWord);
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                Float80.Multiply(ST1y, log2, controlWord, ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
@@ -5037,7 +5077,9 @@ namespace MBBSEmu.CPU
         ///
         ///     Computes the tangent of ST(0), stores the result in ST(0), and pushes a 1.0 onto the register stack.
         ///
-        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE),
+        ///     and C1 and C2 are cleared.
         ///
         ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
         ///     in the last bits.
@@ -5049,6 +5091,7 @@ namespace MBBSEmu.CPU
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                 return;
             }
 
@@ -5058,7 +5101,13 @@ namespace MBBSEmu.CPU
             {
                 case double.PositiveInfinity:
                 case double.NegativeInfinity:
-                    throw new ArgumentOutOfRangeException("Invalid Floating Point: Infinity");
+                    FpuStack[top] = Float80.Indefinite;
+                    Registers.Fpu.PushStackTop();
+                    FpuStack[Registers.Fpu.GetStackTop()] = Float80.Indefinite;
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                    return;
                 case double.NaN:
                     return;
             }

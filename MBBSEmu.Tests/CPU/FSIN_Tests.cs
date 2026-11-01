@@ -9,13 +9,11 @@ namespace MBBSEmu.Tests.CPU
     public class FSIN_Tests : CpuTestBase
     {
         [Theory]
-        [InlineData(1d, 0.8414709848078965, false)]
-        [InlineData(-1d, -0.8414709848078965, false)]
-        [InlineData(double.NaN, double.NaN, false)]
-        [InlineData(double.PositiveInfinity, double.PositiveInfinity, true)]
-        [InlineData(0, 0, false)]
-        [InlineData(double.NegativeInfinity, double.NegativeInfinity, true)]
-        public void FSIN_Tets(double ST0Value, double expectedValue, bool throwsException)
+        [InlineData(1d, 0.8414709848078965)]
+        [InlineData(-1d, -0.8414709848078965)]
+        [InlineData(double.NaN, double.NaN)]
+        [InlineData(0, 0)]
+        public void FSIN_Tets(double ST0Value, double expectedValue)
         {
             Reset();
 
@@ -27,21 +25,15 @@ namespace MBBSEmu.Tests.CPU
             instructions.fsin();
             CreateCodeSegment(instructions);
 
-            if (throwsException)
-            {
-                Assert.Throws<ArgumentOutOfRangeException>(mbbsEmuCpuCore.Tick);
-            }
-            else
-            {
-                mbbsEmuCpuCore.Tick();
-                Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
-                Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.ControlWord);
-            }
+            mbbsEmuCpuCore.Tick();
 
+            Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.ControlWord);
         }
 
         /// <summary>
-        ///     |ST(0)| >= 2^63 is out of range: C2 set, ST(0) and the stack unchanged, no exception (an x87 coprocessor)
+        ///     |ST(0)| >= 2^63 is out of range: C2 set, C1 cleared, ST(0) and the stack unchanged, no exception (an x87
+        ///     coprocessor)
         /// </summary>
         [Theory]
         [InlineData((ushort)0x403E, 0x8000000000000000UL)] //2^63
@@ -53,6 +45,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
             mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand);
+            mbbsEmuCpuRegisters.Fpu.SetFlag(EnumFpuStatusFlags.Code1);
 
             var instructions = new Assembler(16);
             instructions.fsin();
@@ -63,6 +56,7 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(new Float80(ST0SignExponent, ST0Significand), mbbsEmuCpuCore.FpuStack[1]);
             Assert.Equal(1, mbbsEmuCpuRegisters.Fpu.GetStackTop());
             Assert.True(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code2));
+            Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code1));
             Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
         }
 
@@ -85,6 +79,35 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuCpuCore.Tick();
 
             Assert.Equal(1, mbbsEmuCpuRegisters.Fpu.GetStackTop());
+            Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code2));
+        }
+
+        /// <summary>
+        ///     An infinity is an invalid operand: ST(0) becomes the real indefinite, IE, C1 and C2 cleared (an x87
+        ///     coprocessor)
+        /// </summary>
+        [Theory]
+        [InlineData(double.PositiveInfinity)]
+        [InlineData(double.NegativeInfinity)]
+        public void FSIN_Infinity_IsInvalid(double ST0Value)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = ST0Value;
+            mbbsEmuCpuRegisters.Fpu.SetFlag(EnumFpuStatusFlags.Code1);
+            mbbsEmuCpuRegisters.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+
+            var instructions = new Assembler(16);
+            instructions.fsin();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(1, mbbsEmuCpuRegisters.Fpu.GetStackTop());
+            Assert.Equal(Float80.Indefinite, mbbsEmuCpuCore.FpuStack[1]);
+            Assert.Equal(0x01, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
+            Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code1));
             Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code2));
         }
     }
