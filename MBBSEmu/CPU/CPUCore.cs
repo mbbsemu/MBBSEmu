@@ -5049,8 +5049,12 @@ namespace MBBSEmu.CPU
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
         ///     (IE), C1 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed as ST(0) * (u - 1) / log2(u), with u = 2^ST(0) rounded to double and the logarithm through
+        ///     double precision (Math): u - 1 is exact, so the rounding of u cancels out and a small ST(0) keeps its
+        ///     precision (u == 1: the factor is ln(2)); the result may differ from a 387's in the last bits. The
+        ///     product is rounded in extended precision to the rounding control, so a denormal ST(0) raises DE, and UE
+        ///     and PE as its result needs them. Outside the range the result is still 2^ST(0) - 1: -1 for -infinity,
+        ///     +infinity for +infinity.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_F2xm1()
@@ -5066,7 +5070,21 @@ namespace MBBSEmu.CPU
                 return;
             }
 
-            FpuStack[top] = Math.Pow(2, (double)FpuStack[top]) - 1;
+            var x = FpuStack[top];
+            var u = Math.Pow(2, (double)x);
+            if (u == 0 || double.IsPositiveInfinity(u))
+            {
+                //ST(0) infinite or far outside the instruction's range: -1 or +infinity
+                FpuStack[top] = u - 1;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //2^x - 1 as x * (u - 1) / log2(u), with u = 2^x rounded to double: u - 1 is exact, so the rounding of u
+            //cancels out and a small ST(0) keeps its precision (u == 1: the factor is ln(2)); like the other
+            //transcendentals it ignores the precision control
+            FpuStack[top] = Float80.Multiply(x, u == 1 ? Float80.LnTwo(0x037F) : (u - 1) / Math.Log2(u),
+                (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
         }
 
         /// <summary>
