@@ -1518,7 +1518,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
             try
             {
-                _tfsStreamReader = new StreamReader(new FileStream(fullPath, FileMode.Open));
+                _tfsStreamReader = new StreamReader(new FileStream(fullPath, FileMode.Open), Encoding.Latin1, false);
                 Module.Memory.SetWord(_tfsState, (ushort)TFStateCodes.TFSBGN);
                 Registers.AX = 1;
             }
@@ -1544,13 +1544,43 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     tfstate = TFStateCodes.TFSLIN;
                     goto case TFStateCodes.TFSLIN;
                 case TFStateCodes.TFSLIN:
-                    var line = _tfsStreamReader.ReadLine();
-                    if (line != null)
+                    // As the kernel's fgets(tfsbuf, 129, file) on a text-mode file and depad(): every CR is dropped as
+                    // it is read, a ^Z ends the file, a line longer than 128 characters goes on at the next call, and
+                    // the line keeps its bytes up to a NUL, without the '\n' and the white space at its end
+                    var line = new List<byte>(TFSBUF_MAX_LENGTH + 1);
+                    var anyRead = false;
+                    while (line.Count < TFSBUF_MAX_LENGTH)
                     {
-                        line = line.TrimEnd() + "\0";
-                        if (line.Length > (TFSBUF_MAX_LENGTH + 1))
-                            line = line.Substring(0, TFSBUF_MAX_LENGTH) + "\0";
-                        Module.Memory.SetArray(_tfsbuf, Encoding.ASCII.GetBytes(line));
+                        var c = _tfsStreamReader.Read();
+                        if (c == 0x1A)
+                        {
+                            _tfsStreamReader.BaseStream.Seek(0, SeekOrigin.End);
+                            _tfsStreamReader.DiscardBufferedData();
+                            break;
+                        }
+
+                        if (c < 0)
+                            break;
+
+                        if (c == '\r')
+                            continue;
+
+                        anyRead = true;
+                        if (c == '\n')
+                            break;
+
+                        line.Add((byte)c);
+                    }
+
+                    if (anyRead)
+                    {
+                        var nul = line.IndexOf(0);
+                        if (nul >= 0)
+                            line.RemoveRange(nul, line.Count - nul);
+                        while (line.Count > 0 && (line[^1] == ' ' || (line[^1] >= '\t' && line[^1] <= '\r')))
+                            line.RemoveAt(line.Count - 1);
+                        line.Add(0);
+                        Module.Memory.SetArray(_tfsbuf, line.ToArray());
                     }
                     else
                     {
