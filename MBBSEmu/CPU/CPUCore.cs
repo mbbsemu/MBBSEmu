@@ -4111,13 +4111,26 @@ namespace MBBSEmu.CPU
         ///     Computed through double precision (Math.Atan2) on the operands rounded to double: the result may differ
         ///     from a 387's in the last bits. Both operands are first scaled by the same power of two (FSCALE: exact,
         ///     and a zero, an infinity or a NaN stays as it is), so that finite values outside double's range keep
-        ///     their ratio.
+        ///     their ratio. A positive ST(0) more than 2^40 times ST(1) gives the quotient ST(1) / ST(0), as a 387
+        ///     does, rounded once in extended precision to the rounding control (a double may not hold it).
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fpatan()
         {
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
+            //atan(ST(1) / ST(0)) is the quotient itself once the exponents differ by more than 40; like the other
+            //transcendentals it ignores the precision control
+            if (!ST0.IsNegative && (ST0.SignExponent & 0x7FFF) < 0x7FFF &&
+                (ST0.SignExponent & 0x7FFF) - (ST1.SignExponent & 0x7FFF) > 40)
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Divide(ST1, ST0,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
             var largestExponent = Math.Max(ST0.IsInfinity || ST0.IsNaN ? 0 : ST0.SignExponent & 0x7FFF,
                 ST1.IsInfinity || ST1.IsNaN ? 0 : ST1.SignExponent & 0x7FFF);
             var scale = Float80.FromInt64(0x3FFF - largestExponent);
@@ -4952,8 +4965,10 @@ namespace MBBSEmu.CPU
         ///
         ///     log2(ST(0)) is its exponent plus log2 of its significand (FXTRACT; a zero raises ZE), the logarithm of
         ///     the significand computed through double precision (Math): the result may differ from a 387's in the
-        ///     last bits. The product with ST(1) is rounded once in extended precision, so neither operand is limited
-        ///     to double's range.
+        ///     last bits. For ST(0) in [0.5, 2) it is log2(1 + d) with d = ST(0) - 1, which is exact, so that a value
+        ///     next to 1 keeps the digits a double would round away. The product with ST(1) is rounded once in
+        ///     extended precision to the rounding control (like a 387, the transcendentals ignore the precision
+        ///     control), so neither operand is limited to double's range.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2x()
@@ -4970,10 +4985,27 @@ namespace MBBSEmu.CPU
                 return;
             }
 
-            var significand = Float80.Extract(ST0x, out var exponent, ref Registers.Fpu.StatusWord);
-            var log2 = (double)exponent + Math.Log2((double)significand);
+            //Extended precision whatever the precision control, rounded to the rounding control
+            var controlWord = (ushort)(Registers.Fpu.ControlWord | 0x0300);
+            Float80 log2;
+            if ((ST0x.SignExponent & 0x7FFF) is 0x3FFE or 0x3FFF)
+            {
+                //log2(1 + offset) as offset * log2(argument) / (argument - 1), argument = 1 + offset rounded to double;
+                //the offset is exact, and rounding to nearest keeps log2(1) = +0 under every rounding control
+                ushort offsetStatusWord = 0;
+                var offset = Float80.Subtract(ST0x, Float80.One, 0x037F, ref offsetStatusWord);
+                var argument = 1.0 + (double)offset;
+                log2 = Float80.Multiply(offset,
+                    argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
+                    ref Registers.Fpu.StatusWord);
+            }
+            else
+            {
+                var significand = Float80.Extract(ST0x, out var exponent, ref Registers.Fpu.StatusWord);
+                log2 = (double)exponent + Math.Log2((double)significand);
+            }
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
-                Float80.Multiply(ST1y, log2, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+                Float80.Multiply(ST1y, log2, controlWord, ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
@@ -4988,8 +5020,9 @@ namespace MBBSEmu.CPU
         ///     log2(ST(0) + 1.0) is computed as ST(0) * log2(u) / (u - 1), with u = ST(0) + 1.0 rounded to double and
         ///     the logarithm through double precision (Math): u - 1 is exact, so the rounding of u cancels out and a
         ///     small ST(0) keeps its precision (u == 1: the factor is log2(e)); the result may differ from a 387's in
-        ///     the last bits. The products with ST(0) and ST(1) are rounded in extended precision, so ST(1) is not
-        ///     limited to double's range.
+        ///     the last bits. The products with ST(0) and ST(1) are rounded in extended precision to the rounding
+        ///     control (like a 387, the transcendentals ignore the precision control), so ST(1) is not limited to
+        ///     double's range.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
@@ -5008,13 +5041,16 @@ namespace MBBSEmu.CPU
                 return;
             }
 
+            //Extended precision whatever the precision control, rounded to the rounding control
+            var controlWord = (ushort)(Registers.Fpu.ControlWord | 0x0300);
+
             //An infinite u (ST(0) = +infinity, outside the instruction's range) gives log2(u) itself: +infinity
             var log2 = double.IsPositiveInfinity(argument)
                 ? argument
                 : Float80.Multiply(ST0, argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0),
-                    Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+                    controlWord, ref Registers.Fpu.StatusWord);
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
-                Float80.Multiply(ST1y, log2, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+                Float80.Multiply(ST1y, log2, controlWord, ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
