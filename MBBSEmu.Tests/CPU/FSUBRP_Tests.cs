@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.CPU;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
 
@@ -39,6 +40,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuRegisters.Fpu.SetStackTop(2);
             mbbsEmuCpuCore.FpuStack[2] = ST0Value; //ST0
+            mbbsEmuCpuCore.FpuStack[1] = 0d; //ST1
             mbbsEmuCpuCore.FpuStack[0] = STiValue; //ST2
 
             var instructions = new Assembler(16);
@@ -49,7 +51,11 @@ namespace MBBSEmu.Tests.CPU
 
             var expectedValue = ST0Value - STiValue;
 
-            Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            //FSUBRP ST(2),ST(0) leaves the result in ST(2), which the pop makes ST(1); the old ST(1) (zero here)
+            //becomes ST(0) (coprocessor)
+            Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackPointer(Register.ST1)]);
+            Assert.Equal(Float80.Zero, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(1, mbbsEmuCpuRegisters.Fpu.GetStackTop());
         }
     }
 }

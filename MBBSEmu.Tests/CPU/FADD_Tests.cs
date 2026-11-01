@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.CPU;
 using System;
 using Xunit;
 using static Iced.Intel.AssemblerRegisters;
@@ -57,6 +58,30 @@ namespace MBBSEmu.Tests.CPU
             var expectedValue = initialST0Value + valueToAdd;
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+        }
+
+        /// <summary>
+        ///     1 + 2^-70 rounds to 1 in 64 bits: PE in the status word, C1 clear (coprocessor)
+        /// </summary>
+        [Fact]
+        public void FADD_Inexact_SetsPrecisionFlag()
+        {
+            Reset();
+
+            CreateDataSegment(new ReadOnlySpan<byte>(), 2);
+            mbbsEmuMemoryCore.SetArray(2, 0, BitConverter.GetBytes(Math.Pow(2, -70)));
+            mbbsEmuCpuRegisters.DS = 2;
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(0);
+            mbbsEmuCpuCore.FpuStack[0] = 1d;
+
+            var instructions = new Assembler(16);
+            instructions.fadd(__qword_ptr[0]);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(Float80.One, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(0x0020, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x023F);
         }
     }
 }

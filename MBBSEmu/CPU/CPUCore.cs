@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace MBBSEmu.CPU
@@ -83,9 +82,9 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     x87 FPU Stack
         ///
-        ///     The x87 Stack contains eight slots for 32-bit (Single Precision) Floating Point values
+        ///     The eight 80-bit extended-precision registers of the coprocessor
         /// </summary>
-        public readonly double[] FpuStack = new double[8];
+        public readonly Float80[] FpuStack = new Float80[8];
 
         /// <summary>
         ///     Size of the current operation (in bytes)
@@ -656,6 +655,9 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Fistp:
                     Op_Fistp();
                     break;
+                case Mnemonic.Fist:
+                    Op_Fist();
+                    break;
                 case Mnemonic.Faddp:
                     Op_Faddp();
                     break;
@@ -1215,135 +1217,51 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Gets the Float Value of the specified Operand
-        /// </summary>
-        /// <param name="opKind"></param>
-        /// <param name="operandType"></param>
-        /// <returns></returns>
-        [MethodImpl(OpcodeCompilerOptimizations)]
-        private float GetOperandValueFloat(OpKind opKind, EnumOperandType operandType)
-        {
-            return opKind switch
-            {
-                OpKind.Memory => BitConverter.ToSingle(
-                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
-                        4)),
-                OpKind.Register when operandType == EnumOperandType.Destination => (float)FpuStack[
-                    Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)],
-                OpKind.Register when operandType == EnumOperandType.Source => (float)FpuStack[
-                    Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)],
-                _ => throw new Exception($"Unknown Float Operand: {opKind}")
-            };
-        }
-
-        /// <summary>
-        ///     Returns the Operand Value as a 64-bit Double
+        ///     Returns the value of an x87 operand: a register of the FPU stack (the first operand's register for the
+        ///     destination, the second's for the source) or a 32-, 64- or 80-bit memory operand, converted exactly.
         ///
-        ///     Operand Sizes Equal to or Less than 64-Bit are Supported and returned as a 64-bit Double
+        ///     A single or double memory operand is taken as the arithmetic instructions see it (a signalling NaN is
+        ///     still signalling for the operation's NaN rules); memoryOperandDenormal tells whether it was a denormal
+        ///     there, which the operation reports as DE.
         /// </summary>
-        /// <param name="opKind"></param>
-        /// <param name="operandType"></param>
-        /// <returns></returns>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private double GetOperandValueDouble(OpKind opKind, EnumOperandType operandType)
+        private Float80 GetOperandValueFloat80(OpKind opKind, EnumOperandType operandType, out bool memoryOperandDenormal)
         {
-            return opKind switch
+            memoryOperandDenormal = false;
+            switch (opKind)
             {
-                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32 => BitConverter.ToSingle(
-                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
-                        4)),
-                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64 => BitConverter.ToDouble(
-                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
-                        8)),
-                OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80 => Float80BytesToDouble(
-                    Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(opKind),
-                        10)),
-                OpKind.Register when operandType == EnumOperandType.Destination => FpuStack[
-                    Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)],
-                OpKind.Register when operandType == EnumOperandType.Source => FpuStack[
-                    Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)],
-                _ => throw new Exception($"Unknown Double Operand: {opKind}")
-            };
+                case OpKind.Register:
+                    return FpuStack[Registers.Fpu.GetStackPointer(operandType == EnumOperandType.Destination
+                        ? _currentInstruction.Op0Register
+                        : _currentInstruction.Op1Register)];
+                case OpKind.Memory:
+                    {
+                        var segment = Registers.GetValue(_currentInstruction.MemorySegment);
+                        var offset = GetOperandOffset(opKind);
+                        switch (_currentInstruction.MemorySize)
+                        {
+                            case MemorySize.Float32:
+                                return Float80.FromSingle(BitConverter.ToUInt32(Memory.GetArray(segment, offset, 4)), out memoryOperandDenormal);
+                            case MemorySize.Float64:
+                                return Float80.FromDouble(BitConverter.ToUInt64(Memory.GetArray(segment, offset, 8)), out memoryOperandDenormal);
+                            case MemorySize.Float80:
+                                return Float80.FromBytes(Memory.GetArray(segment, offset, 10));
+                            default:
+                                throw new Exception($"Unknown Float Operand Size: {_currentInstruction.MemorySize}");
+                        }
+                    }
+                default:
+                    throw new Exception($"Unknown Float Operand: {opKind}");
+            }
         }
 
         /// <summary>
-        ///     Decodes a 10-byte x87 80-bit extended precision value (as read from memory, little-endian)
-        ///     into the closest representable 64-bit Double.
-        ///
-        ///     Format: bytes[0..7] are the 64-bit mantissa (with an explicit integer bit at bit 63),
-        ///     bytes[8..9] are a 15-bit biased exponent (bias 16383) plus the sign bit (bit 15).
+        ///     Returns the FPU stack register an x87 arithmetic instruction writes: ST(0) when its source is a memory
+        ///     operand, otherwise its first operand (ST(0) for FADD ST(0),ST(i), ST(i) for FADD ST(i),ST(0) and FADDP)
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private static double Float80BytesToDouble(ReadOnlySpan<byte> bytes)
-        {
-            var mantissa = BitConverter.ToUInt64(bytes.Slice(0, 8));
-            var signAndExponent = BitConverter.ToUInt16(bytes.Slice(8, 2));
-            var exponent = signAndExponent & 0x7FFF;
-            var isNegative = (signAndExponent & 0x8000) != 0;
-
-            if (exponent == 0 && mantissa == 0)
-                return isNegative ? -0.0 : 0.0;
-
-            if (exponent == 0x7FFF)
-            {
-                //Fraction bits set (ignoring the explicit integer bit) indicates a NaN, otherwise Infinity
-                if ((mantissa & 0x7FFFFFFFFFFFFFFF) != 0)
-                    return double.NaN;
-
-                return isNegative ? double.NegativeInfinity : double.PositiveInfinity;
-            }
-
-            //Unnormal/denormal 80-bit values (exponent == 0) use the smallest normal exponent with no implicit bit
-            var unbiasedExponent = exponent == 0 ? 1 - 16383 : exponent - 16383;
-
-            var result = Math.ScaleB((double)mantissa, unbiasedExponent - 63);
-            return isNegative ? -result : result;
-        }
-
-        /// <summary>
-        ///     Encodes a 64-bit Double into a 10-byte x87 80-bit extended precision value (little-endian),
-        ///     suitable for writing to memory via FST/FSTP.
-        /// </summary>
-        [MethodImpl(OpcodeCompilerOptimizations)]
-        private static void DoubleToFloat80Bytes(double value, Span<byte> destination)
-        {
-            var bits = BitConverter.DoubleToInt64Bits(value);
-            var isNegative = bits < 0;
-            var biasedExponent = (int)((bits >> 52) & 0x7FF);
-            var fraction = (ulong)bits & 0xFFFFFFFFFFFFFUL;
-
-            ulong mantissa80;
-            int exponent80;
-
-            if (biasedExponent == 0x7FF)
-            {
-                //Infinity or NaN
-                exponent80 = 0x7FFF;
-                mantissa80 = fraction == 0 ? 0x8000000000000000UL : 0xC000000000000000UL | (fraction << 11);
-            }
-            else if (biasedExponent == 0 && fraction == 0)
-            {
-                //Zero
-                exponent80 = 0;
-                mantissa80 = 0;
-            }
-            else
-            {
-                //Normal doubles have an implicit integer bit; denormals do not and use the minimum exponent
-                var significand = biasedExponent == 0 ? fraction : fraction | (1UL << 52);
-                var unbiasedExponent = biasedExponent == 0 ? -1022 : biasedExponent - 1023;
-
-                //Normalize so the explicit integer bit lands at bit 63
-                var shift = BitOperations.LeadingZeroCount(significand);
-                mantissa80 = significand << shift;
-                exponent80 = unbiasedExponent + 11 - shift + 16383;
-            }
-
-            var signAndExponent = (ushort)((exponent80 & 0x7FFF) | (isNegative ? 0x8000 : 0));
-
-            BitConverter.TryWriteBytes(destination, mantissa80);
-            BitConverter.TryWriteBytes(destination.Slice(8, 2), signAndExponent);
-        }
+        private int GetFpuDestinationIndex() => Registers.Fpu.GetStackPointer(
+            _currentInstruction.Op0Kind == OpKind.Memory ? Register.ST0 : _currentInstruction.Op0Register);
 
         /// <summary>
         ///     Returns the OFFSET of Operand 0
@@ -1491,60 +1409,6 @@ namespace MBBSEmu.CPU
                     }
                 default:
                     throw new ArgumentOutOfRangeException($"Unknown Destination: {_currentInstruction.Op0Kind}");
-            }
-        }
-
-        /// <summary>
-        ///     Writes the specified result of the instruction into the specified destination
-        /// </summary>
-        /// <param name="result"></param>
-        [MethodImpl(OpcodeCompilerOptimizations)]
-        private void WriteToDestination(float result)
-        {
-            switch (_currentInstruction.Op0Kind)
-            {
-                case OpKind.Memory:
-                    {
-                        Span<byte> bytes = stackalloc byte[4];
-                        BitConverter.TryWriteBytes(bytes, result);
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                            GetOperandOffset(_currentInstruction.Op0Kind), bytes);
-                        break;
-                    }
-                case OpKind.Register:
-                    FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = result;
-                    break;
-            }
-        }
-
-        /// <summary>
-        ///     Writes the specified result of the instruction into the specified destination
-        /// </summary>
-        /// <param name="result"></param>
-        [MethodImpl(OpcodeCompilerOptimizations)]
-        private void WriteToDestination(double result)
-        {
-            switch (_currentInstruction.Op0Kind)
-            {
-                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32:
-                    {
-                        Span<byte> bytes = stackalloc byte[4];
-                        BitConverter.TryWriteBytes(bytes, (float)result);
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                            GetOperandOffset(_currentInstruction.Op0Kind), bytes);
-                        break;
-                    }
-                case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64:
-                    {
-                        Span<byte> bytes = stackalloc byte[8];
-                        BitConverter.TryWriteBytes(bytes, result);
-                        Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment),
-                            GetOperandOffset(_currentInstruction.Op0Kind), bytes);
-                        break;
-                    }
-                case OpKind.Register:
-                    FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = result;
-                    break;
             }
         }
 
@@ -3608,46 +3472,59 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Point Load Operation (x87)
+        ///     Floating Point Load (x87)
+        ///
+        ///     FLD m32/m64 converts exactly: a signalling NaN becomes quiet (IE), a denormal raises DE. FLD m80 and
+        ///     FLD ST(i) copy the register unchanged.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fld()
         {
-            var operandType = _currentInstruction.Op0Kind == OpKind.Register
-                ? EnumOperandType.Destination
-                : EnumOperandType.Source;
-
-            var floatToLoad = GetOperandValueDouble(_currentInstruction.Op0Kind, operandType);
+            Float80 valueToLoad;
+            if (_currentInstruction.Op0Kind == OpKind.Memory && _currentInstruction.MemorySize != MemorySize.Float80)
+            {
+                var bytes = Memory.GetArray(Registers.GetValue(_currentInstruction.MemorySegment),
+                    GetOperandOffset(_currentInstruction.Op0Kind), (ushort)(_currentInstruction.MemorySize == MemorySize.Float32 ? 4 : 8));
+                valueToLoad = _currentInstruction.MemorySize == MemorySize.Float32
+                    ? Float80.FromSingle(BitConverter.ToUInt32(bytes), ref Registers.Fpu.StatusWord)
+                    : Float80.FromDouble(BitConverter.ToUInt64(bytes), ref Registers.Fpu.StatusWord);
+            }
+            else
+            {
+                valueToLoad = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Destination, out _);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+            }
 
             //Set Value as new ST(0)
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = floatToLoad;
+            FpuStack[Registers.Fpu.GetStackTop()] = valueToLoad;
         }
 
         /// <summary>
-        ///     Integer Load Operation (x87)
+        ///     Integer Load Operation (x87): a 16-, 32- or 64-bit integer, always exact
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fild()
         {
-            var valueToLoad = GetOperandValueInt64(_currentInstruction.Op0Kind);
+            var valueToLoad = Float80.FromInt64(GetOperandValueInt64(_currentInstruction.Op0Kind));
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
 
             Registers.Fpu.PushStackTop();
             FpuStack[Registers.Fpu.GetStackTop()] = valueToLoad;
-
         }
 
         /// <summary>
-        ///     Floating Point Multiplication (x87)
+        ///     Floating Point Multiplication: destination = destination * source (x87)
+        ///
+        ///     A memory operand (32 or 64 bits) works on ST(0); the register forms work on their first operand.
+        ///     Rounded once to the precision control and the rounding control of the control word.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fmul()
         {
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-
-            var result = ST0 * source;
-            FpuStack[Registers.Fpu.GetStackTop()] = result;
+            var source = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Source, out var memoryOperandDenormal);
+            var destination = GetFpuDestinationIndex();
+            FpuStack[destination] = Float80.Multiply(FpuStack[destination], source, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord, memoryOperandDenormal);
         }
 
         /// <summary>
@@ -3797,42 +3674,42 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Point Subtraction (x87)
+        ///     Floating Point Subtraction: destination = destination - source (x87)
+        ///
+        ///     A memory operand (32 or 64 bits) works on ST(0); the register forms work on their first operand.
+        ///     Rounded once to the precision control and the rounding control of the control word.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsub()
         {
-            var floatToSubtract = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-
-            var result = ST0 - floatToSubtract;
-            FpuStack[Registers.Fpu.GetStackTop()] = result;
+            var source = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Source, out var memoryOperandDenormal);
+            var destination = GetFpuDestinationIndex();
+            FpuStack[destination] = Float80.Subtract(FpuStack[destination], source, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord, memoryOperandDenormal);
         }
 
         /// <summary>
-        ///     Floating Point Reverse Subtraction (x87)
+        ///     Floating Point Reverse Subtraction: destination = source - destination (x87)
+        ///
+        ///     A memory operand (32 or 64 bits) works on ST(0); the register forms work on their first operand.
+        ///     Rounded once to the precision control and the rounding control of the control word.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsubr()
         {
-            var valueToSubtractFrom = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-
-            var result = valueToSubtractFrom - ST0;
-            FpuStack[Registers.Fpu.GetStackTop()] = result;
+            var source = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Source, out var memoryOperandDenormal);
+            var destination = GetFpuDestinationIndex();
+            FpuStack[destination] = Float80.Subtract(source, FpuStack[destination], Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord, memoryOperandDenormal);
         }
 
         /// <summary>
-        ///     Floating Point Reverse Subtraction (x87)
+        ///     Floating Point Reverse Subtraction ST(i) = ST(0) - ST(i) (x87), then Pop the FPU Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsubrp()
         {
-            var valueToSubtractFrom = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var valueToSubtract = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
+            Op_Fsubr();
 
-            var result = valueToSubtractFrom - valueToSubtract;
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
+            //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
         }
 
@@ -3842,18 +3719,20 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fldz()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 0d; //set ST(0) to 0.0
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.Zero;
         }
 
         /// <summary>
-        ///     Load π onto stack
+        ///     Load π onto stack, rounded by the rounding control as the 80387 does
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fldpi()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.PI; //set ST(0) to π
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.Pi(Registers.Fpu.ControlWord);
         }
 
         /// <summary>
@@ -3886,66 +3765,36 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Point Store Integer & Pop
+        ///     Floating Point Store Integer (x87): FIST m16/m32, and FISTP m16/m32/m64
+        ///
+        ///     ST(0) rounded by the rounding control (Borland's float-to-long conversion uses "chop" and a 64-bit
+        ///     FISTP); a value that does not fit, an infinity or a NaN stores the integer indefinite (0x8000,
+        ///     0x80000000, 0x8000000000000000) and raises IE
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
-        private void Op_Fistp()
+        private void Op_Fist()
         {
-            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
-
-            //Get Rounded Value from FPU and Pop Stack
             var valueFromFpu = FpuStack[Registers.Fpu.GetStackTop()];
-            Registers.Fpu.PopStackTop();
-            if (double.IsNaN(valueFromFpu))
-            {
-                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                return;
-            }
-
-            //Round Value from FPU
-            valueFromFpu = Math.Round(valueFromFpu, Registers.Fpu.GetRoundingControl());
-
-            //Safely Cast it to 32-bit Signed Integer
-            int valueToSave;
-            try
-            {
-                valueToSave = Convert.ToInt32(valueFromFpu);
-            }
-            catch
-            {
-                _logger?.Error($"Unable to cast value from FPU to 32-Bit Signed Integer: {valueFromFpu}");
-
-                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                return;
-            }
-
-            //Determine Destination Segment
             var destinationSegment = Registers.GetValue(_currentInstruction.MemorySegment);
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
 
             switch (_currentInstruction.MemorySize)
             {
                 case MemorySize.Int16:
+                    Memory.SetWord(destinationSegment, offset,
+                        (ushort)valueFromFpu.ToInt16(Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord));
+                    break;
+                case MemorySize.Int32:
                     {
-                        if (valueFromFpu is > short.MaxValue or < short.MinValue)
-                        {
-                            Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                            break;
-                        }
-
-                        Memory.SetWord(destinationSegment, offset, (ushort)Convert.ToInt16(valueToSave));
+                        Span<byte> bytes = stackalloc byte[4];
+                        BitConverter.TryWriteBytes(bytes, valueFromFpu.ToInt32(Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord));
+                        Memory.SetArray(destinationSegment, offset, bytes);
                         break;
                     }
-                case MemorySize.Int32:
-                case MemorySize.Int64: //i386/i486 only support 32-Bit Integers, disassembler might still emit an operation as 64-bit for some reason
+                case MemorySize.Int64:
                     {
-                        if (valueFromFpu is > int.MaxValue or < int.MinValue)
-                        {
-                            Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                            break;
-                        }
-
-                        Span<byte> bytes = stackalloc byte[4];
-                        BitConverter.TryWriteBytes(bytes, valueToSave);
+                        Span<byte> bytes = stackalloc byte[8];
+                        BitConverter.TryWriteBytes(bytes, valueFromFpu.ToInt64(Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord));
                         Memory.SetArray(destinationSegment, offset, bytes);
                         break;
                     }
@@ -3955,18 +3804,23 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Point Add ST0 to ST1
+        ///     Floating Point Store Integer and Pop (x87)
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fistp()
+        {
+            Op_Fist();
+
+            Registers.Fpu.PopStackTop();
+        }
+
+        /// <summary>
+        ///     Floating Point Addition ST(i) = ST(i) + ST(0) (x87), then Pop the FPU Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Faddp()
         {
-            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
-
-            var result = STdestination + STsource;
-
-            //Store result at ST1
-            WriteToDestination(result);
+            Op_Fadd();
 
             //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
@@ -3986,6 +3840,9 @@ namespace MBBSEmu.CPU
 
         /// <summary>
         ///     Floating Point Store (x87)
+        ///
+        ///     ST(0) rounded to single or double precision by the rounding control (overflow, underflow and denormal
+        ///     results as the coprocessor delivers them), or copied unchanged to an 80-bit operand or to ST(i)
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fst()
@@ -3997,27 +3854,29 @@ namespace MBBSEmu.CPU
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float32:
                     {
                         Span<byte> bytes = stackalloc byte[4];
-                        BitConverter.TryWriteBytes(bytes, (float)valueToSave);
+                        BitConverter.TryWriteBytes(bytes, valueToSave.ToSingle(Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord));
                         Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
                         break;
                     }
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float64:
                     {
                         Span<byte> bytes = stackalloc byte[8];
-                        BitConverter.TryWriteBytes(bytes, valueToSave);
+                        BitConverter.TryWriteBytes(bytes, valueToSave.ToDouble(Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord));
                         Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
                         break;
                     }
                 case OpKind.Memory when _currentInstruction.MemorySize == MemorySize.Float80:
                     {
                         Span<byte> bytes = stackalloc byte[10];
-                        DoubleToFloat80Bytes(valueToSave, bytes);
+                        valueToSave.ToBytes(bytes);
                         Memory.SetArray(Registers.GetValue(_currentInstruction.MemorySegment), GetOperandOffset(_currentInstruction.Op0Kind), bytes);
+                        Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                         break;
                     }
                 case OpKind.Register:
                     {
                         FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = valueToSave;
+                        Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                         break;
                     }
                 default:
@@ -4222,8 +4081,9 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fld1()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 1d;
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.One;
         }
 
         /// <summary>
@@ -4234,12 +4094,12 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fxch()
         {
-            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
+            var destination = Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register);
+            var source = Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register);
 
             //Exchange values
-            FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op0Register)] = STsource;
-            FpuStack[Registers.Fpu.GetStackPointer(_currentInstruction.Op1Register)] = STdestination;
+            (FpuStack[destination], FpuStack[source]) = (FpuStack[source], FpuStack[destination]);
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
         }
 
         /// <summary>
@@ -4247,12 +4107,36 @@ namespace MBBSEmu.CPU
         ///
         ///     Computes the arctangent of the source operand in register ST(1) divided by the source operand in register ST(0), stores the result in ST(1), and pops the FPU register stack.
         ///     The FPATAN instruction returns the angle between the X axis and the line from the origin to the point (X,Y), where Y (the ordinate) is ST(1) and X (the abscissa) is ST(0).
+        ///
+        ///     Computed through double precision (Math.Atan2) on the operands rounded to double: the result may differ
+        ///     from a 387's in the last bits. Both operands are first scaled by the same power of two (FSCALE: exact,
+        ///     and a zero, an infinity or a NaN stays as it is), so that finite values outside double's range keep
+        ///     their ratio. A positive ST(0) more than 2^40 times ST(1) gives the quotient ST(1) / ST(0), as a 387
+        ///     does, rounded once in extended precision to the rounding control (a double may not hold it).
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fpatan()
         {
-            var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+
+            //atan(ST(1) / ST(0)) is the quotient itself once the exponents differ by more than 40; like the other
+            //transcendentals it ignores the precision control
+            if (!ST0.IsNegative && (ST0.SignExponent & 0x7FFF) < 0x7FFF &&
+                (ST0.SignExponent & 0x7FFF) - (ST1.SignExponent & 0x7FFF) > 40)
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Divide(ST1, ST0,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            var largestExponent = Math.Max(ST0.IsInfinity || ST0.IsNaN ? 0 : ST0.SignExponent & 0x7FFF,
+                ST1.IsInfinity || ST1.IsNaN ? 0 : ST1.SignExponent & 0x7FFF);
+            var scale = Float80.FromInt64(0x3FFF - largestExponent);
+            ushort scaleStatusWord = 0;
+            var ST0x = (double)Float80.Scale(ST0, scale, Registers.Fpu.ControlWord, ref scaleStatusWord);
+            var ST1y = (double)Float80.Scale(ST1, scale, Registers.Fpu.ControlWord, ref scaleStatusWord);
             var result = (ST0x, ST1y)
             switch
             {
@@ -4276,88 +4160,53 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Operation (x87)
         ///
-        ///     Interprets the value contained in ST(1) as an integer and adds this value to the exponent of the number in ST.
-        ///
-        ///     Truncates the value in the source operand (toward 0) to an integral value and adds that value to the exponent
-        ///     of the destination operand. The destination and source operands are floating-point values located in registers ST(0) and ST(1), respectively.
+        ///     Truncates the value in ST(1) toward 0 to an integral value and adds that value to the exponent of ST(0),
+        ///     rounding by the rounding control where the result overflows or underflows.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fscale()
         {
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
-
-            var result = (ST0, ST1)
-                switch
-            {
-                (double.NaN, double.NaN) => double.NaN,
-                var (st0, _) when double.IsNaN(st0) => double.NaN,
-                var (_, st1) when double.IsNaN(st1) => double.NaN,
-                var (st0, st1) when double.IsNegativeInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
-                var (st0, st1) when double.IsPositiveInfinity(st0) && double.IsNegativeInfinity(st1) => double.NaN,
-                var (st0, st1) when st0 == 0 && double.IsPositiveInfinity(st1) => double.NaN,
-                _ => Math.ScaleB(ST0, (int)ST1)
-            };
-
-            //TODO C1 Set to 0 if stack underflow occurred. Set if result was rounded up; cleared otherwise. C0, C2, C3 Undefined.
-
-            //Store result
-            FpuStack[Registers.Fpu.GetStackTop()] = result;
+            var top = Registers.Fpu.GetStackTop();
+            FpuStack[top] = Float80.Scale(FpuStack[top], FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)],
+                Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
         }
 
         /// <summary>
         ///     Floating Point Square Root Operation (x87)
         ///
-        ///     Computes square root of ST(0) and stores the result in ST(0).
+        ///     Computes square root of ST(0) and stores the result in ST(0), rounded to the precision control and the
+        ///     rounding control; -0 gives -0 and a negative operand is invalid.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsqrt()
         {
-            //Handle FPU States for ST0 values that won't square root
-            switch (FpuStack[Registers.Fpu.GetStackTop()])
-            {
-                case double.NaN:
-                case double.PositiveInfinity:
-                case 0:
-                    return;
-                case double.NegativeInfinity:
-                case var v when v < 0:
-                    Registers.Fpu.ControlWord =
-                        Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                    return;
-            }
-
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Sqrt(FpuStack[Registers.Fpu.GetStackTop()]);
+            var top = Registers.Fpu.GetStackTop();
+            FpuStack[top] = Float80.SquareRoot(FpuStack[top], Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
         }
 
         /// <summary>
-        ///     Floating Point Division (x87)
+        ///     Floating Point Division: destination = destination / source (x87)
+        ///
+        ///     A memory operand (32 or 64 bits) works on ST(0); the register forms work on their first operand.
+        ///     Rounded once to the precision control and the rounding control of the control word.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fdiv()
         {
-            var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-
-            var result = ST0 / source;
-            FpuStack[Registers.Fpu.GetStackTop()] = result;
+            var source = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Source, out var memoryOperandDenormal);
+            var destination = GetFpuDestinationIndex();
+            FpuStack[destination] = Float80.Divide(FpuStack[destination], source, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord, memoryOperandDenormal);
         }
 
         /// <summary>
-        ///     Floating Point Multiply ST0 to ST1
+        ///     Floating Point Multiplication ST(i) = ST(i) * ST(0) (x87), then Pop the FPU Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fmulp()
         {
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
+            Op_Fmul();
 
-            var result = ST0 * ST1;
-
-            //Store result at ST1
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
-
-            //Pop the Stack making ST(1)->ST(0)
+            //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
         }
 
@@ -4365,33 +4214,13 @@ namespace MBBSEmu.CPU
         ///     Compares the contents of register ST(0) and source value and sets condition code flags C0, C2, and C3 in the FPU status word
         ///     according to the results. The source operand can be a data register or a memory location. If no source operand is given,
         ///     the value in ST(0) is compared with the value in ST(1). The sign of zero is ignored, so that –0.0 is equal to +0.0.
+        ///     A NaN gives "unordered" (C3, C2 and C0 set) and IE.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fcom()
         {
-            var source = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-
-            if (double.IsNaN(ST0) || double.IsNaN(source) || double.IsInfinity(ST0) || double.IsInfinity(source))
-            {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-                return;
-            }
-
-            if (ST0 > source)
-            {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-            }
-            else if (ST0 < source)
-            {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-            }
-            else
-            {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
-            }
+            var source = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Source, out var memoryOperandDenormal);
+            Float80.Compare(FpuStack[Registers.Fpu.GetStackTop()], source, ref Registers.Fpu.StatusWord, memoryOperandDenormal);
         }
 
         /// <summary>
@@ -4414,31 +4243,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fcompp()
         {
-
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
-
-            if (double.IsNaN(ST0) || double.IsNaN(ST1) || double.IsInfinity(ST0) || double.IsInfinity(ST1))
-            {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-            }
-            else
-            {
-                if (ST0 > ST1)
-                {
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-                }
-                else if (ST0 < ST1)
-                {
-                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-                }
-                else
-                {
-                    Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2);
-                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
-                }
-            }
+            Float80.Compare(FpuStack[Registers.Fpu.GetStackTop()], FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)],
+                ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
             Registers.Fpu.PopStackTop();
@@ -4457,33 +4263,26 @@ namespace MBBSEmu.CPU
         private void Op_Pushfd() => Push(Registers.EF());
 
         /// <summary>
-        ///     Floating Point Addition (x87)
+        ///     Floating Point Addition: destination = destination + source (x87)
         ///
-        ///     Add m32fp to ST(0) and store result in ST(0).
+        ///     A memory operand (32 or 64 bits) works on ST(0); the register forms work on their first operand.
+        ///     Rounded once to the precision control and the rounding control of the control word.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fadd()
         {
-            var floatToAdd = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var floatOnFpuStack = FpuStack[Registers.Fpu.GetStackTop()];
-
-            var result = floatOnFpuStack + floatToAdd;
-            FpuStack[Registers.Fpu.GetStackTop()] = result;
+            var source = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Source, out var memoryOperandDenormal);
+            var destination = GetFpuDestinationIndex();
+            FpuStack[destination] = Float80.Add(FpuStack[destination], source, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord, memoryOperandDenormal);
         }
 
         /// <summary>
-        ///     Floating Point Divide ST1 by ST0 saving the result to ST(1) and Popping the FPU stack
+        ///     Floating Point Division ST(i) = ST(i) / ST(0) (x87), then Pop the FPU Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fdivp()
         {
-            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
-
-            var result = STdestination / STsource;
-
-            //Store result at ST1
-            WriteToDestination(result);
+            Op_Fdiv();
 
             //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
@@ -4501,12 +4300,13 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Rounds the value at ST(0) to the nearest Integral Value and stores it in ST(0)
+        ///     Rounds the value at ST(0) to an Integral Value by the rounding control and stores it in ST(0)
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Frndint()
         {
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Round(FpuStack[Registers.Fpu.GetStackTop()], Registers.Fpu.GetRoundingControl());
+            var top = Registers.Fpu.GetStackTop();
+            FpuStack[top] = Float80.RoundToInteger(FpuStack[top], Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
         }
 
         /// <summary>
@@ -4681,66 +4481,54 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Ftst()
         {
-            var ST0Value = FpuStack[Registers.Fpu.GetStackTop()];
-
-            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
-
-            if (double.IsNaN(ST0Value))
-            {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-                return;
-            }
-
-            if (ST0Value > 0.0d)
-            {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-            }
-            else if (ST0Value < 0.0d)
-            {
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
-            }
-            else
-            {
-                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code2);
-                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
-            }
-
+            Float80.Compare(FpuStack[Registers.Fpu.GetStackTop()], Float80.Zero, ref Registers.Fpu.StatusWord);
         }
 
         /// <summary>
-        ///     Floating Point Reverse Division (x87)
+        ///     Floating Point Reverse Division: destination = source / destination (x87)
+        ///
+        ///     A memory operand (32 or 64 bits) works on ST(0); the register forms work on their first operand.
+        ///     Rounded once to the precision control and the rounding control of the control word.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fdivr()
         {
-            var dividend = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-
-            var result = dividend / ST0;
-            FpuStack[Registers.Fpu.GetStackTop()] = result;
+            var source = GetOperandValueFloat80(_currentInstruction.Op0Kind, EnumOperandType.Source, out var memoryOperandDenormal);
+            var destination = GetFpuDestinationIndex();
+            FpuStack[destination] = Float80.Divide(source, FpuStack[destination], Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord, memoryOperandDenormal);
         }
 
         /// <summary>
-        ///     Floating Point Reverse Division (x87)
+        ///     Floating Point Reverse Division ST(i) = ST(0) / ST(i) (x87), then Pop the FPU Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fdivrp()
         {
-            var dividend = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Source);
-            var divisor = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Destination);
+            Op_Fdivr();
 
-            var result = dividend / divisor;
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = result;
+            //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
         }
 
         /// <summary>
         ///     Floating Point Sine (x87)
+        ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///
+        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
+        ///     in the last bits.
         /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsin()
         {
-            var valueToSin = FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var valueToSin = (double)FpuStack[top];
 
             switch (valueToSin)
             {
@@ -4751,16 +4539,29 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(valueToSin);
+            FpuStack[top] = Math.Sin(valueToSin);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
 
         /// <summary>
         ///     Floating Point Cosine (x87)
+        ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///
+        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
+        ///     in the last bits.
         /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fcos()
         {
-            var valueToCos = FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var valueToCos = (double)FpuStack[top];
 
             switch (valueToCos)
             {
@@ -4771,7 +4572,7 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(valueToCos);
+            FpuStack[top] = Math.Cos(valueToCos);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
 
@@ -5024,18 +4825,12 @@ namespace MBBSEmu.CPU
         }
 
         /// <summary>
-        ///     Floating Subtract ST0 from ST1
+        ///     Floating Point Subtraction ST(i) = ST(i) - ST(0) (x87), then Pop the FPU Stack
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsubp()
         {
-            var STdestination = GetOperandValueDouble(_currentInstruction.Op0Kind, EnumOperandType.Destination);
-            var STsource = GetOperandValueDouble(_currentInstruction.Op1Kind, EnumOperandType.Source);
-
-            var result = STdestination - STsource;
-
-            //Store result at ST1
-            WriteToDestination(result);
+            Op_Fsub();
 
             //ST(1) becomes ST(0)
             Registers.Fpu.PopStackTop();
@@ -5047,7 +4842,8 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fchs()
         {
-            FpuStack[Registers.Fpu.GetStackTop()] = -FpuStack[Registers.Fpu.GetStackTop()];
+            FpuStack[Registers.Fpu.GetStackTop()] = FpuStack[Registers.Fpu.GetStackTop()].Negate();
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
         }
 
         /// <summary>
@@ -5058,18 +4854,31 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fabs()
         {
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Abs(FpuStack[Registers.Fpu.GetStackTop()]);
+            FpuStack[Registers.Fpu.GetStackTop()] = FpuStack[Registers.Fpu.GetStackTop()].Abs();
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
         }
 
         /// <summary>
         ///     Floating Point Operation (x87)
         ///
         ///     Computes both the sine and the cosine of ST(0), stores the sine in ST(0), and pushes the cosine onto the register stack.
+        ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///
+        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
+        ///     in the last bits.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsincos()
         {
-            var value = FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var value = (double)FpuStack[top];
 
             switch (value)
             {
@@ -5080,7 +4889,7 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Sin(value);
+            FpuStack[top] = Math.Sin(value);
             Registers.Fpu.PushStackTop();
             FpuStack[Registers.Fpu.GetStackTop()] = Math.Cos(value);
             Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
@@ -5090,34 +4899,12 @@ namespace MBBSEmu.CPU
         ///     Floating Point Operation (x87)
         ///
         ///     Separates ST(0) into its exponent and significand, stores the significand (in the range [1, 2)) in ST(0),
-        ///     and pushes the unbiased exponent onto the register stack.
+        ///     and pushes the unbiased exponent onto the register stack. Zero gives -infinity as the exponent (ZE).
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fxtract()
         {
-            var value = FpuStack[Registers.Fpu.GetStackTop()];
-
-            double exponent;
-            double significand;
-            switch (value)
-            {
-                case 0:
-                    exponent = double.NegativeInfinity;
-                    significand = value;
-                    Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.ZeroDivide);
-                    break;
-                case double.NaN:
-                case double.PositiveInfinity:
-                case double.NegativeInfinity:
-                    exponent = value;
-                    significand = value;
-                    break;
-                default:
-                    var unbiasedExponent = Math.ILogB(value);
-                    exponent = unbiasedExponent;
-                    significand = Math.ScaleB(value, -unbiasedExponent);
-                    break;
-            }
+            var significand = Float80.Extract(FpuStack[Registers.Fpu.GetStackTop()], out var exponent, ref Registers.Fpu.StatusWord);
 
             FpuStack[Registers.Fpu.GetStackTop()] = exponent;
             Registers.Fpu.PushStackTop();
@@ -5127,38 +4914,31 @@ namespace MBBSEmu.CPU
         /// <summary>
         ///     Floating Point Operation (x87)
         ///
-        ///     Computes the partial remainder obtained from dividing ST(0) by ST(1) and stores the result in ST(0).
-        ///     The result has the same sign as the dividend ST(0), matching the semantics of the C runtime's fmod().
+        ///     Computes the partial remainder obtained from dividing ST(0) by ST(1) (the quotient truncated toward zero)
+        ///     and stores the result in ST(0). C0, C3, C1 receive bits 2, 1, 0 of the quotient; C2 is set when the
+        ///     reduction is incomplete (exponents 64 or more apart) and the program must run FPREM again.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fprem()
         {
-            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
-            var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
-
-            if (double.IsNaN(ST0) || double.IsNaN(ST1) || double.IsInfinity(ST0) || ST1 == 0)
-            {
-                FpuStack[Registers.Fpu.GetStackTop()] = double.NaN;
-                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
-                return;
-            }
-
-            if (double.IsInfinity(ST1))
-                return;
-
-            FpuStack[Registers.Fpu.GetStackTop()] = ST0 % ST1;
-            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+            var top = Registers.Fpu.GetStackTop();
+            FpuStack[top] = Float80.PartialRemainder(FpuStack[top], FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)],
+                ref Registers.Fpu.StatusWord);
         }
 
         /// <summary>
         ///     Floating Point Operation (x87)
         ///
         ///     Computes 2^ST(0) - 1 and stores the result in ST(0). Valid for ST(0) in the range [-1, 1].
+        ///
+        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
+        ///     in the last bits.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_F2xm1()
         {
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Pow(2, FpuStack[Registers.Fpu.GetStackTop()]) - 1;
+            var top = Registers.Fpu.GetStackTop();
+            FpuStack[top] = Math.Pow(2, (double)FpuStack[top]) - 1;
         }
 
         /// <summary>
@@ -5168,6 +4948,13 @@ namespace MBBSEmu.CPU
         ///     ST(0) must be positive and neither operand may be NaN; per the x87 spec, a negative or NaN
         ///     ST(0)/ST(1), or an indeterminate 0 * Infinity combination, is an invalid operation and yields
         ///     a NaN result (the stack still pops).
+        ///
+        ///     log2(ST(0)) is its exponent plus log2 of its significand (FXTRACT; a zero raises ZE), the logarithm of
+        ///     the significand computed through double precision (Math): the result may differ from a 387's in the
+        ///     last bits. For ST(0) in [0.5, 2) it is log2(1 + d) with d = ST(0) - 1, which is exact, so that a value
+        ///     next to 1 keeps the digits a double would round away. The product with ST(1) is rounded once in
+        ///     extended precision to the rounding control (like a 387, the transcendentals ignore the precision
+        ///     control), so neither operand is limited to double's range.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2x()
@@ -5175,16 +4962,36 @@ namespace MBBSEmu.CPU
             var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
-            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || ST0x < 0 ||
-                (ST0x == 0 && ST1y == 0) || (double.IsPositiveInfinity(ST0x) && ST1y == 0))
+            if (ST0x.IsNaN || ST1y.IsNaN || (ST0x.IsNegative && !ST0x.IsZero) ||
+                (ST0x.IsZero && ST1y.IsZero) || (ST0x.IsInfinity && ST1y.IsZero))
             {
-                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = double.NaN;
-                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Indefinite;
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
                 Registers.Fpu.PopStackTop();
                 return;
             }
 
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(ST0x);
+            //Extended precision whatever the precision control, rounded to the rounding control
+            var controlWord = (ushort)(Registers.Fpu.ControlWord | 0x0300);
+            Float80 log2;
+            if ((ST0x.SignExponent & 0x7FFF) is 0x3FFE or 0x3FFF)
+            {
+                //log2(1 + offset) as offset * log2(argument) / (argument - 1), argument = 1 + offset rounded to double;
+                //the offset is exact, and rounding to nearest keeps log2(1) = +0 under every rounding control
+                ushort offsetStatusWord = 0;
+                var offset = Float80.Subtract(ST0x, Float80.One, 0x037F, ref offsetStatusWord);
+                var argument = 1.0 + (double)offset;
+                log2 = Float80.Multiply(offset,
+                    argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0), controlWord,
+                    ref Registers.Fpu.StatusWord);
+            }
+            else
+            {
+                var significand = Float80.Extract(ST0x, out var exponent, ref Registers.Fpu.StatusWord);
+                log2 = (double)exponent + Math.Log2((double)significand);
+            }
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                Float80.Multiply(ST1y, log2, controlWord, ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
@@ -5195,24 +5002,32 @@ namespace MBBSEmu.CPU
         ///     Computes (ST(1) * log2(ST(0) + 1.0)), stores the result in ST(1), and pops the FPU register stack.
         ///     Same invalid-operation guards as FYL2X, applied to (ST(0) + 1.0) since that is the value being
         ///     passed to log2.
+        ///
+        ///     log2(ST(0) + 1.0) is computed through double precision (Math) on ST(0) rounded to double (the
+        ///     instruction's operand range, |ST(0)| < 1 - sqrt(2)/2, lies within double's): the result may differ from
+        ///     a 387's in the last bits. The product with ST(1) is rounded once in extended precision to the rounding
+        ///     control (like a 387, the transcendentals ignore the precision control), so ST(1) is not limited to
+        ///     double's range.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
         {
-            var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST0x = (double)FpuStack[Registers.Fpu.GetStackTop()];
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
             var argument = ST0x + 1.0;
 
-            if (double.IsNaN(ST0x) || double.IsNaN(ST1y) || argument < 0 ||
-                (argument == 0 && ST1y == 0) || (double.IsPositiveInfinity(argument) && ST1y == 0))
+            if (double.IsNaN(ST0x) || ST1y.IsNaN || argument < 0 ||
+                (argument == 0 && ST1y.IsZero) || (double.IsPositiveInfinity(argument) && ST1y.IsZero))
             {
-                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = double.NaN;
-                Registers.Fpu.ControlWord = Registers.Fpu.ControlWord.SetFlag((ushort)EnumFpuControlWordFlags.InvalidOperation);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Indefinite;
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
                 Registers.Fpu.PopStackTop();
                 return;
             }
 
-            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = ST1y * Math.Log2(argument);
+            //Extended precision whatever the precision control, rounded to the rounding control
+            FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Multiply(ST1y, Math.Log2(argument),
+                (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
@@ -5221,11 +5036,23 @@ namespace MBBSEmu.CPU
         ///     Floating Point Operation (x87)
         ///
         ///     Computes the tangent of ST(0), stores the result in ST(0), and pushes a 1.0 onto the register stack.
+        ///
+        ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 is set and ST(0) is left unchanged.
+        ///
+        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
+        ///     in the last bits.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fptan()
         {
-            var value = FpuStack[Registers.Fpu.GetStackTop()];
+            var top = Registers.Fpu.GetStackTop();
+            if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
+            {
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
+            var value = (double)FpuStack[top];
 
             switch (value)
             {
@@ -5236,49 +5063,54 @@ namespace MBBSEmu.CPU
                     return;
             }
 
-            FpuStack[Registers.Fpu.GetStackTop()] = Math.Tan(value);
+            FpuStack[top] = Math.Tan(value);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 1d;
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.One;
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
         }
 
         /// <summary>
-        ///     Pushes log2(e) onto the FPU register stack.
+        ///     Pushes log2(e) onto the FPU register stack, rounded by the rounding control
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fldl2e()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 1.4426950408889634d;
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.Log2E(Registers.Fpu.ControlWord);
         }
 
         /// <summary>
-        ///     Pushes ln(2) onto the FPU register stack.
+        ///     Pushes ln(2) onto the FPU register stack, rounded by the rounding control
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fldln2()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 0.6931471805599453d;
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.LnTwo(Registers.Fpu.ControlWord);
         }
 
         /// <summary>
-        ///     Pushes log10(2) onto the FPU register stack.
+        ///     Pushes log10(2) onto the FPU register stack, rounded by the rounding control
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fldlg2()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 0.3010299956639812d;
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.Log10Two(Registers.Fpu.ControlWord);
         }
 
         /// <summary>
-        ///     Pushes log2(10) onto the FPU register stack.
+        ///     Pushes log2(10) onto the FPU register stack, rounded by the rounding control
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fldl2t()
         {
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
             Registers.Fpu.PushStackTop();
-            FpuStack[Registers.Fpu.GetStackTop()] = 3.3219280948873623d;
+            FpuStack[Registers.Fpu.GetStackTop()] = Float80.Log2Ten(Registers.Fpu.ControlWord);
         }
 
         /// <summary>

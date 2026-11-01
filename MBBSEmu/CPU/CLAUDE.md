@@ -68,13 +68,14 @@ Offset 50: FpuRegistersStruct
 
 ## FpuRegistersStruct — FPU State
 
-The x87 FPU uses a circular 8-slot stack stored in `CpuCore.FpuStack` (a `double[8]` array). The struct manages the stack pointer and control state:
+The x87 FPU uses a circular 8-slot stack stored in `CpuCore.FpuStack` (a `Float80[8]` array of 80-bit extended values). The struct manages the stack pointer and control state:
 
 - **Stack top** is bits 11-13 of `StatusWord`. `GetStackTop()` extracts it, `SetStackTop()` writes it.
 - `GetStackPointer(Register.ST0..ST7)` maps a logical ST(n) register to a physical array index: `stackTop - n`. The result can be negative or wrap, which maps to the circular buffer.
 - `PushStackTop()` increments (wraps 7→0). `PopStackTop()` decrements (wraps 0→7).
-- **Rounding control** is bits 10-11 of `ControlWord`, mapped to `MidpointRounding` enum: 0=ToEven, 1=ToNegativeInfinity, 2=ToPositiveInfinity, 3=ToZero.
-- `ClearExceptions()` clears lower 6 bits of both StatusWord and ControlWord.
+- `StatusWord` is a field, so `Float80` operations record their exception flags and condition codes in it by reference (`ref Registers.Fpu.StatusWord`).
+- **Precision control** (bits 8-9) and **rounding control** (bits 10-11) of `ControlWord` are applied by `Float80` on every operation. `GetRoundingControl()` maps the rounding control to the `MidpointRounding` enum: 0=ToEven, 1=ToNegativeInfinity, 2=ToPositiveInfinity, 3=ToZero.
+- `ClearExceptions()` (FCLEX) clears the exception flags, stack fault, error summary and busy bits of the StatusWord; the ControlWord (exception masks) is not changed.
 
 ## CpuCore.cs — The Execution Engine
 
@@ -95,7 +96,7 @@ The comment at line 105 explains the deliberate choice: aggressive inlining on t
 - `_invokeExternalFunctionDelegate` — callback for `CALL FAR` to segments >= 0xFF00
 - `_interruptHandlers` (`Dictionary<int, IInterruptHandler>`) — software interrupt dispatch table
 - `_ioPortHandlers` (`Dictionary<int, IIOPort>`) — I/O port dispatch table
-- `FpuStack` (`double[8]`) — x87 FPU data stack
+- `FpuStack` (`Float80[8]`) — x87 FPU data stack
 - `InstructionCounter` — total instructions executed since last Reset
 
 ### Reset()
@@ -185,7 +186,7 @@ Size-aware getters read operand values from registers, immediates, or memory:
 - `GetOperandValueUInt16(OpKind, EnumOperandType)` → ushort
 - `GetOperandValueUInt32(OpKind, EnumOperandType)` → uint
 - Signed variants: `GetOperandValueInt8/16/32()` — identical but return signed types
-- FPU: `GetOperandValueFloat(OpKind, EnumOperandType)`, `GetOperandValueDouble(OpKind, EnumOperandType)`
+- FPU: `GetOperandValueFloat80(OpKind, EnumOperandType, out bool memoryOperandDenormal)` (a register of the FPU stack, or a 32-, 64- or 80-bit memory operand converted exactly), `GetFpuDestinationIndex()` (the register an arithmetic instruction writes)
 
 Each getter handles these `OpKind` cases:
 - `OpKind.Register` — read from `Registers.GetValue(register)`, using Op0Register (Destination), Op1Register (Source), or Op2Register (Count). For implicit-accumulator instructions (like 1-operand IMUL), `Op1Register == Register.None` triggers reading from AL/AX.
@@ -209,7 +210,6 @@ Computes the effective address offset for memory operands. Handles x86-16 addres
 Writes the result back to wherever Op0 points:
 - Register: `Registers.SetValue(Op0Register, result)` — dispatches to byte/ushort/uint setter based on `_currentOperationSize`
 - Memory: `Memory.SetByte/Word/DWord(segment, offset, result)`
-- Float/Double overloads: write to memory (as Float32 or Float64 bytes) or to `FpuStack[stackPointer]`
 - `WriteToSource()` — rare variant that writes to Op1 (used by XCHG and a few others)
 
 ### GetCurrentOperationSize
@@ -316,13 +316,13 @@ Each string op lambda increments/decrements SI and/or DI based on `DirectionFlag
 
 ### FPU Instructions
 
-FPU operations work with `FpuStack[8]` indexed via `Registers.Fpu.GetStackPointer(ST_register)`:
-- Load instructions (`FLD`, `FILD`, `FLD1`, `FLDPI`, `FLDZ`, `FLDCW`): push a value onto the FPU stack
-- Store instructions (`FST`, `FSTP`, `FSTCW`, `FSTSW`, `FISTP`): pop/read from stack to memory or register
-- Arithmetic (`FADD`, `FSUB`, `FMUL`, `FDIV`, `FADDP`, `FSUBP`, `FMULP`, `FDIVP`, `FSUBR`, `FSUBRP`, `FDIVR`, `FDIVRP`): operate on stack top and operand, optionally pop
+FPU operations work with `FpuStack[8]` (`Float80`) indexed via `Registers.Fpu.GetStackPointer(ST_register)`. Every arithmetic result is rounded once, as the coprocessor does, to the precision and rounding control of the ControlWord; exception flags (IE, DE, ZE, OE, UE, PE), C1 and the condition codes go to the StatusWord. Results are the masked responses (MBBSEmu raises no FPU exception):
+- Load instructions (`FLD`, `FILD`, `FLD1`, `FLDPI`, `FLDZ`, `FLDL2E`, `FLDL2T`, `FLDLG2`, `FLDLN2`, `FLDCW`): push a value onto the FPU stack (32-, 64- and 80-bit and integer loads are exact)
+- Store instructions (`FST`, `FSTP`, `FSTCW`, `FSTSW`, `FIST`, `FISTP`): pop/read from stack to memory or register; FIST/FISTP store 16, 32 or 64 bits rounded by the rounding control, and the integer indefinite when the value does not fit
+- Arithmetic (`FADD`, `FSUB`, `FMUL`, `FDIV`, `FADDP`, `FSUBP`, `FMULP`, `FDIVP`, `FSUBR`, `FSUBRP`, `FDIVR`, `FDIVRP`): a memory operand works on ST(0), the register forms on their first operand (ST(0) or ST(i)); the `-P` forms then pop
 - Comparison (`FCOM`, `FCOMP`, `FCOMPP`, `FTST`): set FPU condition codes in StatusWord
-- Math (`FSIN`, `FCOS`, `FSQRT`, `FPATAN`, `FSCALE`, `FRNDINT`): use C# `Math` functions
-- Control (`FXCH`, `FCHS`, `FCLEX`): swap, negate, clear exceptions
+- Math (`FSQRT`, `FSCALE`, `FRNDINT`, `FPREM`, `FXTRACT`): exact, through `Float80`; the transcendentals (`FSIN`, `FCOS`, `FSINCOS`, `FPTAN`, `FPATAN`, `F2XM1`, `FYL2X`, `FYL2XP1`) compute through `double` with C# `Math` functions and may differ from a 387 in the last bits; operands outside `double`'s range are handled in `Float80` (`FPATAN` scales both by one power of two and returns the quotient ST(1) / ST(0) when a positive ST(0)'s exponent exceeds ST(1)'s by more than 40, `FYL2X` takes the logarithm from the exponent and the significand, and as log2(1 + d) with d = ST(0) - 1 for ST(0) in [0.5, 2), the products with ST(1) are `Float80` rounded to 64 bits whatever the precision control, as a 387's transcendentals ignore it), and `FSIN`/`FCOS`/`FSINCOS`/`FPTAN` set C2 and leave ST(0) unchanged for |ST(0)| >= 2^63
+- Control (`FXCH`, `FCHS`, `FABS`, `FCLEX`): swap, negate, absolute value, clear the StatusWord's exception flags
 
 The `-P` suffix variants (FADDP, FMULP, etc.) pop the stack after operation. `FCOMPP` pops twice. `SAHF` transfers FPU condition codes to CPU flags (AH→FLAGS), enabling conditional jumps after FPU comparisons.
 
