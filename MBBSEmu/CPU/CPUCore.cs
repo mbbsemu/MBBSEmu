@@ -4530,8 +4530,11 @@ namespace MBBSEmu.CPU
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
         ///     (IE), C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsin()
@@ -4595,8 +4598,11 @@ namespace MBBSEmu.CPU
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
         ///     (IE), C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fcos()
@@ -4946,8 +4952,11 @@ namespace MBBSEmu.CPU
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
         ///     (IE), in ST(0) and pushed again; C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsincos()
@@ -5256,8 +5265,11 @@ namespace MBBSEmu.CPU
         ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
         ///     (IE), in ST(0) and pushed again; C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fptan()
