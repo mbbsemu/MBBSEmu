@@ -4985,15 +4985,17 @@ namespace MBBSEmu.CPU
         ///     Same invalid-operation guards as FYL2X, applied to (ST(0) + 1.0) since that is the value being
         ///     passed to log2.
         ///
-        ///     log2(ST(0) + 1.0) is computed through double precision (Math) on ST(0) rounded to double (the
-        ///     instruction's operand range, |ST(0)| < 1 - sqrt(2)/2, lies within double's): the result may differ from
-        ///     a 387's in the last bits. The product with ST(1) is rounded once in extended precision, so ST(1) is not
+        ///     log2(ST(0) + 1.0) is computed as ST(0) * log2(u) / (u - 1), with u = ST(0) + 1.0 rounded to double and
+        ///     the logarithm through double precision (Math): u - 1 is exact, so the rounding of u cancels out and a
+        ///     small ST(0) keeps its precision (u == 1: the factor is log2(e)); the result may differ from a 387's in
+        ///     the last bits. The products with ST(0) and ST(1) are rounded in extended precision, so ST(1) is not
         ///     limited to double's range.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
         {
-            var ST0x = (double)FpuStack[Registers.Fpu.GetStackTop()];
+            var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
+            var ST0x = (double)ST0;
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
             var argument = ST0x + 1.0;
 
@@ -5006,8 +5008,13 @@ namespace MBBSEmu.CPU
                 return;
             }
 
+            //An infinite u (ST(0) = +infinity, outside the instruction's range) gives log2(u) itself: +infinity
+            var log2 = double.IsPositiveInfinity(argument)
+                ? argument
+                : Float80.Multiply(ST0, argument == 1.0 ? Math.Log2(Math.E) : Math.Log2(argument) / (argument - 1.0),
+                    Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
             FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
-                Float80.Multiply(ST1y, Math.Log2(argument), Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+                Float80.Multiply(ST1y, log2, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
 
             Registers.Fpu.PopStackTop();
         }
