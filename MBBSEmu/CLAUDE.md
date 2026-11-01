@@ -71,7 +71,7 @@ The main execution engine. The `Tick()` method is the hot loop:
 
 **Stack:** Segment 0x0000, SP starts at 0xFFFE, grows downward. `uint.MaxValue` is pushed as an end-of-execution sentinel.
 
-**Performance:** Uses `MethodImplOptions.AggressiveOptimization` on hot paths. Comment notes that aggressive inlining is *slower* here due to L1 cache pressure.
+**Performance:** Hot paths deliberately avoid `MethodImplOptions.AggressiveOptimization` so they stay eligible for tiered compilation and Dynamic PGO (a 35-50% win); forced inlining is limited to the per-size sub-handlers.
 
 ### CpuRegistersStruct (RegistersStructs.cs)
 

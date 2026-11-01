@@ -83,10 +83,10 @@ The x87 FPU uses a circular 8-slot stack stored in `CpuCore.FpuStack` (a `Float8
 
 - `STACK_BASE = 0xFFFE` — initial SP value
 - `STACK_SEGMENT = 0x0` — SS always 0
-- `OpcodeCompilerOptimizations = AggressiveOptimization` — JIT hint on dispatch methods
-- `OpcodeSubroutineCompilerOptimizations = AggressiveOptimization | AggressiveInlining` — JIT hint on per-size sub-handlers
+- `OpcodeCompilerOptimizations = 0` — JIT hint on dispatch methods (deliberately no `AggressiveOptimization`)
+- `OpcodeSubroutineCompilerOptimizations = AggressiveInlining` — JIT hint on per-size sub-handlers
 
-The comment at line 105 explains the deliberate choice: aggressive inlining on the main dispatch (`Tick()`, `GetOperandValue*`) actually *slows* the code due to L1 instruction cache pressure. Only the size-specific sub-handlers (e.g., `Op_Add_8`, `Op_Add_16`) benefit from inlining into their parent.
+`AggressiveOptimization` is deliberately not used: it opts a method out of tiered compilation and therefore out of Dynamic PGO, which is what lets the JIT devirtualize/inline the `IMemoryCore` calls in the hot path (measured 35-50% faster without it). Forced inlining on the main dispatch (`Tick()`, `GetOperandValue*`) is also avoided to keep them small; only the size-specific sub-handlers (e.g., `Op_Add_8`, `Op_Add_16`) are forced inline into their parent. `_currentInstruction`, `_currentOperationSize` and `Memory` are plain fields, not auto-properties, so the 32-byte `Instruction` struct is read in place rather than copied.
 
 ### Key Members
 
@@ -144,7 +144,7 @@ To use these during development, uncomment the example entries in `Reset()` and 
 Every ALU instruction follows the same structure:
 
 ```csharp
-// Top-level dispatcher (AggressiveOptimization, no inlining)
+// Top-level dispatcher (OpcodeCompilerOptimizations, no forced inlining)
 private void Op_Add(bool addCarry = false)
 {
     var result = _currentOperationSize switch
@@ -157,7 +157,7 @@ private void Op_Add(bool addCarry = false)
     WriteToDestination(result);
 }
 
-// Per-size sub-handler (AggressiveOptimization + AggressiveInlining)
+// Per-size sub-handler (OpcodeSubroutineCompilerOptimizations = AggressiveInlining)
 private byte Op_Add_8(bool addCarry)
 {
     var destination = GetOperandValueUInt8(Op0Kind, Destination);
