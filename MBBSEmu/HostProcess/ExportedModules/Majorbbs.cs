@@ -4059,6 +4059,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         ///       match the next input character exactly (no white space is skipped before it);
         ///     - conversions are %[*][width][F|h|l]type: '*' reads without storing (and without counting), the width
         ///       limits the characters read (a sign and a "0x" prefix included), 'l' stores 32 bits, otherwise 16;
+        ///     - the width is a 16-bit int whose digits wrap at 65,536; c takes it as it is (1 when it is missing or
+        ///       above 32,767), every other conversion its low 15 bits (32,767 when it is missing). A width of 0 reads
+        ///       nothing: s (after skipping white space) and [set] store an empty string and c stores nothing, each
+        ///       counted, c and [set] even at the end of the input; a number fails, as it does when a sign takes the
+        ///       whole width (the sign stays in the input);
         ///     - d, i, o, u, x, X skip white space, take one optional sign, then digits (i: "0x" means hexadecimal and a
         ///       leading "0" octal; x: an optional "0x"); the value is kept in 32 bits and a '-' negates it, but a
         ///       digit that would carry past 2^32 is the last one read and the value becomes LONG_MAX or LONG_MIN;
@@ -4121,10 +4126,15 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 if (suppress)
                     f++;
 
-                var width = 0;
-                while (f < formatString.Length && char.IsAsciiDigit(formatString[f]))
-                    width = width * 10 + formatString[f++] - '0';
-                var limit = width > 0 ? width : int.MaxValue;
+                short width = -1;
+                if (f < formatString.Length && char.IsAsciiDigit(formatString[f]))
+                {
+                    width = 0;
+                    while (f < formatString.Length && char.IsAsciiDigit(formatString[f]))
+                        width = unchecked((short)(width * 10 + formatString[f++] - '0'));
+                }
+
+                var limit = width & 0x7FFF;
 
                 var isLong = false;
                 while (f < formatString.Length && (formatString[f] == 'F' || formatString[f] == 'h' || formatString[f] == 'l'))
@@ -4167,6 +4177,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     var negative = false;
                     if (input.Current == '+' || input.Current == '-')
                     {
+                        if (limit <= 1)
+                            break;
+
                         negative = input.Current == '-';
                         more = input.MoveNext();
                         consumed++;
@@ -4288,13 +4301,13 @@ namespace MBBSEmu.HostProcess.ExportedModules
 
                 if (conversion == 'c')
                 {
-                    if (!more)
+                    var count = width < 0 ? 1 : width;
+                    if (!more && count > 0)
                     {
                         atEnd = true;
                         break;
                     }
 
-                    var count = width > 0 ? width : 1;
                     var text = suppress ? null : new List<byte>();
                     var read = 0;
                     while (more && read < count)
@@ -4352,7 +4365,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     if (f < formatString.Length)
                         f++;
 
-                    if (!more)
+                    if (!more && limit > 0)
                     {
                         atEnd = true;
                         break;
@@ -4375,7 +4388,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                         startingParameterOrdinal += 2;
                     }
 
-                    if (matched == 0)
+                    if (matched == 0 && limit > 0)
                         break;
 
                     if (!suppress)
