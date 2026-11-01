@@ -35,8 +35,6 @@ namespace MBBSEmu.Tests.CPU
 
         [Theory]
         [InlineData(-4d, 5d)] // negative ST(0) is an invalid operand
-        [InlineData(double.NaN, 5d)]
-        [InlineData(4d, double.NaN)]
         [InlineData(0d, 0d)] // 0 * log2(0) == 0 * -Infinity, indeterminate
         [InlineData(double.PositiveInfinity, 0d)] // 0 * log2(+Infinity) == 0 * +Infinity, indeterminate
         public void FYL2X_InvalidOperand_ReturnsNaNAndSetsInvalidOperationFlag(double ST0Value, double ST1Value)
@@ -85,7 +83,9 @@ namespace MBBSEmu.Tests.CPU
 
             var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
             Assert.Equal(expectedSignExponent, result.SignExponent);
-            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+            //52 bits of the expected value: exact for a zero or a denormal shorter than that
+            var tolerance = (long)(expectedSignificand >> 51);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -tolerance, tolerance);
             Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x05);
         }
 
@@ -123,7 +123,9 @@ namespace MBBSEmu.Tests.CPU
 
             var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
             Assert.Equal(expectedSignExponent, result.SignExponent);
-            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+            //52 bits of the expected value: exact for a zero or a denormal shorter than that
+            var tolerance = (long)(expectedSignificand >> 51);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -tolerance, tolerance);
         }
 
         /// <summary>
@@ -154,7 +156,9 @@ namespace MBBSEmu.Tests.CPU
 
             var result = mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()];
             Assert.Equal(expectedSignExponent, result.SignExponent);
-            Assert.InRange((long)(result.Significand - expectedSignificand), -4096, 4096);
+            //52 bits of the expected value: exact for a zero or a denormal shorter than that
+            var tolerance = (long)(expectedSignificand >> 51);
+            Assert.InRange((long)(result.Significand - expectedSignificand), -tolerance, tolerance);
         }
 
         /// <summary>
@@ -188,6 +192,97 @@ namespace MBBSEmu.Tests.CPU
             Assert.Equal(new Float80(expectedSignExponent, expectedSignificand),
                 mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
             Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
+        }
+
+        /// <summary>
+        ///     A NaN operand gives the NaN made quiet (IE only if it was signalling; of two NaNs, the one with the
+        ///     larger significand, the positive one when they are equal), ahead of every other invalid case; an
+        ///     unsupported encoding gives the real indefinite (IE). C1 is cleared. Expected values: an x87 coprocessor.
+        /// </summary>
+        [Theory]
+        [InlineData((ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) +quiet NaN, ST(1) 1
+        [InlineData((ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) 1, ST(1) +quiet NaN
+        [InlineData((ushort)0x7FFF, 0xA000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x7FFF, 0xE000000000000000UL, (ushort)0x01)] //ST(0) +signalling NaN, ST(1) 1
+        [InlineData((ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x7FFF, 0xA000000000000000UL, (ushort)0x7FFF, 0xE000000000000000UL, (ushort)0x01)] //ST(0) 1, ST(1) +signalling NaN
+        [InlineData((ushort)0x7FFF, 0xC000000000000001UL, (ushort)0xFFFF, 0xE000000000000000UL, (ushort)0xFFFF, 0xE000000000000000UL, (ushort)0x00)] //ST(0) +quiet NaN, ST(1) -quiet NaN, larger significand
+        [InlineData((ushort)0xFFFF, 0xE000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0xFFFF, 0xE000000000000000UL, (ushort)0x00)] //ST(0) -quiet NaN, larger significand, ST(1) +quiet NaN
+        [InlineData((ushort)0x7FFF, 0xA000000000000000UL, (ushort)0xFFFF, 0xE000000000000000UL, (ushort)0xFFFF, 0xE000000000000000UL, (ushort)0x01)] //ST(0) +signalling NaN, ST(1) -quiet NaN, larger significand
+        [InlineData((ushort)0x7FFF, 0xC000000000000001UL, (ushort)0xFFFF, 0x8000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x01)] //ST(0) +quiet NaN, ST(1) -signalling NaN, smaller significand
+        [InlineData((ushort)0x7FFF, 0xA000000000000000UL, (ushort)0xFFFF, 0x8000000000000001UL, (ushort)0x7FFF, 0xE000000000000000UL, (ushort)0x01)] //ST(0) +signalling NaN, ST(1) -signalling NaN, smaller significand
+        [InlineData((ushort)0xFFFF, 0x8000000000000001UL, (ushort)0x7FFF, 0xA000000000000000UL, (ushort)0x7FFF, 0xE000000000000000UL, (ushort)0x01)] //ST(0) -signalling NaN, smaller significand, ST(1) +signalling NaN
+        [InlineData((ushort)0x7FFF, 0xC000000000000001UL, (ushort)0xFFFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) +quiet NaN, ST(1) -quiet NaN, same significand
+        [InlineData((ushort)0xFFFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) -quiet NaN, same significand, ST(1) +quiet NaN
+        [InlineData((ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) +quiet NaN, ST(1) +infinity
+        [InlineData((ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x0000, 0x0000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) +quiet NaN, ST(1) +0
+        [InlineData((ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x0000, 0x0000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) +quiet NaN, ST(1) a denormal
+        [InlineData((ushort)0x0000, 0x0000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) a denormal, ST(1) +quiet NaN
+        [InlineData((ushort)0x4000, 0x4000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0xC000000000000000UL, (ushort)0x01)] //ST(0) an unnormal, ST(1) 1
+        [InlineData((ushort)0x3FFF, 0x8000000000000000UL, (ushort)0x4000, 0x4000000000000000UL, (ushort)0xFFFF, 0xC000000000000000UL, (ushort)0x01)] //ST(0) 1, ST(1) an unnormal
+        [InlineData((ushort)0x4000, 0x4000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0xFFFF, 0xC000000000000000UL, (ushort)0x01)] //ST(0) an unnormal, ST(1) +quiet NaN
+        [InlineData((ushort)0xBFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) -1, ST(1) +quiet NaN
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) +0, ST(1) +quiet NaN
+        [InlineData((ushort)0xC000, 0x8000000000000000UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x7FFF, 0xC000000000000001UL, (ushort)0x00)] //ST(0) -2, ST(1) +quiet NaN
+        public void FYL2X_NaN(ushort ST0SignExponent, ulong ST0Significand, ushort ST1SignExponent,
+            ulong ST1Significand, ushort expectedSignExponent, ulong expectedSignificand, ushort expectedExceptions)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand); //ST0
+            mbbsEmuCpuCore.FpuStack[0] = new Float80(ST1SignExponent, ST1Significand); //ST1
+            mbbsEmuCpuRegisters.Fpu.SetFlag(EnumFpuStatusFlags.Code1);
+
+            var instructions = new Assembler(16);
+            instructions.fyl2x();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.GetStackTop());
+            Assert.Equal(new Float80(expectedSignExponent, expectedSignificand), mbbsEmuCpuCore.FpuStack[0]);
+            Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
+            Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code1));
+        }
+
+        /// <summary>
+        ///     A zero ST(0): the infinity of ST(1)'s opposite sign, with ZE unless ST(1) is infinite and no DE for a
+        ///     denormal ST(1); C1 cleared. Expected values: an x87 coprocessor, the result and every flag exactly.
+        /// </summary>
+        [Theory]
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x0000, 0x0000000000000001UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) the smallest denormal
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) -(the smallest denormal)
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) 1
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0xBFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) -1
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) +0, ST(1) +infinity
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) +0, ST(1) -infinity
+        [InlineData((ushort)0x0000, 0x0000000000000000UL, (ushort)0x0000, 0x4000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) +0, ST(1) a denormal
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x0000, 0x0000000000000001UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) the smallest denormal
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x8000, 0x0000000000000001UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) -(the smallest denormal)
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x3FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) 1
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0xBFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) -1
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) -0, ST(1) +infinity
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x7FFF, 0x8000000000000000UL, (ushort)0x00)] //ST(0) -0, ST(1) -infinity
+        [InlineData((ushort)0x8000, 0x0000000000000000UL, (ushort)0x0000, 0x4000000000000000UL, (ushort)0xFFFF, 0x8000000000000000UL, (ushort)0x04)] //ST(0) -0, ST(1) a denormal
+        public void FYL2X_ZeroST0(ushort ST0SignExponent, ulong ST0Significand, ushort ST1SignExponent,
+            ulong ST1Significand, ushort expectedSignExponent, ulong expectedSignificand, ushort expectedExceptions)
+        {
+            Reset();
+
+            mbbsEmuCpuRegisters.Fpu.SetStackTop(1);
+            mbbsEmuCpuCore.FpuStack[1] = new Float80(ST0SignExponent, ST0Significand); //ST0
+            mbbsEmuCpuCore.FpuStack[0] = new Float80(ST1SignExponent, ST1Significand); //ST1
+            mbbsEmuCpuRegisters.Fpu.SetFlag(EnumFpuStatusFlags.Code1);
+
+            var instructions = new Assembler(16);
+            instructions.fyl2x();
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(new Float80(expectedSignExponent, expectedSignificand),
+                mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
+            Assert.Equal(expectedExceptions, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
+            Assert.False(mbbsEmuCpuRegisters.Fpu.StatusWord.IsFlagSet((ushort)EnumFpuStatusFlags.Code1));
         }
     }
 }

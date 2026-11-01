@@ -4104,9 +4104,14 @@ namespace MBBSEmu.CPU
         ///
         ///     Computed through double precision (Math.Atan2) on the operands rounded to double: the result may differ
         ///     from a 387's in the last bits. Both operands are first scaled by the same power of two (FSCALE: exact,
-        ///     and a zero, an infinity or a NaN stays as it is), so that finite values outside double's range keep
+        ///     and a zero or an infinity stays as it is), so that finite values outside double's range keep
         ///     their ratio. A positive ST(0) more than 2^40 times ST(1) gives the quotient ST(1) / ST(0), as a 387
-        ///     does, rounded once in extended precision to the rounding control (a double may not hold it).
+        ///     does, rounded once in extended precision to the rounding control (a double may not hold it), with PE
+        ///     unless ST(1) is zero and UE when it is a denormal. A denormal operand raises DE.
+        ///
+        ///     A NaN operand gives the NaN, made quiet (IE only if it was signalling; of two NaNs, the one with the
+        ///     larger significand), and an unsupported encoding gives the real indefinite (IE), as in two-operand
+        ///     arithmetic.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fpatan()
@@ -4114,33 +4119,44 @@ namespace MBBSEmu.CPU
             var ST0 = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1 = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
-            //atan(ST(1) / ST(0)) is the quotient itself once the exponents differ by more than 40; like the other
-            //transcendentals it ignores the precision control
-            if (!ST0.IsNegative && (ST0.SignExponent & 0x7FFF) < 0x7FFF &&
-                (ST0.SignExponent & 0x7FFF) - (ST1.SignExponent & 0x7FFF) > 40)
+            //A NaN or an unsupported operand gives what two-operand arithmetic gives: the quiet NaN of the larger
+            //significand (IE if one was signalling), or the real indefinite (IE) for an unsupported encoding
+            if (ST0.IsNaN || ST1.IsNaN || ST0.IsUnsupported || ST1.IsUnsupported)
             {
-                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Divide(ST1, ST0,
-                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Multiply(ST1, ST0,
+                    Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
                 Registers.Fpu.PopStackTop();
                 return;
             }
 
-            var largestExponent = Math.Max(ST0.IsInfinity || ST0.IsNaN ? 0 : ST0.SignExponent & 0x7FFF,
-                ST1.IsInfinity || ST1.IsNaN ? 0 : ST1.SignExponent & 0x7FFF);
+            //A denormal operand raises DE, whatever the other one is
+            if (ST0.IsDenormal || ST1.IsDenormal)
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.DenormalizedOperandException);
+
+            //atan(ST(1) / ST(0)) is the quotient itself once the exponents differ by more than 40; like the other
+            //transcendentals it ignores the precision control. The arctangent is never exact: PE, and UE for a
+            //denormal, even where the quotient is exact
+            if (!ST0.IsNegative && (ST0.SignExponent & 0x7FFF) < 0x7FFF &&
+                (ST0.SignExponent & 0x7FFF) - (ST1.SignExponent & 0x7FFF) > 40)
+            {
+                var quotient = Float80.Divide(ST1, ST0, (ushort)(Registers.Fpu.ControlWord | 0x0300),
+                    ref Registers.Fpu.StatusWord);
+                if (!ST1.IsZero)
+                    Registers.Fpu.SetFlag(quotient.IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = quotient;
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            var largestExponent = Math.Max(ST0.IsInfinity ? 0 : ST0.SignExponent & 0x7FFF,
+                ST1.IsInfinity ? 0 : ST1.SignExponent & 0x7FFF);
             var scale = Float80.FromInt64(0x3FFF - largestExponent);
             ushort scaleStatusWord = 0;
             var ST0x = (double)Float80.Scale(ST0, scale, Registers.Fpu.ControlWord, ref scaleStatusWord);
             var ST1y = (double)Float80.Scale(ST1, scale, Registers.Fpu.ControlWord, ref scaleStatusWord);
-            var result = (ST0x, ST1y)
-            switch
-            {
-                (double.NaN, double.NaN) => double.NaN,
-                var (x, y) when double.IsNaN(x) && y >= double.NegativeInfinity && y <= double.PositiveInfinity => double.NaN,
-                var (x, y) when double.IsNaN(x) && y >= -0 && y <= 0 => double.NaN,
-                var (x, y) when double.IsPositiveInfinity(x) && double.IsNaN(y) => double.NaN,
-                var (x, y) when double.IsNegativeInfinity(x) && double.IsNaN(y) => double.NaN,
-                _ => Math.Atan2(ST1y, ST0x)
-            };
+            var result = Math.Atan2(ST1y, ST0x);
 
             //TODO C1 Set to 0 if stack underflow occurred. Set if result was rounded up; cleared otherwise. C0, C2, C3 Undefined.
 
@@ -4508,19 +4524,51 @@ namespace MBBSEmu.CPU
         ///     Floating Point Sine (x87)
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives ST(0) itself, normalized, with PE unless it is zero,
+        ///     as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE), C1 and C2 are cleared.
+        ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
+        ///     (IE), C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsin()
         {
             var top = Registers.Fpu.GetStackTop();
+
+            //A NaN is made quiet (IE if it was signalling) and an unsupported encoding gives the real indefinite (IE):
+            //what ST(0) * 1 gives, with C1 cleared
+            if (FpuStack[top].IsNaN || FpuStack[top].IsUnsupported)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One, Registers.Fpu.ControlWord,
+                    ref Registers.Fpu.StatusWord);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //|ST(0)| < 2^-68, zeros and denormals too: the sine is ST(0) itself, normalized (DE for a denormal),
+            //with PE unless it is zero and UE when it is a denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(FpuStack[top].IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 return;
             }
 
@@ -4535,8 +4583,6 @@ namespace MBBSEmu.CPU
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                     return;
-                case double.NaN:
-                    return;
             }
 
             FpuStack[top] = Math.Sin(valueToSin);
@@ -4547,19 +4593,50 @@ namespace MBBSEmu.CPU
         ///     Floating Point Cosine (x87)
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives 1, with PE unless ST(0) is zero, as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) becomes the real indefinite (IE), C1 and C2 are cleared.
+        ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
+        ///     (IE), C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fcos()
         {
             var top = Registers.Fpu.GetStackTop();
+
+            //A NaN is made quiet (IE if it was signalling) and an unsupported encoding gives the real indefinite (IE):
+            //what ST(0) * 1 gives, with C1 cleared
+            if (FpuStack[top].IsNaN || FpuStack[top].IsUnsupported)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One, Registers.Fpu.ControlWord,
+                    ref Registers.Fpu.StatusWord);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //|ST(0)| < 2^-68, zeros and denormals too: the cosine is 1, with PE unless ST(0) is zero and DE for a
+            //denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                if (FpuStack[top].IsDenormal)
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.DenormalizedOperandException);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.PrecisionException);
+                FpuStack[top] = Float80.One;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 return;
             }
 
@@ -4573,8 +4650,6 @@ namespace MBBSEmu.CPU
                     Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                    return;
-                case double.NaN:
                     return;
             }
 
@@ -4870,20 +4945,56 @@ namespace MBBSEmu.CPU
         ///     Computes both the sine and the cosine of ST(0), stores the sine in ST(0), and pushes the cosine onto the register stack.
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives ST(0) itself, normalized, and a pushed 1, with PE
+        ///     unless ST(0) is zero, as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE),
         ///     and C1 and C2 are cleared.
+        ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
+        ///     (IE), in ST(0) and pushed again; C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fsincos()
         {
             var top = Registers.Fpu.GetStackTop();
+
+            //A NaN is made quiet (IE if it was signalling) and an unsupported encoding gives the real indefinite (IE):
+            //what ST(0) * 1 gives, with C1 cleared
+            if (FpuStack[top].IsNaN || FpuStack[top].IsUnsupported)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One, Registers.Fpu.ControlWord,
+                    ref Registers.Fpu.StatusWord);
+                Registers.Fpu.PushStackTop();
+                FpuStack[Registers.Fpu.GetStackTop()] = FpuStack[top];
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //|ST(0)| < 2^-68, zeros and denormals too: the sine is ST(0) itself, normalized (DE for a denormal),
+            //with PE unless it is zero and UE when it is a denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(FpuStack[top].IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                Registers.Fpu.PushStackTop();
+                FpuStack[Registers.Fpu.GetStackTop()] = Float80.One;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 return;
             }
 
@@ -4899,8 +5010,6 @@ namespace MBBSEmu.CPU
                     Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                    return;
-                case double.NaN:
                     return;
             }
 
@@ -4946,25 +5055,59 @@ namespace MBBSEmu.CPU
         ///
         ///     Computes 2^ST(0) - 1 and stores the result in ST(0). Valid for ST(0) in the range [-1, 1].
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
+        ///     (IE), C1 cleared.
+        ///
+        ///     Computed as ST(0) * (u - 1) / log2(u), with u = 2^ST(0) rounded to double and the logarithm through
+        ///     double precision (Math): u - 1 is exact, so the rounding of u cancels out and a small ST(0) keeps its
+        ///     precision (u == 1: the factor is ln(2)); the result may differ from a 387's in the last bits. The
+        ///     product is rounded in extended precision to the rounding control, so a denormal ST(0) raises DE, and UE
+        ///     and PE as its result needs them. Outside the range the result is still 2^ST(0) - 1: -1 for -infinity,
+        ///     +infinity for +infinity.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_F2xm1()
         {
             var top = Registers.Fpu.GetStackTop();
-            FpuStack[top] = Math.Pow(2, (double)FpuStack[top]) - 1;
+
+            //A NaN is made quiet (IE if it was signalling) and an unsupported encoding gives the real indefinite (IE):
+            //what ST(0) * 1 gives, with C1 cleared
+            if (FpuStack[top].IsNaN || FpuStack[top].IsUnsupported)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One, Registers.Fpu.ControlWord,
+                    ref Registers.Fpu.StatusWord);
+                return;
+            }
+
+            var x = FpuStack[top];
+            var u = Math.Pow(2, (double)x);
+            if (u == 0 || double.IsPositiveInfinity(u))
+            {
+                //ST(0) infinite or far outside the instruction's range: -1 or +infinity
+                FpuStack[top] = u - 1;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //2^x - 1 as x * (u - 1) / log2(u), with u = 2^x rounded to double: u - 1 is exact, so the rounding of u
+            //cancels out and a small ST(0) keeps its precision (u == 1: the factor is ln(2)); like the other
+            //transcendentals it ignores the precision control
+            FpuStack[top] = Float80.Multiply(x, u == 1 ? Float80.LnTwo(0x037F) : (u - 1) / Math.Log2(u),
+                (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
         }
 
         /// <summary>
         ///     Floating Point Operation (x87)
         ///
         ///     Computes (ST(1) * log2(ST(0))), stores the result in ST(1), and pops the FPU register stack.
-        ///     ST(0) must be positive and neither operand may be NaN; per the x87 spec, a negative or NaN
-        ///     ST(0)/ST(1), or an indeterminate 0 * Infinity combination, is an invalid operation and yields
-        ///     a NaN result (the stack still pops).
+        ///     A NaN operand gives the NaN, made quiet (IE only if it was signalling; of two NaNs, the one with the
+        ///     larger significand), and an unsupported encoding gives the real indefinite (IE), as in two-operand
+        ///     arithmetic. A negative ST(0), or the indeterminate 0 * infinity, is an invalid operation and gives the
+        ///     real indefinite (IE). The stack pops either way.
         ///
-        ///     log2(ST(0)) is its exponent plus log2 of its significand (FXTRACT; a zero raises ZE), the logarithm of
+        ///     A zero ST(0) gives the infinity of ST(1)'s opposite sign, with ZE unless ST(1) is infinite.
+        ///
+        ///     log2(ST(0)) is its exponent plus log2 of its significand (FXTRACT), the logarithm of
         ///     the significand computed through double precision (Math): the result may differ from a 387's in the
         ///     last bits. For ST(0) in [0.5, 2) it is log2(1 + d) with d = ST(0) - 1, which is exact, so that a value
         ///     next to 1 keeps the digits a double would round away. The product with ST(1) is rounded once in
@@ -4978,11 +5121,33 @@ namespace MBBSEmu.CPU
             var ST0x = FpuStack[Registers.Fpu.GetStackTop()];
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
 
-            if (ST0x.IsNaN || ST1y.IsNaN || (ST0x.IsNegative && !ST0x.IsZero) ||
-                (ST0x.IsZero && ST1y.IsZero) || (ST0x.IsInfinity && ST1y.IsZero))
+            //A NaN or an unsupported operand gives what two-operand arithmetic gives: the quiet NaN of the larger
+            //significand (IE if one was signalling), or the real indefinite (IE) for an unsupported encoding
+            if (ST0x.IsNaN || ST1y.IsNaN || ST0x.IsUnsupported || ST1y.IsUnsupported)
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Multiply(ST1y, ST0x,
+                    Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            if ((ST0x.IsNegative && !ST0x.IsZero) || (ST0x.IsZero && ST1y.IsZero) || (ST0x.IsInfinity && ST1y.IsZero))
             {
                 FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Indefinite;
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            //A zero ST(0): log2 is -infinity, so the result is the infinity of ST(1)'s opposite sign, with ZE unless
+            //ST(1) is itself infinite and no DE for a denormal ST(1), as a 387 gives it
+            if (ST0x.IsZero)
+            {
+                if (!ST1y.IsInfinity)
+                    Registers.Fpu.SetFlag(EnumFpuStatusFlags.ZeroDivideException);
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                    ST1y.IsNegative ? Float80.PositiveInfinity : Float80.NegativeInfinity;
                 Registers.Fpu.PopStackTop();
                 return;
             }
@@ -5020,8 +5185,8 @@ namespace MBBSEmu.CPU
         ///     Floating Point Operation (x87)
         ///
         ///     Computes (ST(1) * log2(ST(0) + 1.0)), stores the result in ST(1), and pops the FPU register stack.
-        ///     Same invalid-operation guards as FYL2X, applied to (ST(0) + 1.0) since that is the value being
-        ///     passed to log2.
+        ///     NaN and unsupported operands as FYL2X; the invalid operations are those of FYL2X, applied to
+        ///     (ST(0) + 1.0) since that is the value being passed to log2.
         ///
         ///     log2(ST(0) + 1.0) is computed as ST(0) * log2(u) / (u - 1), with u = ST(0) + 1.0 rounded to double and
         ///     the logarithm through double precision (Math): u - 1 is exact, so the rounding of u cancels out and a
@@ -5029,7 +5194,8 @@ namespace MBBSEmu.CPU
         ///     the last bits. The products with ST(0) and ST(1) are rounded in extended precision to the rounding
         ///     control (like a 387, the transcendentals ignore the precision control), so ST(1) is not limited to
         ///     double's range. A zero or infinite ST(1) takes only the logarithm's sign, so its result is exact and
-        ///     raises no precision exception.
+        ///     raises no precision exception. For a denormal ST(0) the products work on ST(0) * 2^64 and the result
+        ///     is scaled back, so that it is rounded to a denormal only once.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fyl2xp1()
@@ -5039,8 +5205,17 @@ namespace MBBSEmu.CPU
             var ST1y = FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)];
             var argument = ST0x + 1.0;
 
-            if (double.IsNaN(ST0x) || ST1y.IsNaN || argument < 0 ||
-                (argument == 0 && ST1y.IsZero) || (double.IsPositiveInfinity(argument) && ST1y.IsZero))
+            //A NaN or an unsupported operand gives what two-operand arithmetic gives: the quiet NaN of the larger
+            //significand (IE if one was signalling), or the real indefinite (IE) for an unsupported encoding
+            if (ST0.IsNaN || ST1y.IsNaN || ST0.IsUnsupported || ST1y.IsUnsupported)
+            {
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Multiply(ST1y, ST0,
+                    Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
+
+            if (argument < 0 || (argument == 0 && ST1y.IsZero) || (double.IsPositiveInfinity(argument) && ST1y.IsZero))
             {
                 FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Indefinite;
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
@@ -5050,6 +5225,21 @@ namespace MBBSEmu.CPU
 
             //Extended precision whatever the precision control, rounded to the rounding control
             var controlWord = (ushort)(Registers.Fpu.ControlWord | 0x0300);
+
+            //A denormal ST(0): log2(1 + ST(0)) is ST(0) * log2(e), but a product rounded to a denormal before the end
+            //keeps only a denormal's few bits, so both products work on ST(0) * 2^64 (exact, a normal number; DE) and
+            //the result is scaled back, rounded once (the products cannot overflow: ST(0) < 2^-16382)
+            if (ST0.IsDenormal && !ST1y.IsZero && !ST1y.IsInfinity)
+            {
+                var scaled = Float80.Scale(ST0, Float80.FromInt64(64), controlWord, ref Registers.Fpu.StatusWord);
+                var product = Float80.Multiply(
+                    Float80.Multiply(ST1y, scaled, controlWord, ref Registers.Fpu.StatusWord), Float80.Log2E(0x037F),
+                    controlWord, ref Registers.Fpu.StatusWord);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] =
+                    Float80.Scale(product, Float80.FromInt64(-64), controlWord, ref Registers.Fpu.StatusWord);
+                Registers.Fpu.PopStackTop();
+                return;
+            }
 
             //A zero or infinite ST(1) needs only the sign of log2(u), which is ST(0)'s (zero for a zero ST(0)). An
             //infinite u (ST(0) = +infinity, outside the instruction's range) gives log2(u) itself: +infinity
@@ -5072,20 +5262,56 @@ namespace MBBSEmu.CPU
         ///     Computes the tangent of ST(0), stores the result in ST(0), and pushes a 1.0 onto the register stack.
         ///
         ///     |ST(0)| >= 2^63 is outside the range the instruction reduces: C2 set, C1 cleared, ST(0) unchanged.
+        ///     |ST(0)| < 2^-68 (zeros and denormals too) gives ST(0) itself, normalized, and a pushed 1, with PE
+        ///     unless ST(0) is zero, as a 387 does.
         ///     An infinite ST(0) is an invalid operand: ST(0) and the pushed value become the real indefinite (IE),
         ///     and C1 and C2 are cleared.
+        ///     A NaN is made quiet (IE only if it was signalling) and an unsupported encoding gives the real indefinite
+        ///     (IE), in ST(0) and pushed again; C1 and C2 cleared.
         ///
-        ///     Computed through double precision (Math) on ST(0) rounded to double: the result may differ from a 387's
-        ///     in the last bits.
+        ///     Computed through double precision (Math) on ST(0) rounded to double (53 bits), so the result agrees with
+        ///     a 387's to about 52 bits only where it does not magnify that rounding. From |ST(0)| = 2 on, the
+        ///     reduction by pi does (as few as 43 correct bits up to 2^13, where a 387 keeps 58), and next to a zero
+        ///     of the cosine or a pole of the tangent (ST(0) near pi/2) the result can lose every bit, even its sign.
+        ///     From 2^13 on, the 387's own reduction (pi to 66 bits) departs from the exact value as well.
         /// </summary>
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Fptan()
         {
             var top = Registers.Fpu.GetStackTop();
+
+            //A NaN is made quiet (IE if it was signalling) and an unsupported encoding gives the real indefinite (IE):
+            //what ST(0) * 1 gives, with C1 cleared
+            if (FpuStack[top].IsNaN || FpuStack[top].IsUnsupported)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One, Registers.Fpu.ControlWord,
+                    ref Registers.Fpu.StatusWord);
+                Registers.Fpu.PushStackTop();
+                FpuStack[Registers.Fpu.GetStackTop()] = FpuStack[top];
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
+                return;
+            }
+
             if ((FpuStack[top].SignExponent & 0x7FFF) is >= 0x3FFF + 63 and < 0x7FFF)
             {
                 Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
                 Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
+                return;
+            }
+
+            //|ST(0)| < 2^-68, zeros and denormals too: the tangent is ST(0) itself, normalized (DE for a denormal),
+            //with PE unless it is zero and UE when it is a denormal, as a 387 gives it
+            if ((FpuStack[top].SignExponent & 0x7FFF) < 0x3FBB)
+            {
+                FpuStack[top] = Float80.Multiply(FpuStack[top], Float80.One,
+                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                if (!FpuStack[top].IsZero)
+                    Registers.Fpu.SetFlag(FpuStack[top].IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                Registers.Fpu.PushStackTop();
+                FpuStack[Registers.Fpu.GetStackTop()] = Float80.One;
+                Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
                 return;
             }
 
@@ -5101,8 +5327,6 @@ namespace MBBSEmu.CPU
                     Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code1);
                     Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code2);
-                    return;
-                case double.NaN:
                     return;
             }
 
