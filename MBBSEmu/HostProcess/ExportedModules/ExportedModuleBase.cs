@@ -11,7 +11,6 @@ using MBBSEmu.TextVariables;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
-using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -23,29 +22,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
     /// </summary>
     public abstract class ExportedModuleBase : IDisposable
     {
-        /// <summary>
-        ///     The return value from the GetLeadingNumberFromString methods
-        /// </summary>
-        protected class LeadingNumberFromStringResult
-        {
-            /// <summary>Whether the integer parsing succeeded</summary>
-            public bool Valid { get; set; }
-            /// <summary>The integer valued parsed. Only valid is Valid is true, otherwise 0.</summary>
-            public int Value { get; set; }
-            /// <summary>The raw string that was parsed.</summary>
-            public string StringValue { get; set; }
-            /// <summary>True to indicate there is more input following what was parsed</summary>
-            public bool MoreInput { get; set; }
-
-            public LeadingNumberFromStringResult()
-            {
-                Valid = false;
-                Value = 0;
-                StringValue = "";
-                MoreInput = false;
-            }
-        }
-
         public const ushort OUTBUF_SIZE = 8192;
 
         /// <summary>
@@ -540,14 +516,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             return result.ToArray();
         }
 
-        protected enum CharacterAccepterResponse
-        {
-            ABORT,
-            SKIP,
-            ACCEPT,
-        }
-        protected delegate CharacterAccepterResponse CharacterAccepter(char c);
-
         /// <summary>
         ///     Consumes all whitespace from input and moves to the first non-whitespace character.
         /// </summary>
@@ -565,97 +533,6 @@ namespace MBBSEmu.HostProcess.ExportedModules
             } while (input.MoveNext());
 
             return (false, count);
-        }
-
-        /// <summary>
-        ///     Reads a string from input, validating against accepter. Skips beginning whitespace.
-        /// </summary>
-        /// <return>The string, and a boolean indicating whether there is more input to be read.</return>
-        protected (string, bool) ReadString(IEnumerator<char> input, CharacterAccepter accepter)
-        {
-            var builder = new StringBuilder();
-
-            var (moreInput, _) = ConsumeWhitespace(input);
-            if (!moreInput)
-                return ("", false);
-
-            do
-            {
-                if (char.IsWhiteSpace(input.Current))
-                    return (builder.ToString(), true);
-
-                var response = accepter(input.Current);
-                if (response == CharacterAccepterResponse.ABORT)
-                    return (builder.ToString(), true);
-
-                if (response == CharacterAccepterResponse.ACCEPT)
-                    builder.Append(input.Current);
-            } while (input.MoveNext());
-
-            // end of input
-            return (builder.ToString(), false);
-        }
-
-        /// <summary>
-        ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
-        ///     where a string "123test" should be converted to 123.
-        ///
-        ///     This method extracts the valid number (if any) from the given string
-        /// </summary>
-        /// <param name="input">Input IEnumerator, assumes MoveNext has already been called</param>
-        /// <param name="numberBase">Number base, e.g. base-10, base-16 (hex), etc.
-        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
-        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(IEnumerator<char> input, int numberBase, int maxCharactersToRead)
-        {
-            Contract.Requires(numberBase == 10 || numberBase == 16);
-
-            var result = new LeadingNumberFromStringResult();
-            var count = 0;
-
-            (result.StringValue, result.MoreInput) = ReadString(input, c =>
-            {
-                if (maxCharactersToRead >= 0 && count >= maxCharactersToRead)
-                    return CharacterAccepterResponse.ABORT;
-
-                if (count >= 11)
-                    return CharacterAccepterResponse.ABORT;
-
-                var first = (count == 0);
-                if (first && c == '+')
-                    return CharacterAccepterResponse.SKIP;
-                if (first && c == '-')
-                    return CharacterAccepterResponse.ACCEPT;
-                if (char.IsDigit(c) || (numberBase == 16 && char.IsAsciiHexDigit(c)))
-                {
-                    ++count;
-                    return CharacterAccepterResponse.ACCEPT;
-                }
-
-                return CharacterAccepterResponse.ABORT;
-            });
-
-            var numberStyle = numberBase == 16 ? NumberStyles.AllowHexSpecifier : NumberStyles.AllowLeadingSign;
-            result.Valid = int.TryParse(result.StringValue, numberStyle, null, out var value);
-            if (result.Valid)
-                result.Value = value;
-
-            return result;
-        }
-
-        /// <summary>
-        ///     Many C++ methods such as ATOL(), SSCANF(), etc. are real forgiving in their parsing of strings to numbers,
-        ///     where a string "123test" should be converted to 123.
-        ///
-        ///     This method extracts the valid number (if any) from the given string
-        /// </summary>
-        /// <param name="inputString">Input string containers integer values</param>
-        /// <param name="numberBase">Number base, e.g. base-10, base-16 (hex), etc.
-        /// <param name="maxCharactersToRead">The maximum numbers of characters to parse as a string, or -1 for no limit</param>
-        /// <returns></returns>
-        private protected LeadingNumberFromStringResult GetLeadingNumberFromString(string inputString, int numberBase, int maxCharactersToRead)
-        {
-            var enumerator = inputString.GetEnumerator();
-            return enumerator.MoveNext() ? GetLeadingNumberFromString(enumerator, numberBase, maxCharactersToRead) : new LeadingNumberFromStringResult();
         }
 
         /// <summary>

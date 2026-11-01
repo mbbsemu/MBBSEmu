@@ -54,6 +54,8 @@
     <EmbeddedResource Include="Assets\Module_Single_NoPatch.json" />
     <EmbeddedResource Include="Assets\Module_Single_Patch.json" />
     <EmbeddedResource Include="Assets\IntegrationTest.msg" />
+    <EmbeddedResource Include="Assets\x87\borland30_coprocessor.txt.br" />
+    <EmbeddedResource Include="Assets\x87\x87_coprocessor_cases.txt.br" />
   </ItemGroup>
 
   <ItemGroup>

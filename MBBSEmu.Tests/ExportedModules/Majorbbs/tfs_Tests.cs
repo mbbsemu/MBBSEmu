@@ -248,5 +248,66 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
 
             tfsabt();
         }
+
+        /// <summary>
+        ///     tfspfx() on a line in tfsbuf: the return value and where tfspst points afterwards (an offset into tfsbuf,
+        ///     -1 for NULL). Expected values are those of the original kernels' TFSPFX on the same line and prefix (The
+        ///     Major BBS 6.x and Worldgroup MAJORBBS.EXE give identical results): the prefix ignores the case of ASCII
+        ///     letters only, and only spaces are skipped after it.
+        /// </summary>
+        [Theory]
+        [InlineData("Module Name: X", "module name:", 1, 13)]
+        [InlineData("module name: X", "MODULE NAME:", 1, 13)]
+        [InlineData("ABC\tW", "ABC", 1, 3)]
+        [InlineData("ABC  W", "ABC", 1, 5)]
+        [InlineData("ABC", "ABC", 0, 3)]
+        [InlineData("ABC   ", "ABC", 0, 6)]
+        [InlineData("ABD", "ABC", 0, -1)]
+        [InlineData("AB", "ABC", 0, -1)]
+        [InlineData("abc W", "ABC", 1, 4)]
+        [InlineData("ABCW", "ABC", 1, 3)]
+        [InlineData("", "", 0, 0)]
+        [InlineData("X", "", 1, 0)]
+        [InlineData("  X", "", 1, 2)]
+        [InlineData("ABC W  ", "ABC", 1, 4)]
+        [InlineData("ABC W\t", "ABC", 1, 4)]
+        [InlineData("ABC \tW", "ABC", 1, 4)]
+        [InlineData("ABC\t", "ABC", 1, 3)]
+        [InlineData("ABC\nW", "ABC", 1, 3)]
+        [InlineData("ABC\rW", "ABC", 1, 3)]
+        [InlineData("ABC\vW", "ABC", 1, 3)]
+        [InlineData("ABC\fW", "ABC", 1, 3)]
+        [InlineData("\u00E9X Y", "\u00E9X", 1, 3)]
+        [InlineData("\u00C9X Y", "\u00E9x", 0, -1)]
+        [InlineData("\u00E9X Y", "\u00C9x", 0, -1)]
+        [InlineData("[X] Y", "{x}", 0, -1)]
+        [InlineData("{X} Y", "[x]", 0, -1)]
+        [InlineData("@X Y", "`x", 0, -1)]
+        [InlineData("^X Y", "~x", 0, -1)]
+        [InlineData("_X Y", "\u007Fx", 0, -1)]
+        [InlineData("A Y", "a", 1, 2)]
+        [InlineData("Z Y", "z", 1, 2)]
+        [InlineData("1 Y", "1", 1, 2)]
+        [InlineData("\u00C9X Y", "\u00E9X", 0, -1)]
+        [InlineData("\u00E9X Y", "?X", 0, -1)]
+        public void tfspfx_MatchesKernel(string line, string prefix, int expectedResult, int expectedOffset)
+        {
+            Reset();
+
+            var tfsbufPointer = GetOrdinalAddress(HostProcess.ExportedModules.Majorbbs.Segment, TFSBUF_ORDINAL);
+            mbbsEmuMemoryCore.SetArray(tfsbufPointer, Encoding.Latin1.GetBytes(line + "\0"));
+            var prefixPointer = mbbsEmuMemoryCore.Malloc((ushort)(prefix.Length + 1));
+            mbbsEmuMemoryCore.SetArray(prefixPointer, Encoding.Latin1.GetBytes(prefix + "\0"));
+
+            ExecuteApiTest(HostProcess.ExportedModules.Majorbbs.Segment, TFSPFX_ORDINAL, new List<FarPtr>() { prefixPointer });
+
+            mbbsEmuMemoryCore.Free(prefixPointer);
+            mbbsEmuCpuRegisters.AX.Should().Be((ushort)expectedResult);
+            var tfspstPointer = mbbsEmuMemoryCore.GetPointer(GetOrdinalAddress(HostProcess.ExportedModules.Majorbbs.Segment, TFSPST_ORDINAL));
+            if (expectedOffset < 0)
+                tfspstPointer.Should().Be(FarPtr.Empty);
+            else
+                tfspstPointer.Should().Be(tfsbufPointer + expectedOffset);
+        }
     }
 }
