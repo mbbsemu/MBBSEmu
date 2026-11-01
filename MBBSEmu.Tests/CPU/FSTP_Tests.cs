@@ -1,4 +1,5 @@
 ﻿using Iced.Intel;
+using MBBSEmu.CPU;
 using System;
 using System.Collections.Generic;
 using Xunit;
@@ -102,6 +103,40 @@ namespace MBBSEmu.Tests.CPU
 
             Assert.Equal(expectedTbyteValue, mbbsEmuMemoryCore.GetArray(2, 0, 10));
             Assert.Equal(7, mbbsEmuCpuRegisters.Fpu.GetStackTop());
+        }
+
+        /// <summary>
+        ///     FLD m80 and FSTP m80 copy all 80 bits, whatever they encode: a 64-bit significand, a signalling NaN,
+        ///     an unnormal, a pseudo-denormal, a negative denormal, a pseudo-infinity, the real indefinite
+        ///     (coprocessor: each comes back unchanged, no exception)
+        /// </summary>
+        [Theory]
+        [InlineData("4000C90FDAA22168C235")]
+        [InlineData("7FFFA000000000000001")]
+        [InlineData("3FFF4000000000000000")]
+        [InlineData("00008000000000000000")]
+        [InlineData("80000000000000000001")]
+        [InlineData("7FFF0000000000000000")]
+        [InlineData("FFFFC000000000000000")]
+        public void FLD_FSTP_M80_RoundTrip(string value)
+        {
+            Reset();
+
+            var bytes = Convert.FromHexString(value);
+            Array.Reverse(bytes);
+            CreateDataSegment(bytes, 2);
+            mbbsEmuCpuRegisters.DS = 2;
+
+            var instructions = new Assembler(16);
+            instructions.fld(__tbyte_ptr[0]);
+            instructions.fstp(__tbyte_ptr[10]);
+            CreateCodeSegment(instructions);
+
+            mbbsEmuCpuCore.Tick();
+            mbbsEmuCpuCore.Tick();
+
+            Assert.Equal(bytes, mbbsEmuMemoryCore.GetArray(2, 10, 10).ToArray());
+            Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.StatusWord & 0x3F);
         }
     }
 }
