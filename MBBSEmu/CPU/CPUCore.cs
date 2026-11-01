@@ -4106,7 +4106,8 @@ namespace MBBSEmu.CPU
         ///     from a 387's in the last bits. Both operands are first scaled by the same power of two (FSCALE: exact,
         ///     and a zero or an infinity stays as it is), so that finite values outside double's range keep
         ///     their ratio. A positive ST(0) more than 2^40 times ST(1) gives the quotient ST(1) / ST(0), as a 387
-        ///     does, rounded once in extended precision to the rounding control (a double may not hold it).
+        ///     does, rounded once in extended precision to the rounding control (a double may not hold it), with PE
+        ///     unless ST(1) is zero and UE when it is a denormal. A denormal operand raises DE.
         ///
         ///     A NaN operand gives the NaN, made quiet (IE only if it was signalling; of two NaNs, the one with the
         ///     larger significand), and an unsupported encoding gives the real indefinite (IE), as in two-operand
@@ -4128,13 +4129,23 @@ namespace MBBSEmu.CPU
                 return;
             }
 
+            //A denormal operand raises DE, whatever the other one is
+            if (ST0.IsDenormal || ST1.IsDenormal)
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.DenormalizedOperandException);
+
             //atan(ST(1) / ST(0)) is the quotient itself once the exponents differ by more than 40; like the other
-            //transcendentals it ignores the precision control
+            //transcendentals it ignores the precision control. The arctangent is never exact: PE, and UE for a
+            //denormal, even where the quotient is exact
             if (!ST0.IsNegative && (ST0.SignExponent & 0x7FFF) < 0x7FFF &&
                 (ST0.SignExponent & 0x7FFF) - (ST1.SignExponent & 0x7FFF) > 40)
             {
-                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = Float80.Divide(ST1, ST0,
-                    (ushort)(Registers.Fpu.ControlWord | 0x0300), ref Registers.Fpu.StatusWord);
+                var quotient = Float80.Divide(ST1, ST0, (ushort)(Registers.Fpu.ControlWord | 0x0300),
+                    ref Registers.Fpu.StatusWord);
+                if (!ST1.IsZero)
+                    Registers.Fpu.SetFlag(quotient.IsDenormal
+                        ? EnumFpuStatusFlags.PrecisionException | EnumFpuStatusFlags.UnderflowException
+                        : EnumFpuStatusFlags.PrecisionException);
+                FpuStack[Registers.Fpu.GetStackPointer(Register.ST1)] = quotient;
                 Registers.Fpu.PopStackTop();
                 return;
             }
