@@ -4000,21 +4000,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Restore parsed input line (undoes effects of parsin())
         ///
+        ///     Like rstrin() in MAJORBBS.C, only the separators parsin() wrote (margn[0] to margn[margc-2])
+        ///     become spaces again, so anything past the end of the parsed input is left alone
+        ///
         ///     Signature: void rstrin()
         /// </summary>
         private void rstrin()
         {
-            var inputLength = Module.Memory.GetWord("INPLEN");
-            var inputPointer = Module.Memory.GetVariablePointer("INPUT");
+            var margCount = Module.Memory.GetWord("MARGC");
+            var margnPointer = Module.Memory.GetVariablePointer("MARGN");
 
-            if (inputLength == 0)
-                return;
-
-            for (var i = inputPointer.Offset; i < inputPointer.Offset + inputLength; i++)
-            {
-                if (Module.Memory.GetByte(inputPointer.Segment, i) == 0)
-                    Module.Memory.SetByte(inputPointer.Segment, i, (byte)' ');
-            }
+            for (var i = 0; i < margCount - 1; i++)
+                Module.Memory.SetByte(Module.Memory.GetPointer(margnPointer + i * FarPtr.Size), (byte)' ');
         }
 
         private ReadOnlySpan<byte> _exitbuf => new byte[] { 0x0, 0x0, 0x0, 0x0 };
@@ -4814,64 +4811,67 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <summary>
         ///     Parses the input line (null terminating each word)
         ///
+        ///     Ported from parsin() in MAJORBBS.C: the first space after each word becomes a null and INPLEN is
+        ///     set from what was parsed. Modules copy their own commands into INPUT and parsin() them, so
+        ///     the INPLEN left by an earlier (longer) input can't be used here
+        ///
         ///     Signature: void parsin()
         /// </summary>
         private void parsin()
         {
+            const int inputSize = 0xFF;
+            const int maxArguments = 0x200 / FarPtr.Size;
+
             var inputPointer = Module.Memory.GetVariablePointer("INPUT");
-            var inputLength = Module.Memory.GetWord("INPLEN");
+            var margvPointer = Module.Memory.GetVariablePointer("MARGV");
+            var margnPointer = Module.Memory.GetVariablePointer("MARGN");
+            var input = Module.Memory.GetArray(inputPointer, inputSize).ToArray();
 
-            //If Length is 0, there's nothing to process
-            if (Module.Memory.GetByte(inputPointer) == 0)
+            ushort margCount = 0;
+            var i = 0;
+            while (true)
             {
-                Module.Memory.SetWord("INPLEN", 0);
-                Module.Memory.SetWord("MARGC", 0);
-                return;
-            }
-
-            //Parse out the Input, eliminating excess spaces and separating words by null
-            var inputComponents = Encoding.ASCII.GetString(Module.Memory.GetString("INPUT"))
-                .Split(' ');
-            var parsedInput = string.Join('\0', inputComponents);
-
-            //Setup MARGV & MARGN
-            var margvPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGV"));
-            var margnPointer = new FarPtr(Module.Memory.GetVariablePointer("MARGN"));
-
-            var margCount = (ushort)inputComponents.Count(x => !string.IsNullOrEmpty(x) && x != "\0");
-
-            Module.Memory.SetPointer(margvPointer, inputPointer); //Set 1st command to start at start of input
-            margvPointer.Offset += FarPtr.Size;
-
-            for (var i = 0; i < parsedInput.Length; i++)
-            {
-                if (parsedInput[i] != 0)
-                    continue;
-
-                //Set Command End
-                var commandEndPointer = new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + i));
-                Module.Memory.SetPointer(margnPointer, commandEndPointer);
-                margnPointer.Offset += FarPtr.Size;
-
-                i++;
-
-                //Skip any white spaces after the current command
-                while (i < parsedInput.Length && parsedInput[i] == 0)
+                //Skip any spaces before the next word
+                while (i < inputSize && input[i] == ' ')
                     i++;
 
-                //Are we at the end of the INPUT? If so, we're done here.
-                if (i == parsedInput.Length)
+                if (i == inputSize || input[i] == 0 || margCount == maxArguments)
                     break;
 
-                //If not, set the next command start
-                var commandStartPointer = new FarPtr(inputPointer.Segment, (ushort)(inputPointer.Offset + i));
-                Module.Memory.SetPointer(margvPointer, commandStartPointer);
-                margvPointer.Offset += FarPtr.Size;
+                Module.Memory.SetPointer(margvPointer + margCount * FarPtr.Size, inputPointer + i);
 
+                while (i < inputSize && input[i] != ' ' && input[i] != 0)
+                    i++;
+
+                //Last word ends the input
+                if (i == inputSize || input[i] == 0)
+                {
+                    Module.Memory.SetPointer(margnPointer + margCount++ * FarPtr.Size, inputPointer + i);
+                    Module.Memory.SetWord("MARGC", margCount);
+                    Module.Memory.SetWord("INPLEN", (ushort)i);
+                    return;
+                }
+
+                Module.Memory.SetByte(inputPointer + i, 0);
+                Module.Memory.SetPointer(margnPointer + margCount++ * FarPtr.Size, inputPointer + i);
+                i++;
             }
 
-            Module.Memory.SetArray("INPUT", Encoding.ASCII.GetBytes(parsedInput));
             Module.Memory.SetWord("MARGC", margCount);
+
+            //Input ended in spaces, so clear everything after the last word
+            if (margCount != 0)
+            {
+                var inputLength = Module.Memory.GetPointer(margnPointer + (margCount - 1) * FarPtr.Size).Offset - inputPointer.Offset;
+                Module.Memory.SetWord("INPLEN", (ushort)inputLength);
+                Module.Memory.SetZero(inputPointer + inputLength, inputSize - inputLength);
+            }
+            else
+            {
+                //margv[0] is an empty string
+                Module.Memory.SetWord("INPLEN", 0);
+                Module.Memory.SetPointer(margvPointer, inputPointer + i);
+            }
         }
 
         /// <summary>
