@@ -131,7 +131,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
                 ModuleCpu.Tick();
 
             //Return Registers if we're not updating state on exit
-            if (bypassState || channelNumber == ushort.MaxValue || initialStackValues is { Count: > 0 })
+            if (bypassState || initialStackValues is { Count: > 0 })
                 return ModuleCpuRegisters;
 
             //Update Our State

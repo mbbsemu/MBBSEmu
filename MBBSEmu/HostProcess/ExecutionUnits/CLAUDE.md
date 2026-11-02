@@ -93,7 +93,7 @@ public ICpuRegisters Execute(
 
 7. **Halt detection** — when x86 code executes `RETF` and pops `CS = 0xFFFF` (the sentinel), `CpuCore` sets `Halt = true`, ending the loop
 
-8. **Sync state back** — calls `UpdateSession(channelNumber)` on the Majorbbs exported module to copy STATUS, USER records, and VDA back from module memory to the session object. Skipped for system calls (`channelNumber == ushort.MaxValue`) or bypass-state calls
+8. **Sync state back** — calls `UpdateSession(channelNumber)` on the Majorbbs exported module to copy STATUS, USER records, and VDA back from module memory to the session object. For system calls (`channelNumber == ushort.MaxValue`) it saves only the channel `curusr()` last selected, if any. Skipped for bypass-state calls
 
 9. **Return registers** — the caller reads results from `AX`, `DX:AX`, etc.
 
