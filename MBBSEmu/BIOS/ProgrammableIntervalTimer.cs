@@ -126,6 +126,10 @@ namespace MBBSEmu.BIOS
                 1 1 1 = Mode 3 (square wave generator, same as 011b)
 0            BCD/Binary mode: 0 = 16-bit binary, 1 = four-digit BCD
 */
+            //Channel 2 drives the PC speaker (Borland's sound()); there's no audio, so drop the tone divisor
+            if (channel == 0x42)
+                return;
+
             if (channel != 0x43)
                 throw new ArgumentException($"Can't write to channel {channel:X2}h");
 
