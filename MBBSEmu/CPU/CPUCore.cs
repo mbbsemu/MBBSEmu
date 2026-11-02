@@ -744,6 +744,18 @@ namespace MBBSEmu.CPU
                 case Mnemonic.Ftst:
                     Op_Ftst();
                     break;
+                case Mnemonic.Fxam:
+                    Op_Fxam();
+                    break;
+                case Mnemonic.Fimul:
+                    Op_Fimul();
+                    break;
+                case Mnemonic.Fidiv:
+                    Op_Fidiv();
+                    break;
+                case Mnemonic.Fbstp:
+                    Op_Fbstp();
+                    break;
                 case Mnemonic.Fcom:
                     Op_Fcom();
                     break;
@@ -4559,6 +4571,108 @@ namespace MBBSEmu.CPU
         private void Op_Ftst()
         {
             Float80.Compare(FpuStack[Registers.Fpu.GetStackTop()], Float80.Zero, ref Registers.Fpu.StatusWord);
+        }
+
+        /// <summary>
+        ///     Examine ST(0) (x87)
+        ///
+        ///     Sets C1 to the sign of ST(0), and C3/C2/C0 to its class. FpuStack has no tag word,
+        ///     so an empty register is reported by its value like any other.
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fxam()
+        {
+            var ST0Value = FpuStack[Registers.Fpu.GetStackTop()];
+
+            Registers.Fpu.ClearFlag(EnumFpuStatusFlags.Code0 | EnumFpuStatusFlags.Code1 | EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code3);
+
+            if (ST0Value.IsNegative)
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code1);
+
+            //An unsupported encoding leaves C3, C2 and C0 clear
+            if (ST0Value.IsUnsupported)
+                return;
+
+            if (ST0Value.IsNaN)
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code0);
+            else if (ST0Value.IsInfinity)
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2 | EnumFpuStatusFlags.Code0);
+            else if (ST0Value.IsZero)
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3);
+            else if (ST0Value.IsDenormal)
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code3 | EnumFpuStatusFlags.Code2);
+            else
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.Code2);
+        }
+
+        /// <summary>
+        ///     Integer Multiply (x87)
+        ///
+        ///     Multiplies ST(0) by a 16-bit or 32-bit signed integer in memory, rounded like FMUL
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fimul()
+        {
+            var source = Float80.FromInt64(GetOperandValueInt64(_currentInstruction.Op0Kind));
+            var top = Registers.Fpu.GetStackTop();
+            FpuStack[top] = Float80.Multiply(FpuStack[top], source, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+        }
+
+        /// <summary>
+        ///     Integer Divide (x87)
+        ///
+        ///     Divides ST(0) by a 16-bit or 32-bit signed integer in memory, rounded like FDIV
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fidiv()
+        {
+            var source = Float80.FromInt64(GetOperandValueInt64(_currentInstruction.Op0Kind));
+            var top = Registers.Fpu.GetStackTop();
+            FpuStack[top] = Float80.Divide(FpuStack[top], source, Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+        }
+
+        /// <summary>
+        ///     Store BCD Integer & Pop (x87)
+        ///
+        ///     Rounds ST(0) to an integer by the rounding control and stores it as 80-bit packed BCD: 18 digits,
+        ///     two per byte with the least significant byte first, and the sign in bit 7 of the last byte. A NaN,
+        ///     an infinity or a value of 18 digits or more stores the packed BCD indefinite and raises IE
+        /// </summary>
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Fbstp()
+        {
+            var offset = GetOperandOffset(_currentInstruction.Op0Kind);
+            var destinationSegment = Registers.GetValue(_currentInstruction.MemorySegment);
+
+            var valueFromFpu = FpuStack[Registers.Fpu.GetStackTop()];
+            var integer = valueFromFpu.ToInt64(Registers.Fpu.ControlWord, ref Registers.Fpu.StatusWord);
+            Registers.Fpu.PopStackTop();
+
+            Span<byte> bytes = stackalloc byte[10];
+
+            //ToInt64() already gave the integer indefinite and IE for a NaN, an infinity or more than 64 bits
+            if (integer == long.MinValue || Math.Abs(integer) >= 1_000_000_000_000_000_000L)
+            {
+                //Packed BCD indefinite
+                Registers.Fpu.SetFlag(EnumFpuStatusFlags.InvalidOperationException);
+                bytes[7] = 0xC0;
+                bytes[8] = 0xFF;
+                bytes[9] = 0xFF;
+                Memory.SetArray(destinationSegment, offset, bytes);
+                return;
+            }
+
+            var digits = (ulong)Math.Abs(integer);
+            for (var i = 0; i < 9; i++)
+            {
+                bytes[i] = (byte)(digits % 10 | (digits / 10 % 10) << 4);
+                digits /= 100;
+            }
+
+            if (valueFromFpu.IsNegative)
+                bytes[9] = 0x80;
+
+            Memory.SetArray(destinationSegment, offset, bytes);
         }
 
         /// <summary>
