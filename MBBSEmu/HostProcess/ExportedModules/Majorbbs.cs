@@ -71,6 +71,11 @@ namespace MBBSEmu.HostProcess.ExportedModules
         public const ushort VOLATILE_DATA_SIZE = 0x3FFF;
 
         /// <summary>
+        ///     Maximum number of global command handlers (GLBMAX in MAJORBBS.H)
+        /// </summary>
+        public const ushort GLBMAX = 50;
+
+        /// <summary>
         ///     Free memory reported to modules by coreleft()/farcoreleft(), in bytes (16MB)
         ///
         ///     Modules treat the result as a signed long, so it must stay below 0x80000000. 16MB is
@@ -229,6 +234,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             Module.Memory.AllocateVariable("NUMBYTP", sizeof(uint));
             Module.Memory.AllocateVariable("NUMDIRS", sizeof(uint));
             Module.Memory.AllocateVariable("NGLOBS", sizeof(ushort));
+            Module.Memory.AllocateVariable("GLOBS", GLBMAX * FarPtr.Size); //stays empty, MbbsHost calls global command handlers itself
+            Module.Memory.AllocateVariable("NUMCAT", sizeof(ushort));
             Module.Memory.AllocateVariable("FTG", FtgStruct.Size);
             Module.Memory.AllocateVariable("FTGPTR", FarPtr.Size);
             Module.Memory.SetPointer("FTGPTR", Module.Memory.GetVariablePointer("FTG"));
@@ -590,6 +597,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     return numdirs;
                 case 733:
                     return nglobs;
+                case 734:
+                    return globs;
+                case 717:
+                    return numcat;
                 case 304:
                     return ftgptr;
                 case 606:
@@ -1324,6 +1335,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 case 1040:
                     ul2as();
                     break;
+                case 465:
+                    paccit();
+                    break;
                 case 480:
                     profan();
                     break;
@@ -1384,6 +1398,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
                     break;
                 case 211:
                     filelength();
+                    break;
+                case 396:
+                    lseek();
                     break;
                 case 811:
                     echsec();
@@ -7042,6 +7059,20 @@ namespace MBBSEmu.HostProcess.ExportedModules
         private ReadOnlySpan<byte> nglobs => Module.Memory.GetVariablePointer("NGLOBS").Data;
 
         /// <summary>
+        ///     Array of pointers to global command handlers
+        ///
+        ///     Signature: int (*globs[GLBMAX])();
+        /// </summary>
+        private ReadOnlySpan<byte> globs => Module.Memory.GetVariablePointer("GLOBS").Data;
+
+        /// <summary>
+        ///     Number of concatenated commands so far
+        ///
+        ///     Signature: int numcat;
+        /// </summary>
+        private ReadOnlySpan<byte> numcat => Module.Memory.GetVariablePointer("NUMCAT").Data;
+
+        /// <summary>
         ///     Retrieves a C-string containing the value of the environment variable whose name is specified in the argument
         ///
         ///     Signature: char* getenv(const char* name);
@@ -8273,6 +8304,18 @@ namespace MBBSEmu.HostProcess.ExportedModules
         }
 
         /// <summary>
+        ///     Profanity check of the current input buffer, result is stored in pfnlvl
+        ///
+        ///     MBBSEmu doesn't support multiple profanity levels, so pfnlvl is always set to 0.
+        ///
+        ///     Signature:  void paccit(void);
+        /// </summary>
+        private void paccit()
+        {
+            Module.Memory.SetWord("PFNLVL", 0);
+        }
+
+        /// <summary>
         ///     Expect a YES or NO from the user
         ///
         ///     Signature: int yesno=cncyesno();
@@ -8663,6 +8706,36 @@ namespace MBBSEmu.HostProcess.ExportedModules
             if (FilePointerDictionary.TryGetValue(fileHandle, out var filePointer))
             {
                 result = filePointer.Length;
+            }
+
+            Registers.DX = (ushort)(result >> 16);
+            Registers.AX = (ushort)(result & 0xFFFF);
+        }
+
+        /// <summary>
+        ///     lseek - moves the file pointer of a file handle
+        ///
+        ///     Signature: long lseek(int handle, long offset, int fromwhere);
+        /// </summary>
+        private void lseek()
+        {
+            var fileHandle = GetParameter(0);
+            var offset = GetParameterLong(1);
+            var origin = GetParameter(3);
+            var result = -1L;
+
+            if (FilePointerDictionary.TryGetValue(fileHandle, out var fileStream) && origin <= 2)
+            {
+                var newPosition = origin switch
+                {
+                    2 => fileStream.Length + offset, //SEEK_END
+                    1 => fileStream.Position + offset, //SEEK_CUR
+                    _ => offset //SEEK_SET
+                };
+
+                // TODO set errno
+                if (newPosition >= 0)
+                    result = fileStream.Seek(newPosition, SeekOrigin.Begin);
             }
 
             Registers.DX = (ushort)(result >> 16);
