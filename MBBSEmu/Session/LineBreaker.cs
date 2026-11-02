@@ -55,9 +55,12 @@ namespace MBBSEmu.Session
         /// A mapping between lineBuffer to rawBuffer.
         ///
         /// Each index in this array (which is a printable character) maps to
-        /// the data area where the character is in rawBuffer.
+        /// the data area where the character is in rawBuffer, or NOT_IN_RAW_BUFFER
+        /// if the character was already sent or was skipped over by a cursor movement.
         /// </summary>
         private readonly int[] _lineBufferToRawBuffer = new int[MAX_LINE];
+
+        private const int NOT_IN_RAW_BUFFER = -1;
 
         /// <summary>
         /// Contains all the bytes accumulated by parsing outgoing data,
@@ -70,14 +73,25 @@ namespace MBBSEmu.Session
         private int _rawBufferLength = 0;
 
         private int _accumulator = 0;
+        /// <summary>
+        /// Whether a digit was seen since the last ';', so an empty parameter can be told apart from 0
+        /// </summary>
+        private bool _hasAccumulator = false;
         private List<int> _values = new List<int>();
+
+        /// <summary>
+        /// Column saved by ESC[s, restored by ESC[u
+        /// </summary>
+        private int _savedColumn = 0;
 
         public void Reset()
         {
             _lineBufferLength = 0;
             _rawBufferLength = 0;
             _accumulator = 0;
+            _hasAccumulator = false;
             _values.Clear();
+            _savedColumn = 0;
         }
 
         /// <summary>
@@ -94,6 +108,7 @@ namespace MBBSEmu.Session
                 {
                     case ParseState.ESCAPE when b == '[':
                         _accumulator = 0;
+                        _hasAccumulator = false;
                         _values.Clear();
                         _parseState = ParseState.BRACKET;
                         break;
@@ -102,7 +117,16 @@ namespace MBBSEmu.Session
                         break;
                     case ParseState.BRACKET when char.IsDigit((char)b):
                         _accumulator = ((char)b) - '0';
+                        _hasAccumulator = true;
                         _parseState = ParseState.VALUE_ACCUM;
+                        break;
+                    case ParseState.BRACKET when b == ';': // empty first parameter, e.g. ESC[;42H
+                        _values.Add(0);
+                        _parseState = ParseState.VALUE_ACCUM;
+                        break;
+                    case ParseState.BRACKET when isAnsiSequenceFinished((char)b): // no parameters, e.g. ESC[s
+                        processAnsiCommand((char)b);
+                        _parseState = ParseState.NORMAL;
                         break;
                     case ParseState.BRACKET: // something else? how about waiting until an ending frame
                         _parseState = ParseState.WAIT_FOR_ANSI_END;
@@ -117,13 +141,15 @@ namespace MBBSEmu.Session
                     case ParseState.VALUE_ACCUM when b == ';':
                         _values.Add(_accumulator);
                         _accumulator = 0;
+                        _hasAccumulator = false;
                         break;
                     case ParseState.VALUE_ACCUM when char.IsDigit((char)b):
                         _accumulator = 10 * _accumulator + (((char)b) - '0');
+                        _hasAccumulator = true;
                         break;
                     case ParseState.VALUE_ACCUM when isAnsiSequenceFinished((char)b):
-                        // push back last digit
-                        if (_accumulator > 0)
+                        // push back last value, or 0 for an empty one after a ';'
+                        if (_hasAccumulator || _values.Count > 0)
                         {
                             _values.Add(_accumulator);
                         }
@@ -131,6 +157,7 @@ namespace MBBSEmu.Session
                         processAnsiCommand((char)b);
 
                         _accumulator = 0;
+                        _hasAccumulator = false;
                         _values.Clear();
                         _parseState = ParseState.NORMAL;
                         break;
@@ -175,32 +202,61 @@ namespace MBBSEmu.Session
             // output our raw buffer
             SendToClientMethod(_rawBuffer.AsSpan().Slice(0, _rawBufferLength).ToArray());
             _rawBufferLength = 0;
+
+            // the rest of the current line has been sent, so a line break can no longer be inserted into it
+            for (var i = 0; i < _lineBufferLength; ++i)
+            {
+                _lineBufferToRawBuffer[i] = NOT_IN_RAW_BUFFER;
+            }
         }
+
+        /// <summary>
+        /// Moves the cursor to column (0-based) within the current line.
+        /// </summary>
+        private void moveCursorTo(int column)
+        {
+            column = Math.Clamp(column, 0, Math.Min(WordWrapWidth, MAX_LINE - 1));
+            // columns skipped over were never sent by us, so there is nothing to break at
+            for (var i = _lineBufferLength; i < column; ++i)
+            {
+                _lineBuffer[i] = 0;
+                _lineBufferToRawBuffer[i] = NOT_IN_RAW_BUFFER;
+            }
+            _lineBufferLength = column;
+        }
+
+        /// <summary>
+        /// ANSI parameter i, where a missing or 0 parameter means 1
+        /// </summary>
+        private int parameter(int i) => i < _values.Count && _values[i] > 0 ? _values[i] : 1;
 
         private void processAnsiCommand(char ansiCommand)
         {
             switch (ansiCommand)
             {
-                // H resets position to 0,0 with no arguments
-                case 'H' when _values.Count == 0:
-                    _lineBufferLength = 0;
-                    break;
-                // H/f move cursor to line/column
-                case 'H' when _values.Count == 2:
-                case 'f' when _values.Count == 2:
-                    _lineBufferLength = _values[1] - 1; // _values are line/column (1-based)
+                // H/f move cursor to line/column, both 1-based and defaulting to 1
+                case 'H':
+                case 'f':
+                    moveCursorTo(parameter(1) - 1);
                     break;
                 // move columns right
-                case 'C' when _values.Count == 1:
-                    _lineBufferLength += _values[0];
+                case 'C':
+                    moveCursorTo(_lineBufferLength + parameter(0));
                     break;
                 // move columns left
-                case 'D' when _values.Count == 1:
-                    _lineBufferLength = Math.Max(0, _lineBufferLength - _values[0]); // clamp to 0
+                case 'D':
+                    moveCursorTo(_lineBufferLength - parameter(0));
                     break;
-                // move to column
-                case 'G' when _values.Count == 1:
-                    _lineBufferLength = _values[0] - 1; // 1-based
+                // move to column, 1-based
+                case 'G':
+                    moveCursorTo(parameter(0) - 1);
+                    break;
+                // save and restore cursor position
+                case 's':
+                    _savedColumn = _lineBufferLength;
+                    break;
+                case 'u':
+                    moveCursorTo(_savedColumn);
                     break;
                 default:
                     // skip, we aren't interested in these ansi codes
@@ -224,16 +280,16 @@ namespace MBBSEmu.Session
             }
             else
             {
-                // scan for the last space to know where to break the line
+                // scan for the last space still in rawBuffer to know where to break the line
                 var lastSpaceIndex = _lineBufferLength - 1;
-                while ((lastSpaceIndex >= 0) && !char.IsWhiteSpace((char)_lineBuffer[lastSpaceIndex]))
+                while ((lastSpaceIndex >= 0) && (_lineBufferToRawBuffer[lastSpaceIndex] != NOT_IN_RAW_BUFFER) && !char.IsWhiteSpace((char)_lineBuffer[lastSpaceIndex]))
                 {
                     --lastSpaceIndex;
                 }
 
-                if (lastSpaceIndex < 0)
+                if (lastSpaceIndex < 0 || _lineBufferToRawBuffer[lastSpaceIndex] == NOT_IN_RAW_BUFFER)
                 {
-                    // no spaces = one huge line (shouldn't really happen), just break it up by inserting \r\n
+                    // no spaces we can still replace = one huge line, just break it up by inserting \r\n
                     _rawBuffer[_rawBufferLength - 1] = (byte)'\r';
                     _rawBuffer[_rawBufferLength] = (byte)'\n';
                     _rawBuffer[_rawBufferLength + 1] = b;
