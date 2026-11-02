@@ -37,6 +37,11 @@ namespace MBBSEmu.Session.Enums
         LoginRoutines,
 
         /// <summary>
+        ///     A module's Login Routine returned non-zero and is waiting for the user's input
+        /// </summary>
+        InLoginRoutine,
+
+        /// <summary>
         ///     User is at the Main Menu
         /// </summary>
         [DoGlobals]

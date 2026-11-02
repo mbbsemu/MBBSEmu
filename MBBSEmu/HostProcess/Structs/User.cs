@@ -8,6 +8,12 @@ namespace MBBSEmu.HostProcess.Structs
     /// </summary>
     public class User
     {
+        /// <summary>
+        ///     User class codes from MAJORBBS.H
+        /// </summary>
+        public const short SUPLON = 4; //supplemental logon in progress
+        public const short ACTUSR = 6; //logged on and active in a class
+
         public short UserClass
         {
             get => BitConverter.ToInt16(Data, 0);
@@ -118,7 +124,7 @@ namespace MBBSEmu.HostProcess.Structs
         {
             Data = new byte[Size];
 
-            UserClass = 6;
+            UserClass = ACTUSR;
             Minut4 = 0xA00;
             Baud = 38400;
         }
