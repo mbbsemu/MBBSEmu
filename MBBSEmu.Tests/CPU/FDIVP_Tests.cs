@@ -24,7 +24,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            var expectedValue = ST1Value / ST0Value;
+            var expectedValue = ExpectedX87(ST1Value / ST0Value);
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
         }

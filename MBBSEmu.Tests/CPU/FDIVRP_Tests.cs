@@ -25,7 +25,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            var expectedValue = ST0Value / ST1Value;
+            var expectedValue = ExpectedX87(ST0Value / ST1Value);
 
             Assert.Equal(expectedValue, mbbsEmuCpuCore.FpuStack[mbbsEmuCpuRegisters.Fpu.GetStackTop()]);
             Assert.Equal(0, mbbsEmuCpuRegisters.Fpu.GetStackTop());
@@ -50,7 +50,7 @@ namespace MBBSEmu.Tests.CPU
 
             mbbsEmuCpuCore.Tick();
 
-            var expectedValue = ST0Value / STiValue;
+            var expectedValue = ExpectedX87(ST0Value / STiValue);
 
             //FDIVRP ST(2),ST(0) leaves the result in ST(2), which the pop makes ST(1); the old ST(1) (zero here)
             //becomes ST(0) (coprocessor)
