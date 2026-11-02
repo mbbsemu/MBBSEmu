@@ -89,5 +89,12 @@ namespace MBBSEmu.Tests.CPU
             mbbsEmuMemoryCore.SetArray(segmentOrdinal, 0, data);
         }
 
+        /// <summary>
+        ///     The value a coprocessor gives for a result computed on the host: a NaN (an invalid operation such
+        ///     as 0/0) is the real indefinite, whose sign the host's NaN doesn't reliably have (it's positive on
+        ///     arm64 and negative on x64)
+        /// </summary>
+        protected static Float80 ExpectedX87(double hostResult) =>
+            double.IsNaN(hostResult) ? Float80.Indefinite : hostResult;
     }
 }
