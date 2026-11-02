@@ -295,6 +295,12 @@ namespace MBBSEmu.Session
         }
 
         /// <summary>
+        ///     Turns word wrap on at the user's screen width, as The Major BBS does when a user logs on
+        ///     (SIGNUP.C: btutsw(usrnum,usaptr->scnwid)) and when full-screen entry or the editor ends
+        /// </summary>
+        public void WrapAtScreenWidth() => WordWrapWidth = UsrAcc.scnwid;
+
+        /// <summary>
         /// Breaks buffer into lines and calls SendToClientMethod afterwards.
         /// </summary>
         /// <param name="buffer">Raw output buffer going to a client</param>

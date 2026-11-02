@@ -7649,6 +7649,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             //explicitly rather than relying on the full-screen session states.
             var templatePointer = GetParameterPointer(0);
             var channel = ChannelDictionary[ChannelNumber];
+            channel.WordWrapWidth = 0; //FSDBBS.C - no word wrap while painting and during entry, fsdcof() turns it back on
             channel.BinaryOutputMode = true;
             try
             {
@@ -9054,7 +9055,8 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var fsdAnswersPointer = Module.Memory.GetOrAllocateVariablePointer($"FSD-Answers-{ChannelNumber}", 0x800);
             Module.Memory.SetArray($"FSD-Answers-{ChannelNumber}", Encoding.ASCII.GetBytes(answersString.ToString()));
 
-            //FSDBKG
+            //FSDBKG, word wrap stays off until the editor exits (EDITFSE.C)
+            ChannelDictionary[ChannelNumber].WordWrapWidth = 0;
             ChannelDictionary[ChannelNumber].SendToClient("\x1B[0m\x1B[2J\x1B[H\x1B[0m"); //FSDBBS.C - clear screen AND cursor home
             ChannelDictionary[ChannelNumber].SendToClient(FormatNewLineCarriageReturn(template));
 

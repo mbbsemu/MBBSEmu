@@ -41,6 +41,18 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
                 answers);
         }
 
+        [Fact]
+        public void BGNEDT_TurnsWordWrapOff_Test()
+        {
+            Reset();
+
+            //EDITFSE.C: the full-screen editor runs with btutsw(usrnum,0)
+            testSessions[0].WordWrapWidth = 79;
+            ExecuteBgnedt("text");
+
+            Assert.Equal(0, testSessions[0].WordWrapWidth);
+        }
+
         private string ExecuteBgnedt(string text)
         {
             const string topic = "topic";

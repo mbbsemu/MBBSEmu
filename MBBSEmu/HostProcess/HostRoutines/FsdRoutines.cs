@@ -728,6 +728,9 @@ namespace MBBSEmu.HostProcess.HostRoutines
             session.CurrentModule.Memory.SetZero(fsdscbStruct.newans, 0x800);
             session.CurrentModule.Memory.SetArray(fsdscbStruct.newans, Encoding.ASCII.GetBytes(answersString));
 
+            //Word wrap back on before anything else is sent, as fsdcof() in FSDBBS.C's goback() and the editor's exit do
+            session.WrapAtScreenWidth();
+
             //Reset Screen for Exit
             SetCursorPosition(session, 0, 24);
             session.SendToClient("|RESET|".EncodeToANSIArray());
