@@ -299,6 +299,33 @@ namespace MBBSEmu.Tests.ExportedModules.Majorbbs
         }
 
         [Theory]
+        [InlineData(0, 5)]
+        [InlineData(5, 0)]
+        [InlineData(0, 0)]
+        public void fwrite_fread_zero_size_or_count(ushort elementSize, ushort numElements)
+        {
+            //Reset State
+            Reset();
+
+            var buffer = mbbsEmuMemoryCore.AllocateVariable(null, LOREM_IPSUM_LENGTH);
+            mbbsEmuMemoryCore.SetArray(buffer, Encoding.ASCII.GetBytes(LOREM_IPSUM));
+
+            //C: a zero size or count writes nothing and returns 0
+            var filep = fopen("FILE.TXT", "w");
+            Assert.Equal(0, fwrite(buffer, elementSize, numElements, filep));
+            Assert.Equal(0, fclose(filep));
+            Assert.Equal(0, new FileInfo(Path.Join(mbbsModule.ModulePath, "FILE.TXT")).Length);
+
+            //...and reads nothing, leaving the buffer as it was
+            CreateTextFile("READ.TXT", LOREM_IPSUM);
+            filep = fopen("READ.TXT", "r");
+            mbbsEmuMemoryCore.SetZero(buffer, LOREM_IPSUM_LENGTH);
+            Assert.Equal(0, fread(buffer, elementSize, numElements, filep));
+            Assert.Equal(0, fclose(filep));
+            Assert.All(mbbsEmuMemoryCore.GetArray(buffer, LOREM_IPSUM_LENGTH).ToArray(), b => Assert.Equal(0, b));
+        }
+
+        [Theory]
         [InlineData("a")]
         [InlineData("a+")]
         public void fopen_append_file(string mode)
