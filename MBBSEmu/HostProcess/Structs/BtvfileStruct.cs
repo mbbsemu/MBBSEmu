@@ -101,7 +101,7 @@ namespace MBBSEmu.HostProcess.Structs
             if (key >= MAX_KEYS)
                 throw new ArgumentException($"Max keys is {MAX_KEYS} but asked to set {key}.");
 
-            Array.Copy(BitConverter.GetBytes(key), 0, Data, 144 + 2 * key, 2);
+            Array.Copy(BitConverter.GetBytes(keyLength), 0, Data, 144 + 2 * key, 2);
         }
 
         public readonly byte[] Data = new byte[192];

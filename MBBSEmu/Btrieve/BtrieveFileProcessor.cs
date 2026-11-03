@@ -134,10 +134,15 @@ namespace MBBSEmu.Btrieve
             var fileFlags = BitConverter.ToUInt16(span.Slice(10, 2));
             VariableLengthRecords = (fileFlags & 0x1) != 0;
 
+            // The ACS table, when the file has one, follows the KEYSPECs, so the segment count can't
+            // come from the buffer length. Read segments until numberOfKeys logical keys are complete;
+            // every segment of a key but its last has the SegmentedKey attribute.
+            var keyCount = span[4];
+            var keysLoaded = 0;
             var segmentCount = (statData.Length - 16) / 16;
             BtrieveKey currentKey = null;
 
-            for (var i = 0; i < segmentCount; ++i)
+            for (var i = 0; i < segmentCount && keysLoaded < keyCount; ++i)
             {
                 var segment = span.Slice(16 + (i * 16), 16);
 
@@ -164,6 +169,9 @@ namespace MBBSEmu.Btrieve
                     currentKey = new BtrieveKey(keyDefinition);
                     _keys[number] = currentKey;
                 }
+
+                if (!keyDefinition.Attributes.HasFlag(EnumKeyAttributeMask.SegmentedKey))
+                    keysLoaded++;
             }
         }
 
