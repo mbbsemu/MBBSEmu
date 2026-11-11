@@ -272,8 +272,10 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="stringToParse">Format string. If NUL terminated, the result is NUL terminated as well</param>
         /// <param name="startingParameterOrdinal">Parameter ordinal of the first variable argument, or of the va_list pointer when isVsPrintf is set</param>
         /// <param name="isVsPrintf">The arguments are in the va_list pointed to by the parameter rather than on the stack</param>
+        /// <param name="suppressNullCharacters">Use Galacticomm's empty-field behavior for a zero %c</param>
         /// <returns></returns>
-        private protected ReadOnlySpan<byte> FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal, bool isVsPrintf = false)
+        private protected ReadOnlySpan<byte> FormatPrintf(ReadOnlySpan<byte> stringToParse, ushort startingParameterOrdinal, bool isVsPrintf = false,
+            bool suppressNullCharacters = false)
         {
             var firstArgument = isVsPrintf
                 ? GetParameterPointer(startingParameterOrdinal)
@@ -283,7 +285,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 new PrintfArgumentReader(Module.Memory, firstArgument, Registers.DS),
                 Module.Memory,
                 segment => Module.ProtectedMemory?.HasSegment(segment) ?? true,
-                pointer => _logger.Error($"({Module.ModuleIdentifier}) Invalid Pointer: {pointer}"));
+                pointer => _logger.Error($"({Module.ModuleIdentifier}) Invalid Pointer: {pointer}"), suppressNullCharacters);
         }
 
         private protected ReadOnlySpan<byte> StringFromArray(ReadOnlySpan<byte> inputArray, bool stripNull = false)
