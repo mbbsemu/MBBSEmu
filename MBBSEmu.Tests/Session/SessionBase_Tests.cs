@@ -4,6 +4,7 @@ using MBBSEmu.Session;
 using MBBSEmu.Session.Enums;
 using System;
 using System.Text;
+using System.Text.RegularExpressions;
 using Xunit;
 
 namespace MBBSEmu.Tests.Session
@@ -45,10 +46,11 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void longBreakWithNoWhitespaceAfterwards()
         {
+            // GSBL never cuts a word: the line runs on to the next space
             testSession.WordWrapWidth = 80;
             testSession.SendToClient("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789 testing\r\n");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("0123456789 testing");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("testing");
         }
 
         [Fact]
@@ -56,9 +58,8 @@ namespace MBBSEmu.Tests.Session
         {
             testSession.WordWrapWidth = 80;
             testSession.SendToClient("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789 testing champion agreement platitude advancement antidisestablishmentarianism\r\n");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("01234567890123456789012345678901234567890123456789012345678901234567890123456789");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("0123456789 testing champion agreement platitude advancement");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("antidisestablishmentarianism");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("testing champion agreement platitude advancement antidisestablishmentarianism");
         }
 
         [Fact]
@@ -88,9 +89,9 @@ namespace MBBSEmu.Tests.Session
         }
 
         [Theory]
-        [InlineData(4, "test one two three\r\n", "test", "one", "two", "thre", "e")]
+        [InlineData(4, "test one two three\r\n", "test", "one", "two", "three")]
         [InlineData(0, "test one two three\r\n", "test one two three")]
-        [InlineData(4, "test\r\none two three\r\n", "test", "one", "two", "thre", "e")]
+        [InlineData(4, "test\r\none two three\r\n", "test", "one", "two", "three")]
         public void edgeCasesTest(int wordWrapWidth, params string[] strings)
         {
             testSession.WordWrapWidth = wordWrapWidth;
@@ -106,23 +107,23 @@ namespace MBBSEmu.Tests.Session
         [Fact]
         public void lineSentInPiecesBreaksInLaterPiece()
         {
-            // modules often print one line with several outprf() calls; the last space is in an earlier send
+            // modules often print one line with several outprf() calls; the last space is in an
+            // earlier send, so it cannot become the break and the word is not cut either
             testSession.WordWrapWidth = 80;
             testSession.SendToClient(new string('x', 40) + " " + new string('y', 30));
-            testSession.SendToClient(new string('z', 20) + "\r\n");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('x', 40) + " " + new string('y', 30) + new string('z', 9));
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('z', 11));
+            testSession.SendToClient(new string('z', 20) + " end\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('x', 40) + " " + new string('y', 30) + new string('z', 20));
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("end");
         }
 
         [Fact]
         public void lineSentInPiecesDoesNotBreakInsideLaterPiece()
         {
-            // the space was already sent, so the break can only go before the character that overflows
+            // the space was already sent and the later piece has none, so the line runs on
             testSession.WordWrapWidth = 80;
             testSession.SendToClient("aaaa bbbb");
             testSession.SendToClient(new string('c', 80) + "\r\n");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("aaaa bbbb" + new string('c', 71));
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('c', 9));
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("aaaa bbbb" + new string('c', 80));
         }
 
         [Fact]
@@ -133,8 +134,7 @@ namespace MBBSEmu.Tests.Session
             testSession.SendToClient("one two three four\r\n");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("one two three four");
             testSession.SendToClient("\x1B[70C" + "abcdefghijklmno\r\n");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("\x1B[70C" + "abcdefghij");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("klmno");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("\x1B[70C" + "abcdefghijklmno");
         }
 
         [Fact]
@@ -160,9 +160,10 @@ namespace MBBSEmu.Tests.Session
         {
             // Trade Wars 2002 sends the spaces between words as ESC[C
             testSession.WordWrapWidth = 80;
-            testSession.SendToClient(new string('a', 70) + string.Concat(System.Linq.Enumerable.Repeat("\x1B[Cb", 6)) + "\r\n");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('a', 70) + string.Concat(System.Linq.Enumerable.Repeat("\x1B[Cb", 5)) + "\x1B[C");
-            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("b");
+            // 70 + 3 * 2 columns, then " ccc" reaches column 80; without the ESC[C columns it would not
+            testSession.SendToClient(new string('a', 70) + string.Concat(System.Linq.Enumerable.Repeat("\x1B[Cb", 3)) + " ccc\r\n");
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be(new string('a', 70) + string.Concat(System.Linq.Enumerable.Repeat("\x1B[Cb", 3)));
+            testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().Be("ccc");
         }
 
         [Fact]
@@ -196,6 +197,58 @@ namespace MBBSEmu.Tests.Session
             testSession.WordWrapWidth = 80;
             testSession.SendToClient(ansi + "abc def\r\n");
             testSession.GetLine(TimeSpan.FromMilliseconds(100)).Should().NotBeNull();
+        }
+
+        /// <summary>
+        ///     How MajorBBS 6.25's GALGSBL.DLL wrapped each text given to btuxmt() after
+        ///     btutsw(width): where it broke the lines, byte for byte. (It also follows each CR
+        ///     of the text with a LF, its line-feed setting, which is left out here.)
+        ///     {c*N} is the character c N times.
+        /// </summary>
+        [Theory]
+        [InlineData(79, "{a*70} bcdefgh next words\r", "{a*70} bcdefgh\r\nnext words\r")]
+        [InlineData(79, "{x*72} yyyyyy z\r", "{x*72}\r\nyyyyyy z\r")]
+        [InlineData(79, "{x*72} yyyyyy\r", "{x*72}\r\nyyyyyy\r")]
+        [InlineData(79, "{x*72} yyyyyy", "{x*72}\r\nyyyyyy")]
+        [InlineData(79, "{x*72} yyyyyy tail\r", "{x*72}\r\nyyyyyy tail\r")]
+        [InlineData(79, "{q*85} r\r", "{q*85}\r\nr\r")]
+        [InlineData(79, "{y*60} {z*30}\r", "{y*60}\r\n{z*30}\r")]
+        [InlineData(79, "ab {c*76}\u0007 d\r", "ab\r\n{c*76}\u0007 d\r")]
+        [InlineData(79, "ab {c*76}\u001b[1;31m d\u001b[0m\r", "ab\r\n{c*76}\u001b[1;31m d\u001b[0m\r")]
+        [InlineData(79, "You are carrying padded pants (Legs), padded gloves (Hands), club (Weapon Hand), padded boots, padded helm, padded vest\r",
+            "You are carrying padded pants (Legs), padded gloves (Hands), club (Weapon\r\nHand), padded boots, padded helm, padded vest\r")]
+        [InlineData(10, "abcd efghi", "abcd\r\nefghi")]
+        [InlineData(10, "jk lm\r", "jk lm\r")]
+        [InlineData(10, "abcde fghij\r", "abcde\r\nfghij\r")]
+        [InlineData(10, "abcde fghijk\r", "abcde\r\nfghijk\r")]
+        [InlineData(10, "abcde fghij klm nop\r", "abcde\r\nfghij klm\r\nnop\r")]
+        [InlineData(10, "a bcdefghijklmnopq rs\r", "a\r\nbcdefghijklmnopq\r\nrs\r")]
+        [InlineData(10, "abc def gh i\r", "abc def\r\ngh i\r")]
+        [InlineData(4, "test one two three\r", "test\r\none\r\ntwo\r\nthree\r")]
+        public void wrapsAsGsbl(int width, string text, string sent)
+        {
+            static string expand(string s) =>
+                Regex.Replace(s, @"\{(.)\*(\d+)\}", m => new string(m.Groups[1].Value[0], int.Parse(m.Groups[2].Value)));
+
+            var session = new TestSession(null, null) { WordWrapWidth = width };
+            session.SendToClient(expand(text));
+            Encoding.ASCII.GetString(session.DrainSentData()).Should().Be(expand(sent));
+        }
+
+        /// <summary>
+        ///     GSBL breaks a line only at a space: TAB and the CP437 letters 0x85 and 0xA0 are one
+        ///     column like any other byte and are never replaced. The review's vectors for #769;
+        ///     MajorBBS 6.25's GALGSBL.DLL sends each one unchanged after btutsw(6).
+        /// </summary>
+        [Theory]
+        [InlineData(new byte[] { 0x61, 0x62, 0xA0, 0x63, 0x64, 0x65, 0x66 })]
+        [InlineData(new byte[] { 0x61, 0x62, 0x85, 0x63, 0x64, 0x65, 0x66 })]
+        [InlineData(new byte[] { 0x61, 0x62, 0x09, 0x63, 0x64, 0x65, 0x66 })]
+        public void wrapsOnlyAtSpaceAsGsbl(byte[] text)
+        {
+            var session = new TestSession(null, null) { WordWrapWidth = 6 };
+            session.SendToClient(text);
+            session.DrainSentData().Should().Equal(text);
         }
 
         [Fact]
