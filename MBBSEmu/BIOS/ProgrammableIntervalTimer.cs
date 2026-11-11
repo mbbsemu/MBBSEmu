@@ -69,7 +69,10 @@ namespace MBBSEmu.BIOS
             var elapsed = _clock.CurrentTick;
             var fractional = elapsed - Math.Truncate(elapsed);
             var current = FREQUENCY * (1.0 - fractional);
-            return (ushort)current;
+
+            //The 16-bit counter wraps as it counts down, so truncate through int: .NET 11 saturates a double cast
+            //straight to ushort, which would pin the counter at 0xFFFF for all but the last ~55ms of each second
+            return (ushort)(int)current;
         }
 
         private byte ReadLowHighFrom(int channel, ushort value)

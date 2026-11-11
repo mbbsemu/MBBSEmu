@@ -7,7 +7,7 @@
 # ============================================================================
 # Stage 1: BUILD - Restore and compile
 # ============================================================================
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 
 ARG BUILD_VERSION=dev
 WORKDIR /src
@@ -68,8 +68,10 @@ RUN case "$TARGETARCH" in \
 
 # ============================================================================
 # Stage 4: RUNTIME - LinuxServer.io base with s6-overlay
+# Ubuntu 24.04 or newer: the native wbtrv32.so from MBBSEmu.wbtrv32 needs
+# glibc 2.38 (x64) and libstdc++ GLIBCXX_3.4.32 (arm64)
 # ============================================================================
-FROM lsiobase/ubuntu:jammy AS runtime
+FROM lsiobase/ubuntu:noble AS runtime
 
 ARG BUILD_DATE
 ARG BUILD_VERSION
@@ -84,7 +86,7 @@ ENV EMULATOR_PATH=/app
 
 # Install runtime dependencies (libicu for .NET globalization)
 RUN apt-get update && \
-    apt-get install -qy --no-install-recommends libicu70 && \
+    apt-get install -qy --no-install-recommends libicu74 && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy s6-overlay service configurations
