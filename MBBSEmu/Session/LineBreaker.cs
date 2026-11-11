@@ -5,6 +5,7 @@ namespace MBBSEmu.Session
 {
     public class LineBreaker
     {
+        public const byte BELL = 7;
         public const byte BACKSPACE = 8;
         public const byte DELETE = 127;
         public const byte ESCAPE = 0x1B;
@@ -178,6 +179,7 @@ namespace MBBSEmu.Session
                                 break;
                             case DELETE:       // ignore
                             case (byte)'\n':  // ignore
+                            case BELL:         // takes no column in GSBL
                                 break;
                             case BACKSPACE:
                                 _lineBufferLength = Math.Max(0, _lineBufferLength - 1);
@@ -185,8 +187,9 @@ namespace MBBSEmu.Session
                             default:
                                 _lineBuffer[_lineBufferLength] = b;
                                 _lineBufferToRawBuffer[_lineBufferLength++] = _rawBufferLength - 1;
-                                // overflow to the next line
-                                if (_lineBufferLength > WordWrapWidth)
+                                // GSBL limits a line to WordWrapWidth - 1 columns: one that
+                                // reaches WordWrapWidth breaks at its last space
+                                if (_lineBufferLength >= WordWrapWidth)
                                 {
                                     doLineBreak(b);
                                 }
@@ -289,16 +292,18 @@ namespace MBBSEmu.Session
 
                 if (lastSpaceIndex < 0 || _lineBufferToRawBuffer[lastSpaceIndex] == NOT_IN_RAW_BUFFER)
                 {
-                    // no spaces we can still replace = one huge line, just break it up by inserting \r\n
-                    _rawBuffer[_rawBufferLength - 1] = (byte)'\r';
-                    _rawBuffer[_rawBufferLength] = (byte)'\n';
-                    _rawBuffer[_rawBufferLength + 1] = b;
-
-                    _lineBuffer[0] = b;
-                    _lineBufferToRawBuffer[0] = _rawBufferLength + 1;
-                    _lineBufferLength = 1;
-
-                    _rawBufferLength += 2;
+                    // no space we can still replace: GSBL never cuts a word, the line runs on
+                    // until a space comes. Past MAX_LINE only the fact that the line is full
+                    // is kept: the columns already sent cannot be broken anyway.
+                    if (_lineBufferLength >= MAX_LINE)
+                    {
+                        for (var i = 0; i < WordWrapWidth; ++i)
+                        {
+                            _lineBuffer[i] = 0;
+                            _lineBufferToRawBuffer[i] = NOT_IN_RAW_BUFFER;
+                        }
+                        _lineBufferLength = WordWrapWidth;
+                    }
                 }
                 else
                 {
