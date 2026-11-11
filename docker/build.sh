@@ -5,4 +5,4 @@ docker run --rm \
   -v "$(pwd)":/src \
   -v mbbsemu-nuget:/root/.nuget \
   -w /src \
-  mcr.microsoft.com/dotnet/sdk:10.0 dotnet build "$@"
+  mcr.microsoft.com/dotnet/sdk:11.0 dotnet build "$@"
