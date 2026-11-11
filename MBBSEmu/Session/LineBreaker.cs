@@ -273,7 +273,8 @@ namespace MBBSEmu.Session
         /// <param name="b">The character following the full line</param>
         private void doLineBreak(byte b)
         {
-            if (char.IsWhiteSpace((char)b))
+            // GSBL breaks only at a space: TAB, 0x85 and 0xA0 are one column like any other byte
+            if (b == (byte)' ')
             {
                 // erase the space from the raw buffer and replace with \r\n
                 _rawBuffer[_rawBufferLength - 1] = (byte)'\r';
@@ -285,7 +286,7 @@ namespace MBBSEmu.Session
             {
                 // scan for the last space still in rawBuffer to know where to break the line
                 var lastSpaceIndex = _lineBufferLength - 1;
-                while ((lastSpaceIndex >= 0) && (_lineBufferToRawBuffer[lastSpaceIndex] != NOT_IN_RAW_BUFFER) && !char.IsWhiteSpace((char)_lineBuffer[lastSpaceIndex]))
+                while ((lastSpaceIndex >= 0) && (_lineBufferToRawBuffer[lastSpaceIndex] != NOT_IN_RAW_BUFFER) && _lineBuffer[lastSpaceIndex] != (byte)' ')
                 {
                     --lastSpaceIndex;
                 }

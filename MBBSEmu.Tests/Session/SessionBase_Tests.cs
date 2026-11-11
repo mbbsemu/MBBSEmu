@@ -235,6 +235,22 @@ namespace MBBSEmu.Tests.Session
             Encoding.ASCII.GetString(session.DrainSentData()).Should().Be(expand(sent));
         }
 
+        /// <summary>
+        ///     GSBL breaks a line only at a space: TAB and the CP437 letters 0x85 and 0xA0 are one
+        ///     column like any other byte and are never replaced. The review's vectors for #769;
+        ///     MajorBBS 6.25's GALGSBL.DLL sends each one unchanged after btutsw(6).
+        /// </summary>
+        [Theory]
+        [InlineData(new byte[] { 0x61, 0x62, 0xA0, 0x63, 0x64, 0x65, 0x66 })]
+        [InlineData(new byte[] { 0x61, 0x62, 0x85, 0x63, 0x64, 0x65, 0x66 })]
+        [InlineData(new byte[] { 0x61, 0x62, 0x09, 0x63, 0x64, 0x65, 0x66 })]
+        public void wrapsOnlyAtSpaceAsGsbl(byte[] text)
+        {
+            var session = new TestSession(null, null) { WordWrapWidth = 6 };
+            session.SendToClient(text);
+            session.DrainSentData().Should().Equal(text);
+        }
+
         [Fact]
         public void flushingTest()
         {
