@@ -107,8 +107,9 @@ namespace MBBSEmu.HostProcess.ExportedModules
         /// <param name="memory">Module memory, for %s and %n</param>
         /// <param name="segmentExists">Returns true if the segment is mapped in module memory</param>
         /// <param name="invalidPointer">Optional callback when %s references an unmapped segment</param>
+        /// <param name="suppressNullCharacters">Treat a zero %c as an empty field, as Galacticomm's prf does</param>
         public static byte[] Format(ReadOnlySpan<byte> format, PrintfArgumentReader arguments, IMemoryCore memory,
-            Func<ushort, bool> segmentExists, Action<FarPtr> invalidPointer = null)
+            Func<ushort, bool> segmentExists, Action<FarPtr> invalidPointer = null, bool suppressNullCharacters = false)
         {
             var terminator = format.IndexOf((byte)0);
             if (terminator >= 0)
@@ -254,8 +255,12 @@ namespace MBBSEmu.HostProcess.ExportedModules
                             break;
                         }
                     case 'c':
-                        WriteField(output, "", new[] { (byte)arguments.NextWord() }, spec, zeroPadAllowed: false);
-                        break;
+                        {
+                            var character = (byte)arguments.NextWord();
+                            var field = suppressNullCharacters && character == 0 ? Array.Empty<byte>() : new[] { character };
+                            WriteField(output, "", field, spec, zeroPadAllowed: false);
+                            break;
+                        }
                     case 's':
                         {
                             var pointer = arguments.NextPointer(spec.Near);

@@ -2256,7 +2256,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var output = Module.Memory.GetString(sourcePointer, stripNull: false);
 
             //If the supplied string has any control characters for formatting, process them
-            var formattedMessage = FormatPrintf(output, 2);
+            var formattedMessage = FormatPrintf(output, 2, suppressNullCharacters: true);
 
             AppendToPrfBuffer(formattedMessage);
 
@@ -2381,7 +2381,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
                 return;
             }
 
-            var formattedMessage = FormatPrintf(outputMessage, 1);
+            var formattedMessage = FormatPrintf(outputMessage, 1, suppressNullCharacters: true);
 
             AppendToPrfBuffer(formattedMessage);
 
@@ -4538,7 +4538,7 @@ namespace MBBSEmu.HostProcess.ExportedModules
             var output = McvPointerDictionary[_currentMcvFile.Offset].GetString(messageNumber);
 
             //If the supplied string has any control characters for formatting, process them
-            var formattedMessage = FormatPrintf(output, 1);
+            var formattedMessage = FormatPrintf(output, 1, suppressNullCharacters: true);
 
             AppendToPrfBuffer(formattedMessage);
 
