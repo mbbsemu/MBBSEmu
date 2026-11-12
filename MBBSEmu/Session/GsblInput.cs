@@ -53,7 +53,7 @@ namespace MBBSEmu.Session
         public byte XoffCharacter { get; set; }
 
         /// <summary>
-        ///     Output-abort character, never delivered as input; 0 disables it (btutru)
+        ///     Output-abort character, still delivered as input; 0 disables it (btutru)
         /// </summary>
         public byte OutputAbortCharacter { get; set; }
 
@@ -251,18 +251,14 @@ namespace MBBSEmu.Session
                 return EnumGsblInputResult.Accepted;
             }
 
+            //MBBSEmu doesn't pause output, but XOFF is still never delivered as input
             var x = (byte)(c & 0x7F);
-            if (x == gsbl.XoffCharacter)
-            {
-                //MBBSEmu doesn't pause output, but XOFF is still never delivered as input
-                if (x != 0)
-                    return EnumGsblInputResult.Dropped;
-            }
-            else if (x == gsbl.OutputAbortCharacter)
-            {
-                //Output is sent as it's written, so there's nothing queued to abort
-                c = 0;
-            }
+            if (x != 0 && x == gsbl.XoffCharacter)
+                return EnumGsblInputResult.Dropped;
+
+            //The output-abort character (btutru) would only discard queued output, and it's still
+            //delivered as input: T-LORD sets it to ' ' while its btuchi() routine reads typed lines.
+            //Output is sent as it's written, so there's nothing queued to abort.
 
             if (interceptor != null)
             {

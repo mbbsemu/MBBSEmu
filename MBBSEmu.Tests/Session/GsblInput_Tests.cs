@@ -238,13 +238,30 @@ namespace MBBSEmu.Tests.Session
         }
 
         [Fact]
-        public void TheOutputAbortCharacterIsNeverInput()
+        public void TheOutputAbortCharacterIsStillInput()
         {
             _session.GsblInput.OutputAbortCharacter = (byte)'!';
 
             Type("a!b\r");
 
-            Assert.Equal("ab", Line());
+            Assert.Equal("a!b", Line());
+        }
+
+        [Fact]
+        public void AnInterceptorSeesTheOutputAbortCharacter()
+        {
+            //T-LORD sets the output-abort character to space while its btuchi() routine reads mail
+            _session.GsblInput.OutputAbortCharacter = (byte)' ';
+            var seen = new List<int>();
+
+            Type("a b\r", c =>
+            {
+                seen.Add(c);
+                return c;
+            });
+
+            Assert.Equal(new int[] { 'a', ' ', 'b', '\r' }, seen);
+            Assert.Equal("a b", Line());
         }
 
         [Fact]
