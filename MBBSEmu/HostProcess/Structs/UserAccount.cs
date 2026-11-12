@@ -46,6 +46,11 @@ namespace MBBSEmu.HostProcess.Structs
         public const int USRACCSPARE = 37;
 
         /// <summary>
+        ///     Every user is born the year The Major BBS was released, since MBBSEmu doesn't ask for an age
+        /// </summary>
+        public const int BIRTH_YEAR = 1986;
+
+        /// <summary>
         ///     user-id 
         /// </summary>
         public byte[] userid
@@ -403,6 +408,7 @@ namespace MBBSEmu.HostProcess.Structs
             flags = 1; //Set everyone to having "MASTER" key
             ansifl = 0x1; //Set everyone to ANSI enabled
             creds = 31337;
+            age = (byte)(DateTime.Now.Year - BIRTH_YEAR); //A 0 age puts modules like T-LORD in kid mode
             scnwid = 80; //Screen Width to 80 Columns
             scnfse = 24; //Screen Height to 24 Lines
             scnbrk = 24; //Screen Page Break Height
