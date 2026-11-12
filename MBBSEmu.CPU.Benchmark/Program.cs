@@ -1,4 +1,4 @@
-﻿using Iced.Intel;
+using Iced.Intel;
 using MBBSEmu.Memory;
 using System;
 using System.IO;
@@ -100,6 +100,10 @@ namespace MBBSEmu.CPU.Benchmark
                 realModeMemoryCore.SetArray(segmentOrdinal, 0, byteCode);
                 return;
             }
+
+            if (!protectedModeMemoryCore.HasSegment(segmentOrdinal))
+                protectedModeMemoryCore.AddSegment(segmentOrdinal);
+            protectedModeMemoryCore.SetArray(segmentOrdinal, 0, byteCode);
 
             //Decode the Segment
             var instructionList = new InstructionList();

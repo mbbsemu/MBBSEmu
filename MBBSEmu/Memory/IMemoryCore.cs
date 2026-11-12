@@ -1,4 +1,4 @@
-﻿using Iced.Intel;
+using Iced.Intel;
 using System;
 
 namespace MBBSEmu.Memory
@@ -388,5 +388,18 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         /// <returns></returns>
         ReadOnlySpan<byte> GetMemorySegment(ushort segment);
+
+        /// <summary>
+        ///     Returns a direct pointer to the pinned memory segment buffer, or null if not allocated
+        /// </summary>
+        /// <param name="segment"></param>
+        /// <returns></returns>
+        unsafe byte* GetSegmentPointer(ushort segment);
+
+        /// <summary>
+        ///     Returns the segment pointer table if available
+        /// </summary>
+        /// <returns></returns>
+        unsafe byte** GetSegmentPointerTable();
     }
 }

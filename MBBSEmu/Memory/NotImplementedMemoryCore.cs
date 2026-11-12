@@ -1,4 +1,4 @@
-﻿using Iced.Intel;
+using Iced.Intel;
 using System;
 
 namespace MBBSEmu.Memory
@@ -132,5 +132,8 @@ namespace MBBSEmu.Memory
         {
 
         }
+
+        public virtual unsafe byte* GetSegmentPointer(ushort segment) => null;
+        public virtual unsafe byte** GetSegmentPointerTable() => null;
     }
 }

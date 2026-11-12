@@ -1,4 +1,4 @@
-﻿using MBBSEmu.DOS.Interrupts;
+using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Memory;
 using System;
 using System.Collections.Generic;
@@ -34,6 +34,11 @@ namespace MBBSEmu.CPU
         ///     Ticks the CPU one instruction
         /// </summary>
         void Tick();
+
+        /// <summary>
+        ///     Runs the CPU until Halt is true
+        /// </summary>
+        void Run();
 
         /// <summary>
         ///     Pushes the given word to the Stack

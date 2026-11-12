@@ -1,6 +1,8 @@
 using Iced.Intel;
 using MBBSEmu.Logging;
 using System;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace MBBSEmu.Memory
 {
@@ -26,7 +28,7 @@ namespace MBBSEmu.Memory
         public const ushort DEFAULT_HEAP_BASE_SEGMENT = 0x8000;
 
         public readonly ushort _heapBaseSegment;
-        private readonly byte[] _memory = new byte[MAX_REAL_MODE_MEMORY];
+        private readonly byte[] _memory = GC.AllocateArray<byte>(MAX_REAL_MODE_MEMORY + 65536 + 64, pinned: true);
 
         private MemoryAllocator _memoryAllocator;
 
@@ -69,7 +71,8 @@ namespace MBBSEmu.Memory
 
         public RealModeMemoryCore(IMessageLogger logger) : this(DEFAULT_HEAP_BASE_SEGMENT, logger) { }
 
-        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memory.AsSpan((segment << 4) + offset);
+        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) =>
+            _memory.AsSpan(0, MAX_REAL_MODE_MEMORY + 65536).Slice((segment << 4) + offset);
 
         public override FarPtr AllocateRealModeSegment(ushort segmentSize = ushort.MaxValue) => throw new NotImplementedException();
         public override FarPtr AllocateBigMemoryBlock(ushort quantity, ushort size) => throw new NotImplementedException();
@@ -124,6 +127,13 @@ namespace MBBSEmu.Memory
             Array.Fill(_memory, (byte)0);
         }
 
-        public ReadOnlySpan<byte> GetMemorySegment(ushort segment) => _memory.AsSpan();
+        [MethodImpl(CompilerOptimizations)]
+        public override unsafe byte* GetSegmentPointer(ushort segmentNumber)
+        {
+            return (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(_memory)) + (segmentNumber << 4);
+        }
+
+        public ReadOnlySpan<byte> GetMemorySegment(ushort segment) =>
+            _memory.AsSpan(0, MAX_REAL_MODE_MEMORY + 65536);
     }
 }
