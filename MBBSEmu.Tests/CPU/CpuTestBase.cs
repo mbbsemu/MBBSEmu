@@ -1,4 +1,4 @@
-﻿using Iced.Intel;
+using Iced.Intel;
 using MBBSEmu.BIOS;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
@@ -63,6 +63,9 @@ namespace MBBSEmu.Tests.CPU
 
         protected void CreateCodeSegment(ReadOnlySpan<byte> byteCode, ushort segmentOrdinal = 1)
         {
+            if (!mbbsEmuProtectedModeMemoryCore.HasSegment(segmentOrdinal))
+                mbbsEmuProtectedModeMemoryCore.AddSegment(segmentOrdinal);
+            mbbsEmuMemoryCore.SetArray(segmentOrdinal, 0, byteCode);
 
             //Decode the Segment
             var instructionList = new InstructionList();

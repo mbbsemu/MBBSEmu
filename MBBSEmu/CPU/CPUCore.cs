@@ -1,4 +1,4 @@
-﻿using Iced.Intel;
+using Iced.Intel;
 using MBBSEmu.DOS.Interrupts;
 using MBBSEmu.Extensions;
 using MBBSEmu.Logging;
@@ -9,12 +9,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 
+using System.Numerics;
+using System.Runtime.InteropServices;
+
 namespace MBBSEmu.CPU
 {
     /// <summary>
     ///     MBBSEmu emulated 16-bit x86 Core used to execute decompiled x86 Assembly
     /// </summary>
-    public class CpuCore : CpuRegisters, ICpuCore, IDisposable
+    public unsafe class CpuCore : CpuRegisters, ICpuCore, IDisposable
     {
         protected readonly IMessageLogger _logger;
 
@@ -40,29 +43,6 @@ namespace MBBSEmu.CPU
         ///     Current Instruction being Executed
         /// </summary>
         private Instruction _currentInstruction;
-
-        //Debug Pointers
-
-        /// <summary>
-        ///     Pointer to the current instruction CS:IP (for debugging)
-        /// </summary>
-        private FarPtr _currentInstructionPointer { get; set; }
-
-        /// <summary>
-        ///     Pointer to the previous instruction CS:IP (for debugging)
-        /// </summary>
-        private FarPtr _previousInstructionPointer { get; set; }
-
-        /// <summary>
-        ///     Previous Location of a CALL into the current function
-        /// </summary>
-        private FarPtr _previousCallPointer { get; set; }
-
-        /// <summary>
-        ///     Defines if additional debug (disassembly, registers, etc.) is to be displayed with
-        ///     each instruction being executed
-        /// </summary>
-        private bool _showDebug { get; set; }
 
         /// <summary>
         ///     Initial Value of the ES Register
@@ -121,10 +101,10 @@ namespace MBBSEmu.CPU
         private readonly Dictionary<int, IInterruptHandler> _interruptHandlers = new();
         private readonly Dictionary<int, IIOPort> _ioPortHandlers = new();
 
-        private List<List<FarPtr>> CPUDebugRanges = [];
-        private List<FarPtr> CPUBreakpoints = [];
-        private bool CPUDebugBreak = false;
-        private Dictionary<(FarPtr, ushort), byte[]> WatchedVariables = new();
+        private nint[] _localSegmentTable;
+        private byte** _segments;
+        private byte** _localSegments;
+        private byte* _flatRealMemory;
 
         public CpuCore(IMessageLogger logger)
         {
@@ -138,6 +118,10 @@ namespace MBBSEmu.CPU
 
         public void Dispose()
         {
+            _localSegments = null;
+            _segments = null;
+            _localSegmentTable = null;
+
             foreach (var handler in _interruptHandlers.Values)
             {
                 if (handler is IDisposable disposable)
@@ -162,11 +146,6 @@ namespace MBBSEmu.CPU
             InvokeExternalFunctionDelegate invokeExternalFunctionDelegate,
             IEnumerable<IInterruptHandler> interruptHandlers, IDictionary<int, IIOPort> ioPortHandlers)
         {
-            //Setup Debug Pointers
-            _currentInstructionPointer = FarPtr.Empty;
-            _previousInstructionPointer = FarPtr.Empty;
-            _previousCallPointer = FarPtr.Empty;
-
             //Setup Delegate Call
             _invokeExternalFunctionDelegate = invokeExternalFunctionDelegate;
 
@@ -188,6 +167,34 @@ namespace MBBSEmu.CPU
             Memory = memoryCore;
             EXTRA_SEGMENT = ushort.MaxValue;
 
+            if (memoryCore is RealModeMemoryCore)
+            {
+                _flatRealMemory = memoryCore.GetSegmentPointer(0);
+                _segments = null;
+            }
+            else
+            {
+                _flatRealMemory = null;
+                var table = memoryCore != null ? memoryCore.GetSegmentPointerTable() : null;
+                if (table != null)
+                {
+                    _segments = table;
+                }
+                else
+                {
+                    if (_localSegmentTable == null)
+                    {
+                        _localSegmentTable = GC.AllocateArray<nint>(0x10000, pinned: true);
+                        _localSegments = (byte**)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(_localSegmentTable));
+                    }
+                    else
+                    {
+                        Array.Clear(_localSegmentTable, 0, _localSegmentTable.Length);
+                    }
+                    _segments = _localSegments;
+                }
+            }
+
             //Setup Registers
             Registers.Zero();
             Registers.BP = STACK_BASE;
@@ -199,53 +206,6 @@ namespace MBBSEmu.CPU
             //These two values are the final values popped off on the routine's last RETF
             //Seeing a ushort.max for CS and IP tells the routine it's now done
             Push(uint.MaxValue);
-
-            //Setup Debug
-
-            /* ---------------------------
-             * ##    CPU Breakpoints    ##
-             * ---------------------------
-             * The below list specifies addresses where the CPU will be halted, allowing you to break operation and inspect.
-             * You can specify any number of offsets in any order. Because this will only work in DEBUG, and is evaluated
-             * during operation with each instruction, having a large number of breakpoints will slow down the CPU
-             */
-            CPUBreakpoints =
-            [
-                //Below would break the CPU at the CS:IP of 0x1:0x100
-                //new(0x1, 0x100)
-            ];
-
-            /* ---------------------------
-             * ##    CPU Debug Ranges   ##
-             * ---------------------------
-             * The below list specifies a list of address ranges where CPU debug information will be logged to the console
-             * for each executed instruction (including register debug information as well). Values must be in START->END
-             * order within their own pair, but pairs can be added to the list in any order.
-             */
-            CPUDebugRanges =
-            [
-                //[
-                //    new FarPtr(0x1, 0xD23),
-                //    new FarPtr(0x1, 0xD59)
-                //],
-                //[
-                //    new FarPtr(0x1, 0x44B),
-                //    new FarPtr(0x1, 0x475)
-                //]
-            ];
-
-            /* ---------------------------
-             * ##    Watched Memory     ##
-             * ---------------------------
-             * The below Dictionary specified the addresses that will be watched for changes between CPU ticks. This will
-             * assist in isolating any issues that might be occurring with memory corruption or in other areas of the code
-             * not currently being debugged.
-             */
-            WatchedVariables =
-            [
-                //{ (new FarPtr(0x9, 0x469), 2), null }
-            ];
-
         }
 
         /// <summary>
@@ -260,6 +220,11 @@ namespace MBBSEmu.CPU
         public void Reset(ushort stackBase)
         {
             EXTRA_SEGMENT = ushort.MaxValue;
+
+            if (_segments == _localSegments && _localSegmentTable != null)
+            {
+                Array.Clear(_localSegmentTable, 0, _localSegmentTable.Length);
+            }
 
             //Setup Registers
             Registers.BP = stackBase;
@@ -282,14 +247,7 @@ namespace MBBSEmu.CPU
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort Pop()
         {
-
             var value = Memory.GetWord(Registers.SS, Registers.SP);
-
-#if DEBUG
-            if (_showDebug)
-                _logger.Debug($"Popped {value:X4} from {Registers.SP:X4}");
-#endif
-
             Registers.SP += 2;
             return value;
         }
@@ -302,11 +260,6 @@ namespace MBBSEmu.CPU
         public uint PopDWord()
         {
             var value = Memory.GetDWord(Registers.SS, Registers.SP);
-#if DEBUG
-            if (_showDebug)
-                _logger.Debug($"Popped {value:X8} from {Registers.SP:X4}");
-#endif
-
             Registers.SP += 4;
             return value;
         }
@@ -320,12 +273,6 @@ namespace MBBSEmu.CPU
         {
             Registers.SP -= 2;
             Memory.SetWord(Registers.SS, Registers.SP, value);
-
-#if DEBUG
-            if (_showDebug)
-                _logger.Debug($"Pushed {value:X4} to {Registers.SP:X4}");
-#endif
-
         }
 
         [MethodImpl(MethodImplOptions.AggressiveOptimization)]
@@ -343,62 +290,1733 @@ namespace MBBSEmu.CPU
         {
             Registers.SP -= 4;
             Memory.SetDWord(Registers.SS, Registers.SP, value);
-
-#if DEBUG
-            if (_showDebug)
-                _logger.Debug($"Pushed {value:X8} to {Registers.SP:X4}");
-#endif
         }
 
         /// <summary>
-        ///     Ticks the emulated x86 Core one instruction from the current CS:IP
+        ///     Runs the CPU until Halt is true
         /// </summary>
-        [MethodImpl(OpcodeCompilerOptimizations)]
-        public void Tick()
+        public void Run() => Execute(singleStep: false);
+
+        /// <summary>
+        ///     Ticks the CPU one instruction
+        /// </summary>
+        public void Tick() => Execute(singleStep: true);
+
+        private bool _stateSynced;
+        private ushort* _gpr;
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void SyncFromException(long rem)
         {
-#if DEBUG
-            _currentInstructionPointer.Offset = Registers.IP;
-            _currentInstructionPointer.Segment = Registers.CS;
-#endif
-
-            _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
-            _currentOperationSize = GetCurrentOperationSize();
-
-#if DEBUG
-
-            //Evaluate Breakpoints
-            if (CPUBreakpoints.Contains(_currentInstructionPointer))
-                Debugger.Break();
-
-            //Evaluate Debug Ranges
-            if (CPUDebugRanges.Any(x => x[0] <= _currentInstructionPointer && x[1] >= _currentInstructionPointer))
+            if (!_stateSynced)
             {
-                _showDebug = true; //Set to log Register values to console after execution
-                _logger.Debug($"{Registers.CS:X4}:{_currentInstruction.IP16:X4} {_currentInstruction}");
-                foreach (var l in Registers.ToString().Split("\n"))
-                    _logger.Debug(l);
-                for (var i = 0; i < 8; i++)
-                    _logger.Debug($"FPU[{i}]: {FpuStack[i]} {(i == Registers.Fpu.GetStackTop() ? " <--" : string.Empty)}");
+                InstructionCounter -= rem - 1;
+                if (_gpr != null)
+                {
+                    ushort* g = _gpr;
+                    Registers.AX = g[0]; Registers.CX = g[1]; Registers.DX = g[2]; Registers.BX = g[3];
+                    Registers.SP = g[4]; Registers.BP = g[5]; Registers.SI = g[6]; Registers.DI = g[7];
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private byte* GetSegPtr(ushort seg)
+        {
+            if (_flatRealMemory != null)
+                return _flatRealMemory + (seg << 4);
+            byte* s = _segments != null ? _segments[seg] : null;
+            return s != null ? s : GetSegPtrSlow(seg);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private byte* GetSegPtrSlow(ushort seg)
+        {
+            if (Memory != null)
+            {
+                byte* s = Memory.GetSegmentPointer(seg);
+                if (s != null && _segments != null)
+                    _segments[seg] = s;
+                return s;
+            }
+            return null;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private static void ThrowGeneralProtectionFault(ushort seg, ushort off)
+        {
+            throw new InvalidOperationException($"General Protection Fault (#GP): unmapped segment 0x{seg:X4}:0x{off:X4}");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort StackR16(byte* ssBase, ushort sp, ushort ipBefore)
+            => ssBase != null && sp != 0xFFFF ? *(ushort*)(ssBase + sp) : MemR16Slow(Registers.SS, sp, ipBefore);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void StackW16(byte* ssBase, ushort sp, ushort val, ushort ipBefore)
+        {
+            if (ssBase != null && sp != 0xFFFF) *(ushort*)(ssBase + sp) = val;
+            else MemW16Slow(Registers.SS, sp, val, ipBefore);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private byte ReadEa8(byte* segBase, byte modrm, int segOverride, ushort ea, ushort ipBefore)
+            => segBase != null ? segBase[ea] : MemR8EaSlow(modrm, segOverride, ea, ipBefore);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort ReadEa16(byte* segBase, byte modrm, int segOverride, ushort ea, ushort ipBefore)
+            => segBase != null && ea != 0xFFFF ? *(ushort*)(segBase + ea) : MemR16EaSlow(modrm, segOverride, ea, ipBefore);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void WriteEa8(byte* segBase, byte modrm, int segOverride, ushort ea, byte val, ushort ipBefore)
+        {
+            if (segBase != null) segBase[ea] = val;
+            else MemW8EaSlow(modrm, segOverride, ea, val, ipBefore);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void WriteEa16(byte* segBase, byte modrm, int segOverride, ushort ea, ushort val, ushort ipBefore)
+        {
+            if (segBase != null && ea != 0xFFFF) *(ushort*)(segBase + ea) = val;
+            else MemW16EaSlow(modrm, segOverride, ea, val, ipBefore);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort GetDefaultSeg(byte modrm)
+        {
+            int rm = modrm & 7;
+            int mod = modrm >> 6;
+            if (rm == 2 || rm == 3 || (rm == 6 && mod != 0))
+                return Registers.SS;
+            return Registers.DS;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private byte MemR8EaSlow(byte modrm, int segOverride, ushort off, ushort ipBefore)
+            => MemR8Slow(segOverride >= 0 ? GetSegVal(segOverride) : GetDefaultSeg(modrm), off, ipBefore);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private ushort MemR16EaSlow(byte modrm, int segOverride, ushort off, ushort ipBefore)
+            => MemR16Slow(segOverride >= 0 ? GetSegVal(segOverride) : GetDefaultSeg(modrm), off, ipBefore);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void MemW8EaSlow(byte modrm, int segOverride, ushort off, byte val, ushort ipBefore)
+            => MemW8Slow(segOverride >= 0 ? GetSegVal(segOverride) : GetDefaultSeg(modrm), off, val, ipBefore);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void MemW16EaSlow(byte modrm, int segOverride, ushort off, ushort val, ushort ipBefore)
+            => MemW16Slow(segOverride >= 0 ? GetSegVal(segOverride) : GetDefaultSeg(modrm), off, val, ipBefore);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private byte MemR8Slow(ushort seg, ushort off, ushort ipBefore)
+        {
+            Registers.IP = ipBefore;
+            _stateSynced = false;
+            if (Memory != null)
+            {
+                byte* ptr = Memory.GetSegmentPointer(seg);
+                if (ptr != null)
+                {
+                    if (_segments != null)
+                        _segments[seg] = ptr;
+                    return ptr[off];
+                }
+                return Memory.GetByte(seg, off);
+            }
+            ThrowGeneralProtectionFault(seg, off);
+            return 0;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private ushort MemR16Slow(ushort seg, ushort off, ushort ipBefore)
+        {
+            Registers.IP = ipBefore;
+            _stateSynced = false;
+            if (Memory != null)
+            {
+                byte* ptr = Memory.GetSegmentPointer(seg);
+                if (ptr != null && (off != 0xFFFF || _flatRealMemory != null))
+                {
+                    if (_segments != null)
+                        _segments[seg] = ptr;
+                    return *(ushort*)(ptr + off);
+                }
+                return Memory.GetWord(seg, off);
+            }
+            ThrowGeneralProtectionFault(seg, off);
+            return 0;
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void MemW8Slow(ushort seg, ushort off, byte val, ushort ipBefore)
+        {
+            Registers.IP = ipBefore;
+            _stateSynced = false;
+            if (Memory != null)
+            {
+                byte* ptr = Memory.GetSegmentPointer(seg);
+                if (ptr != null)
+                {
+                    if (_segments != null)
+                        _segments[seg] = ptr;
+                    ptr[off] = val;
+                    return;
+                }
+                Memory.SetByte(seg, off, val);
+                return;
+            }
+            ThrowGeneralProtectionFault(seg, off);
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void MemW16Slow(ushort seg, ushort off, ushort val, ushort ipBefore)
+        {
+            Registers.IP = ipBefore;
+            _stateSynced = false;
+            if (Memory != null)
+            {
+                byte* ptr = Memory.GetSegmentPointer(seg);
+                if (ptr != null && (off != 0xFFFF || _flatRealMemory != null))
+                {
+                    if (_segments != null)
+                        _segments[seg] = ptr;
+                    *(ushort*)(ptr + off) = val;
+                    return;
+                }
+                Memory.SetWord(seg, off, val);
+                return;
+            }
+            ThrowGeneralProtectionFault(seg, off);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte* GetReg8Ptr(ushort* gpr, int r) => ((byte*)&gpr[r & 3]) + ((r >> 2) & 1);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort GetSegVal(int segIdx)
+        {
+            return segIdx switch
+            {
+                0 => Registers.ES,
+                1 => Registers.CS,
+                2 => Registers.SS,
+                _ => Registers.DS
+            };
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private byte* GetOverrideSegBase(int segOverride) => GetSegPtr(GetSegVal(segOverride));
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void MovsbSlow(byte* segBase, byte* esBase, int segOverride, int repPrefix, ushort ipBefore)
+        {
+            ushort* gpr = _gpr;
+            int step = Registers.DirectionFlag ? -1 : 1;
+            ushort count = repPrefix != 0 ? gpr[1] : (ushort)1;
+            if (segBase != null && esBase != null)
+            {
+                ushort si = gpr[6], di = gpr[7];
+                if (!Registers.DirectionFlag && si + count <= 0x10000 && di + count <= 0x10000 &&
+                    (esBase + di + count <= segBase + si || segBase + si + count <= esBase + di))
+                {
+                    Unsafe.CopyBlockUnaligned(esBase + di, segBase + si, count);
+                    gpr[6] = (ushort)(si + count);
+                    gpr[7] = (ushort)(di + count);
+                    if (repPrefix != 0) gpr[1] = 0;
+                    return;
+                }
+                while (count > 0)
+                {
+                    esBase[di] = segBase[si];
+                    si = (ushort)(si + step);
+                    di = (ushort)(di + step);
+                    count--;
+                }
+                gpr[6] = si; gpr[7] = di;
+                if (repPrefix != 0) gpr[1] = 0;
             }
             else
             {
-                _showDebug = false;
-            }
-
-            //Evaluate Watched Variables
-            foreach (var (address, length) in WatchedVariables.Keys)
-            {
-                var value = Memory.GetArray(address.Segment, address.Offset, length);
-                if (WatchedVariables[(address, length)] == null || !value.SequenceEqual(WatchedVariables[(address, length)]))
+                ushort s = segOverride < 0 ? Registers.DS : GetSegVal(segOverride);
+                while (count-- > 0)
                 {
-                    _logger.Debug($"Value Change @ {address} :: Old: {WatchedVariables[(address, length)]} :: New: {value.ToHexString()}");
-                    WatchedVariables[(address, length)] = value.ToArray();
+                    byte val = segBase != null ? segBase[gpr[6]] : MemR8Slow(s, gpr[6], ipBefore);
+                    if (esBase != null) esBase[gpr[7]] = val; else MemW8Slow(Registers.ES, gpr[7], val, ipBefore);
+                    gpr[6] = (ushort)(gpr[6] + step);
+                    gpr[7] = (ushort)(gpr[7] + step);
+                    if (repPrefix != 0) gpr[1]--;
                 }
             }
+        }
 
-            _currentInstructionPointer.Offset = Registers.IP;
-            _currentInstructionPointer.Segment = Registers.CS;
-#endif
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void MovswSlow(byte* segBase, byte* esBase, int segOverride, int repPrefix, ushort ipBefore)
+        {
+            ushort* gpr = _gpr;
+            int step = Registers.DirectionFlag ? -2 : 2;
+            ushort count = repPrefix != 0 ? gpr[1] : (ushort)1;
+            if (segBase != null && esBase != null)
+            {
+                ushort si = gpr[6], di = gpr[7];
+                int byteCount = count << 1;
+                if (!Registers.DirectionFlag && si + byteCount <= 0x10000 && di + byteCount <= 0x10000 &&
+                    (esBase + di + byteCount <= segBase + si || segBase + si + byteCount <= esBase + di))
+                {
+                    Unsafe.CopyBlockUnaligned(esBase + di, segBase + si, (uint)byteCount);
+                    gpr[6] = (ushort)(si + byteCount);
+                    gpr[7] = (ushort)(di + byteCount);
+                    if (repPrefix != 0) gpr[1] = 0;
+                    return;
+                }
+            }
+            ushort s = segOverride < 0 ? Registers.DS : GetSegVal(segOverride);
+            while (count-- > 0)
+            {
+                ushort val = segBase != null && gpr[6] != 0xFFFF ? *(ushort*)(segBase + gpr[6]) : MemR16Slow(s, gpr[6], ipBefore);
+                if (esBase != null && gpr[7] != 0xFFFF) *(ushort*)(esBase + gpr[7]) = val; else MemW16Slow(Registers.ES, gpr[7], val, ipBefore);
+                gpr[6] = (ushort)(gpr[6] + step);
+                gpr[7] = (ushort)(gpr[7] + step);
+                if (repPrefix != 0) gpr[1]--;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void StosbSlow(byte* esBase, byte val, int repPrefix, ushort ipBefore)
+        {
+            ushort* gpr = _gpr;
+            int step = Registers.DirectionFlag ? -1 : 1;
+            ushort count = repPrefix != 0 ? gpr[1] : (ushort)1;
+            if (esBase != null)
+            {
+                ushort di = gpr[7];
+                if (!Registers.DirectionFlag && di + count <= 0x10000)
+                {
+                    Unsafe.InitBlockUnaligned(esBase + di, val, count);
+                    gpr[7] = (ushort)(di + count);
+                    if (repPrefix != 0) gpr[1] = 0;
+                    return;
+                }
+                while (count > 0)
+                {
+                    esBase[di] = val;
+                    di = (ushort)(di + step);
+                    count--;
+                }
+                gpr[7] = di;
+                if (repPrefix != 0) gpr[1] = 0;
+            }
+            else
+            {
+                while (count-- > 0)
+                {
+                    MemW8Slow(Registers.ES, gpr[7], val, ipBefore);
+                    gpr[7] = (ushort)(gpr[7] + step);
+                    if (repPrefix != 0) gpr[1]--;
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void StoswSlow(byte* esBase, ushort val, int repPrefix, ushort ipBefore)
+        {
+            ushort* gpr = _gpr;
+            int step = Registers.DirectionFlag ? -2 : 2;
+            ushort count = repPrefix != 0 ? gpr[1] : (ushort)1;
+            if (esBase != null && !Registers.DirectionFlag && gpr[7] + (count << 1) <= 0x10000)
+            {
+                ushort di = gpr[7];
+                new Span<ushort>(esBase + di, count).Fill(val);
+                gpr[7] = (ushort)(di + (count << 1));
+                if (repPrefix != 0) gpr[1] = 0;
+                return;
+            }
+            while (count-- > 0)
+            {
+                if (esBase != null && gpr[7] != 0xFFFF) *(ushort*)(esBase + gpr[7]) = val;
+                else MemW16Slow(Registers.ES, gpr[7], val, ipBefore);
+                gpr[7] = (ushort)(gpr[7] + step);
+                if (repPrefix != 0) gpr[1]--;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort CalcEa16(byte* csBase, ref int ip, ushort* gpr, byte modrm, int segOverride, byte* ssBase, byte* dsBase, out byte* segBase)
+        {
+            ushort ea;
+            switch (modrm & 7)
+            {
+                case 0: ea = (ushort)(gpr[3] + gpr[6]); segBase = dsBase; break; // BX + SI
+                case 1: ea = (ushort)(gpr[3] + gpr[7]); segBase = dsBase; break; // BX + DI
+                case 2: ea = (ushort)(gpr[5] + gpr[6]); segBase = ssBase; break; // BP + SI (SS)
+                case 3: ea = (ushort)(gpr[5] + gpr[7]); segBase = ssBase; break; // BP + DI (SS)
+                case 4: ea = gpr[6]; segBase = dsBase; break; // SI
+                case 5: ea = gpr[7]; segBase = dsBase; break; // DI
+                case 6:
+                    if (modrm < 0x40)
+                    {
+                        ea = *(ushort*)(csBase + ip);
+                        ip += 2;
+                        segBase = dsBase;
+                        break;
+                    }
+                    ea = gpr[5]; segBase = ssBase; break; // BP (SS)
+                default:
+                    ea = gpr[3]; segBase = dsBase; break; // BX
+            }
+            if (modrm >= 0x40)
+            {
+                if (modrm < 0x80)
+                    ea = (ushort)(ea + (sbyte)csBase[ip++]);
+                else
+                {
+                    ea = (ushort)(ea + *(ushort*)(csBase + ip));
+                    ip += 2;
+                }
+            }
+            if (segOverride >= 0)
+                segBase = GetOverrideSegBase(segOverride);
+            return ea;
+        }
+
+        private void Execute(bool singleStep)
+        {
+            if (Memory == null)
+            {
+                TickFallback();
+                return;
+            }
+
+            if (GetSegPtr(Registers.CS) == null)
+            {
+                if (singleStep)
+                {
+                    TickFallback();
+                    return;
+                }
+                while (!Registers.Halt && GetSegPtr(Registers.CS) == null)
+                {
+                    TickFallback();
+                }
+                if (Registers.Halt)
+                    return;
+            }
+
+            if (Registers.Halt)
+                return;
+
+            ushort* gpr = stackalloc ushort[8];
+            gpr[0] = Registers.AX;
+            gpr[1] = Registers.CX;
+            gpr[2] = Registers.DX;
+            gpr[3] = Registers.BX;
+            gpr[4] = Registers.SP;
+            gpr[5] = Registers.BP;
+            gpr[6] = Registers.SI;
+            gpr[7] = Registers.DI;
+            _gpr = gpr;
+
+            long rem = singleStep ? 1L : long.MaxValue;
+            try
+            {
+                int ip = Registers.IP;
+                InstructionCounter += rem;
+                _stateSynced = false;
+
+                byte* csBase = GetSegPtr(Registers.CS);
+                byte* dsBase = GetSegPtr(Registers.DS);
+                byte* ssBase = GetSegPtr(Registers.SS);
+                byte* esBase = GetSegPtr(Registers.ES);
+
+                byte modrm;
+                ushort ea;
+                byte* segBase;
+                int subOp;
+                byte bVal, bSrc;
+                ushort wVal, wSrc;
+
+                do
+                {
+                    ushort ipBeforeInstruction = (ushort)ip;
+                    ip = ipBeforeInstruction;
+                    if (ip > 0xFFF0 && _flatRealMemory == null)
+                        goto FallbackInstruction;
+                    int segOverride = -1;
+                    int repPrefix = 0;
+
+                PrefixLoop:
+                    byte op = csBase[ip++];
+
+                    switch (op)
+                    {
+                        case 0x26: segOverride = 0; goto NextPrefix; // ES
+                        case 0x2E: segOverride = 1; goto NextPrefix; // CS
+                        case 0x36: segOverride = 2; goto NextPrefix; // SS
+                        case 0x3E: segOverride = 3; goto NextPrefix; // DS
+                        case 0x66: case 0x67: case 0x0F: goto FallbackInstruction;
+                        case 0xF2: goto FallbackInstruction;         // REPNE
+                        case 0xF3: repPrefix = 2; goto NextPrefix;  // REP
+
+                        case 0x90: // NOP
+                            if (repPrefix != 0) goto FallbackInstruction;
+                            break;
+
+                        case 0xF4: // HLT
+                            Registers.Halt = true;
+                            rem--;
+                            goto ExitHalt;
+
+                        // ================= Data Movement =================
+                        case 0x88: // MOV r/m8, r8
+                            modrm = csBase[ip++];
+                            bVal = *GetReg8Ptr(gpr, (modrm >> 3) & 7);
+                            if (modrm >= 0xC0)
+                            {
+                                *GetReg8Ptr(gpr, modrm & 7) = bVal;
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        case 0x89: // MOV r/m16, r16
+                            modrm = csBase[ip++];
+                            wVal = gpr[(modrm >> 3) & 7];
+                            if (modrm >= 0xC0)
+                            {
+                                gpr[modrm & 7] = wVal;
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        case 0x8A: // MOV r8, r/m8
+                            modrm = csBase[ip++];
+                            if (modrm >= 0xC0)
+                            {
+                                bVal = *GetReg8Ptr(gpr, modrm & 7);
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bVal = ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            *GetReg8Ptr(gpr, (modrm >> 3) & 7) = bVal;
+                            break;
+
+                        case 0x8B: // MOV r16, r/m16
+                            modrm = csBase[ip++];
+                            if (modrm >= 0xC0)
+                            {
+                                wVal = gpr[modrm & 7];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wVal = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            gpr[(modrm >> 3) & 7] = wVal;
+                            break;
+
+                        case 0x8C: // MOV r/m16, Sreg
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            if (subOp > 3)
+                                goto FallbackInstruction;
+                            wVal = GetSegVal(subOp);
+                            if (modrm >= 0xC0)
+                            {
+                                gpr[modrm & 7] = wVal;
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        case 0x8E: // MOV Sreg, r/m16
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            if (subOp > 3 || subOp == 1)
+                                goto FallbackInstruction;
+                            if (modrm >= 0xC0)
+                            {
+                                wVal = gpr[modrm & 7];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wVal = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            switch (subOp)
+                            {
+                                case 0: Registers.ES = wVal; esBase = GetSegPtr(wVal); break;
+                                case 2: Registers.SS = wVal; ssBase = GetSegPtr(wVal); break;
+                                default: Registers.DS = wVal; dsBase = GetSegPtr(wVal); break;
+                            }
+                            break;
+
+                        case 0xA0: // MOV AL, [moffs8]
+                            ea = *(ushort*)(csBase + ip); ip += 2;
+                            segBase = segOverride < 0 ? dsBase : GetOverrideSegBase(segOverride);
+                            *GetReg8Ptr(gpr, 0) = segBase != null
+                                ? segBase[ea]
+                                : MemR8Slow(segOverride < 0 ? Registers.DS : GetSegVal(segOverride), ea, ipBeforeInstruction);
+                            break;
+
+                        case 0xA1: // MOV AX, [moffs16]
+                            ea = *(ushort*)(csBase + ip); ip += 2;
+                            segBase = segOverride < 0 ? dsBase : GetOverrideSegBase(segOverride);
+                            gpr[0] = segBase != null && ea != 0xFFFF
+                                ? *(ushort*)(segBase + ea)
+                                : MemR16Slow(segOverride < 0 ? Registers.DS : GetSegVal(segOverride), ea, ipBeforeInstruction);
+                            break;
+
+                        case 0xA2: // MOV [moffs8], AL
+                            ea = *(ushort*)(csBase + ip); ip += 2;
+                            segBase = segOverride < 0 ? dsBase : GetOverrideSegBase(segOverride);
+                            bVal = *GetReg8Ptr(gpr, 0);
+                            if (segBase != null) segBase[ea] = bVal;
+                            else MemW8Slow(segOverride < 0 ? Registers.DS : GetSegVal(segOverride), ea, bVal, ipBeforeInstruction);
+                            break;
+
+                        case 0xA3: // MOV [moffs16], AX
+                            ea = *(ushort*)(csBase + ip); ip += 2;
+                            segBase = segOverride < 0 ? dsBase : GetOverrideSegBase(segOverride);
+                            wVal = gpr[0];
+                            if (segBase != null && ea != 0xFFFF) *(ushort*)(segBase + ea) = wVal;
+                            else MemW16Slow(segOverride < 0 ? Registers.DS : GetSegVal(segOverride), ea, wVal, ipBeforeInstruction);
+                            break;
+
+                        // MOV r8, imm8: B0..B7
+                        case 0xB0: case 0xB1: case 0xB2: case 0xB3:
+                        case 0xB4: case 0xB5: case 0xB6: case 0xB7:
+                            *GetReg8Ptr(gpr, op - 0xB0) = csBase[ip++];
+                            break;
+
+                        // MOV r16, imm16: B8..BF
+                        case 0xB8: case 0xB9: case 0xBA: case 0xBB:
+                        case 0xBC: case 0xBD: case 0xBE: case 0xBF:
+                            gpr[op - 0xB8] = *(ushort*)(csBase + ip);
+                            ip += 2;
+                            break;
+
+                        case 0xC6: // MOV r/m8, imm8
+                            modrm = csBase[ip++];
+                            if ((modrm & 0x38) != 0)
+                                goto FallbackInstruction;
+                            if (modrm >= 0xC0)
+                            {
+                                *GetReg8Ptr(gpr, modrm & 7) = csBase[ip++];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bVal = csBase[ip++];
+                                WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        case 0xC7: // MOV r/m16, imm16
+                            modrm = csBase[ip++];
+                            if ((modrm & 0x38) != 0)
+                                goto FallbackInstruction;
+                            if (modrm >= 0xC0)
+                            {
+                                gpr[modrm & 7] = *(ushort*)(csBase + ip); ip += 2;
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wVal = *(ushort*)(csBase + ip); ip += 2;
+                                WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        case 0x8D: // LEA r16, m
+                            modrm = csBase[ip++];
+                            if (modrm >= 0xC0)
+                                goto FallbackInstruction;
+                            gpr[(modrm >> 3) & 7] = CalcEa16(csBase, ref ip, gpr, modrm, -1, ssBase, dsBase, out _);
+                            break;
+
+                        case 0xC4: // LES
+                        case 0xC5: // LDS
+                            modrm = csBase[ip++];
+                            if (modrm >= 0xC0)
+                                goto FallbackInstruction;
+                            ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                            if (segBase == null || ea > 0xFFFC)
+                                goto FallbackInstruction;
+                            gpr[(modrm >> 3) & 7] = *(ushort*)(segBase + ea);
+                            wVal = *(ushort*)(segBase + ea + 2);
+                            if (op == 0xC4) { Registers.ES = wVal; esBase = GetSegPtr(wVal); }
+                            else { Registers.DS = wVal; dsBase = GetSegPtr(wVal); }
+                            break;
+
+                        case 0x86: // XCHG r/m8, r8
+                        {
+                            modrm = csBase[ip++];
+                            byte* rptr = GetReg8Ptr(gpr, (modrm >> 3) & 7);
+                            bVal = *rptr;
+                            if (modrm >= 0xC0)
+                            {
+                                byte* rmptr = GetReg8Ptr(gpr, modrm & 7);
+                                *rptr = *rmptr;
+                                *rmptr = bVal;
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bSrc = ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                                *rptr = bSrc;
+                            }
+                            break;
+                        }
+
+                        case 0x87: // XCHG r/m16, r16
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            wVal = gpr[subOp];
+                            if (modrm >= 0xC0)
+                            {
+                                gpr[subOp] = gpr[modrm & 7];
+                                gpr[modrm & 7] = wVal;
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wSrc = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                                gpr[subOp] = wSrc;
+                            }
+                            break;
+
+                        case 0x91: case 0x92: case 0x93: case 0x94: case 0x95: case 0x96: case 0x97:
+                            subOp = op - 0x90;
+                            wVal = gpr[0];
+                            gpr[0] = gpr[subOp];
+                            gpr[subOp] = wVal;
+                            break;
+
+                        // ================= Stack Operations =================
+                        case 0x50: case 0x51: case 0x52: case 0x53:
+                        case 0x54: case 0x55: case 0x56: case 0x57:
+                            wVal = gpr[op - 0x50];
+                            gpr[4] -= 2;
+                            StackW16(ssBase, gpr[4], wVal, ipBeforeInstruction);
+                            break;
+
+                        case 0x58: case 0x59: case 0x5A: case 0x5B:
+                        case 0x5C: case 0x5D: case 0x5E: case 0x5F:
+                            wVal = StackR16(ssBase, gpr[4], ipBeforeInstruction);
+                            gpr[4] += 2;
+                            gpr[op - 0x58] = wVal;
+                            break;
+
+                        case 0x68: // PUSH imm16
+                            wVal = *(ushort*)(csBase + ip); ip += 2;
+                            gpr[4] -= 2;
+                            StackW16(ssBase, gpr[4], wVal, ipBeforeInstruction);
+                            break;
+
+                        case 0x6A: // PUSH imm8
+                            wVal = (ushort)(short)(sbyte)csBase[ip++];
+                            gpr[4] -= 2;
+                            StackW16(ssBase, gpr[4], wVal, ipBeforeInstruction);
+                            break;
+
+                        case 0x06: case 0x0E: case 0x16: case 0x1E:
+                            wVal = GetSegVal(op >> 3);
+                            gpr[4] -= 2;
+                            StackW16(ssBase, gpr[4], wVal, ipBeforeInstruction);
+                            break;
+
+                        case 0x07: case 0x17: case 0x1F:
+                            wVal = StackR16(ssBase, gpr[4], ipBeforeInstruction);
+                            gpr[4] += 2;
+                            if (op == 0x07) { Registers.ES = wVal; esBase = GetSegPtr(wVal); }
+                            else if (op == 0x17) { Registers.SS = wVal; ssBase = GetSegPtr(wVal); }
+                            else { Registers.DS = wVal; dsBase = GetSegPtr(wVal); }
+                            break;
+
+                        case 0x60: // PUSHA
+                            wVal = gpr[4];
+                            if (ssBase != null && wVal >= 16)
+                            {
+                                *(ushort*)(ssBase + (ushort)(wVal - 2)) = gpr[0];
+                                *(ushort*)(ssBase + (ushort)(wVal - 4)) = gpr[1];
+                                *(ushort*)(ssBase + (ushort)(wVal - 6)) = gpr[2];
+                                *(ushort*)(ssBase + (ushort)(wVal - 8)) = gpr[3];
+                                *(ushort*)(ssBase + (ushort)(wVal - 10)) = wVal;
+                                *(ushort*)(ssBase + (ushort)(wVal - 12)) = gpr[5];
+                                *(ushort*)(ssBase + (ushort)(wVal - 14)) = gpr[6];
+                                *(ushort*)(ssBase + (ushort)(wVal - 16)) = gpr[7];
+                                gpr[4] = (ushort)(wVal - 16);
+                            }
+                            else
+                            {
+                                for (subOp = 0; subOp < 8; subOp++)
+                                {
+                                    gpr[4] -= 2;
+                                    MemW16Slow(Registers.SS, gpr[4], subOp == 4 ? wVal : gpr[subOp], ipBeforeInstruction);
+                                }
+                            }
+                            break;
+
+                        case 0x61: // POPA
+                            wVal = gpr[4];
+                            if (ssBase != null && wVal <= 0xFFF0)
+                            {
+                                gpr[7] = *(ushort*)(ssBase + wVal);
+                                gpr[6] = *(ushort*)(ssBase + (ushort)(wVal + 2));
+                                gpr[5] = *(ushort*)(ssBase + (ushort)(wVal + 4));
+                                gpr[3] = *(ushort*)(ssBase + (ushort)(wVal + 8));
+                                gpr[2] = *(ushort*)(ssBase + (ushort)(wVal + 10));
+                                gpr[1] = *(ushort*)(ssBase + (ushort)(wVal + 12));
+                                gpr[0] = *(ushort*)(ssBase + (ushort)(wVal + 14));
+                                gpr[4] = (ushort)(wVal + 16);
+                            }
+                            else
+                            {
+                                for (subOp = 7; subOp >= 0; subOp--)
+                                {
+                                    wSrc = MemR16Slow(Registers.SS, gpr[4], ipBeforeInstruction);
+                                    gpr[4] += 2;
+                                    if (subOp != 4) gpr[subOp] = wSrc;
+                                }
+                            }
+                            break;
+
+                        case 0xC8: // ENTER
+                            wVal = *(ushort*)(csBase + ip); ip += 2;
+                            bVal = csBase[ip++];
+                            gpr[4] -= 2;
+                            StackW16(ssBase, gpr[4], gpr[5], ipBeforeInstruction);
+                            gpr[5] = gpr[4];
+                            gpr[4] -= wVal;
+                            break;
+
+                        case 0xC9: // LEAVE
+                            gpr[4] = gpr[5];
+                            gpr[5] = StackR16(ssBase, gpr[4], ipBeforeInstruction);
+                            gpr[4] += 2;
+                            break;
+
+                        // ================= Arithmetic / Logic =================
+                        case 0x40: case 0x41: case 0x42: case 0x43:
+                        case 0x44: case 0x45: case 0x46: case 0x47:
+                            subOp = op - 0x40;
+                            wVal = gpr[subOp];
+                            wSrc = (ushort)(wVal + 1);
+                            Registers.OverflowFlag = (wVal == 0x7FFF);
+                            Registers.AuxiliaryCarryFlag = (wSrc & 0xF) == 0;
+                            EvalSzp16(wSrc);
+                            gpr[subOp] = wSrc;
+                            break;
+
+                        case 0x48: case 0x49: case 0x4A: case 0x4B:
+                        case 0x4C: case 0x4D: case 0x4E: case 0x4F:
+                            subOp = op - 0x48;
+                            wVal = gpr[subOp];
+                            wSrc = (ushort)(wVal - 1);
+                            Registers.OverflowFlag = (wVal == 0x8000);
+                            Registers.AuxiliaryCarryFlag = (wVal & 0xF) == 0;
+                            EvalSzp16(wSrc);
+                            gpr[subOp] = wSrc;
+                            break;
+
+                        // Form 0: ALU r/m8, r8
+                        case 0x00: case 0x08: case 0x10: case 0x18:
+                        case 0x20: case 0x28: case 0x30: case 0x38:
+                            subOp = (op >> 3) & 7;
+                            modrm = csBase[ip++];
+                            bSrc = *GetReg8Ptr(gpr, (modrm >> 3) & 7);
+                            ea = 0;
+                            segBase = null;
+                            if (modrm >= 0xC0)
+                            {
+                                bVal = *GetReg8Ptr(gpr, modrm & 7);
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bVal = ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            bVal = ExecAlu8(subOp, bVal, bSrc);
+                            if (subOp != 7)
+                            {
+                                if (modrm >= 0xC0) *GetReg8Ptr(gpr, modrm & 7) = bVal;
+                                else WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        // Form 1: ALU r/m16, r16
+                        case 0x01: case 0x09: case 0x11: case 0x19:
+                        case 0x21: case 0x29: case 0x31: case 0x39:
+                            subOp = (op >> 3) & 7;
+                            modrm = csBase[ip++];
+                            wSrc = gpr[(modrm >> 3) & 7];
+                            ea = 0;
+                            segBase = null;
+                            if (modrm >= 0xC0)
+                            {
+                                wVal = gpr[modrm & 7];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wVal = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            wVal = ExecAlu16(subOp, wVal, wSrc);
+                            if (subOp != 7)
+                            {
+                                if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                                else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        // Form 2: ALU r8, r/m8
+                        case 0x02: case 0x0A: case 0x12: case 0x1A:
+                        case 0x22: case 0x2A: case 0x32: case 0x3A:
+                        {
+                            subOp = (op >> 3) & 7;
+                            modrm = csBase[ip++];
+                            byte* dstPtr = GetReg8Ptr(gpr, (modrm >> 3) & 7);
+                            if (modrm >= 0xC0)
+                            {
+                                bSrc = *GetReg8Ptr(gpr, modrm & 7);
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bSrc = ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            bVal = ExecAlu8(subOp, *dstPtr, bSrc);
+                            if (subOp != 7) *dstPtr = bVal;
+                            break;
+                        }
+
+                        // Form 3: ALU r16, r/m16
+                        case 0x03: case 0x0B: case 0x13: case 0x1B:
+                        case 0x23: case 0x2B: case 0x33: case 0x3B:
+                            subOp = (op >> 3) & 7;
+                            modrm = csBase[ip++];
+                            if (modrm >= 0xC0)
+                            {
+                                wSrc = gpr[modrm & 7];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wSrc = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            wVal = ExecAlu16(subOp, gpr[(modrm >> 3) & 7], wSrc);
+                            if (subOp != 7) gpr[(modrm >> 3) & 7] = wVal;
+                            break;
+
+                        // Form 4: ALU AL, imm8
+                        case 0x04: case 0x0C: case 0x14: case 0x1C:
+                        case 0x24: case 0x2C: case 0x34: case 0x3C:
+                        {
+                            subOp = (op >> 3) & 7;
+                            bSrc = csBase[ip++];
+                            byte* alPtr = GetReg8Ptr(gpr, 0);
+                            bVal = ExecAlu8(subOp, *alPtr, bSrc);
+                            if (subOp != 7) *alPtr = bVal;
+                            break;
+                        }
+
+                        // Form 5: ALU AX, imm16
+                        case 0x05: case 0x0D: case 0x15: case 0x1D:
+                        case 0x25: case 0x2D: case 0x35: case 0x3D:
+                            subOp = (op >> 3) & 7;
+                            wSrc = *(ushort*)(csBase + ip); ip += 2;
+                            wVal = ExecAlu16(subOp, gpr[0], wSrc);
+                            if (subOp != 7) gpr[0] = wVal;
+                            break;
+
+                        // Group 1: 80, 82 (8-bit r/m8, imm8)
+                        case 0x80: case 0x82:
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            ea = 0;
+                            segBase = null;
+                            if (modrm >= 0xC0)
+                            {
+                                bVal = *GetReg8Ptr(gpr, modrm & 7);
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bVal = ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            bSrc = csBase[ip++];
+                            bVal = ExecAlu8(subOp, bVal, bSrc);
+                            if (subOp != 7)
+                            {
+                                if (modrm >= 0xC0) *GetReg8Ptr(gpr, modrm & 7) = bVal;
+                                else WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        // Group 1: 81 (16-bit r/m16, imm16), 83 (16-bit r/m16, sign-ext imm8)
+                        case 0x81: case 0x83:
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            ea = 0;
+                            segBase = null;
+                            if (modrm >= 0xC0)
+                            {
+                                wVal = gpr[modrm & 7];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wVal = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            if (op == 0x83)
+                            {
+                                wSrc = (ushort)(short)(sbyte)csBase[ip++];
+                            }
+                            else
+                            {
+                                wSrc = *(ushort*)(csBase + ip); ip += 2;
+                            }
+                            wVal = ExecAlu16(subOp, wVal, wSrc);
+                            if (subOp != 7)
+                            {
+                                if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                                else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                            }
+                            break;
+
+                        // TEST r/m8, r8 (84), TEST r/m16, r16 (85), TEST AL, imm8 (A8), TEST AX, imm16 (A9)
+                        case 0x84:
+                            modrm = csBase[ip++];
+                            bSrc = *GetReg8Ptr(gpr, (modrm >> 3) & 7);
+                            if (modrm >= 0xC0)
+                            {
+                                bVal = *GetReg8Ptr(gpr, modrm & 7);
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bVal = ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            Registers.CarryFlag = Registers.OverflowFlag = false;
+                            EvalSzp8((byte)(bVal & bSrc));
+                            break;
+
+                        case 0x85:
+                            modrm = csBase[ip++];
+                            wSrc = gpr[(modrm >> 3) & 7];
+                            if (modrm >= 0xC0)
+                            {
+                                wVal = gpr[modrm & 7];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wVal = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            Registers.CarryFlag = Registers.OverflowFlag = false;
+                            EvalSzp16((ushort)(wVal & wSrc));
+                            break;
+
+                        case 0xA8:
+                            bSrc = csBase[ip++];
+                            Registers.CarryFlag = Registers.OverflowFlag = false;
+                            EvalSzp8((byte)(*GetReg8Ptr(gpr, 0) & bSrc));
+                            break;
+
+                        case 0xA9:
+                            wSrc = *(ushort*)(csBase + ip); ip += 2;
+                            Registers.CarryFlag = Registers.OverflowFlag = false;
+                            EvalSzp16((ushort)(gpr[0] & wSrc));
+                            break;
+
+                        // Shift by 1 (16-bit): D1
+                        case 0xD1:
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            if (subOp < 4 || subOp == 6)
+                                goto FallbackInstruction;
+                            ea = 0;
+                            segBase = null;
+                            if (modrm >= 0xC0)
+                            {
+                                wSrc = gpr[modrm & 7];
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                wSrc = ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            switch (subOp)
+                            {
+                                case 4: // SHL
+                                    Registers.CarryFlag = (wSrc & 0x8000) != 0;
+                                    wVal = (ushort)(wSrc << 1);
+                                    Registers.OverflowFlag = ((wVal ^ wSrc) & 0x8000) != 0;
+                                    break;
+                                case 5: // SHR
+                                    Registers.CarryFlag = (wSrc & 1) != 0;
+                                    wVal = (ushort)(wSrc >> 1);
+                                    Registers.OverflowFlag = (wSrc & 0x8000) != 0;
+                                    break;
+                                default: // case 7: SAR
+                                    Registers.CarryFlag = (wSrc & 1) != 0;
+                                    wVal = (ushort)((short)wSrc >> 1);
+                                    Registers.OverflowFlag = false;
+                                    break;
+                            }
+                            EvalSzp16(wVal);
+                            if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                            else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                            break;
+
+                        // Shifts / Rotates: D0, D2, D3, C0, C1
+                        case 0xD0: case 0xD2: case 0xD3:
+                        case 0xC0: case 0xC1:
+                        {
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            if (subOp < 4 || subOp == 6)
+                                goto FallbackInstruction;
+                            ea = 0;
+                            segBase = null;
+                            if (modrm < 0xC0)
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                            }
+
+                            int count = (op == 0xD0) ? 1
+                                : (op == 0xD2 || op == 0xD3) ? (gpr[1] & 0x1F)
+                                : (csBase[ip++] & 0x1F);
+
+                            if (count == 0) break;
+
+                            if (op != 0xD3 && op != 0xC1)
+                            {
+                                bSrc = (modrm >= 0xC0) ? *GetReg8Ptr(gpr, modrm & 7) : ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                switch (subOp)
+                                {
+                                    case 4: // SHL
+                                        Registers.CarryFlag = ((bSrc >> (8 - count)) & 1) != 0;
+                                        bVal = (byte)(bSrc << count);
+                                        if (count == 1) Registers.OverflowFlag = ((bVal ^ bSrc) & 0x80) != 0;
+                                        break;
+                                    case 5: // SHR
+                                        Registers.CarryFlag = ((bSrc >> (count - 1)) & 1) != 0;
+                                        bVal = (byte)(bSrc >> count);
+                                        if (count == 1) Registers.OverflowFlag = (bSrc & 0x80) != 0;
+                                        break;
+                                    default: // case 7: SAR
+                                        Registers.CarryFlag = (((sbyte)bSrc >> (count - 1)) & 1) != 0;
+                                        bVal = (byte)((sbyte)bSrc >> count);
+                                        if (count == 1) Registers.OverflowFlag = false;
+                                        break;
+                                }
+                                EvalSzp8(bVal);
+                                if (modrm >= 0xC0) *GetReg8Ptr(gpr, modrm & 7) = bVal;
+                                else WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                            }
+                            else
+                            {
+                                wSrc = (modrm >= 0xC0) ? gpr[modrm & 7] : ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                switch (subOp)
+                                {
+                                    case 4: // SHL
+                                        Registers.CarryFlag = ((wSrc >> (16 - count)) & 1) != 0;
+                                        wVal = (ushort)(wSrc << count);
+                                        if (count == 1) Registers.OverflowFlag = ((wVal ^ wSrc) & 0x8000) != 0;
+                                        break;
+                                    case 5: // SHR
+                                        Registers.CarryFlag = ((wSrc >> (count - 1)) & 1) != 0;
+                                        wVal = (ushort)(wSrc >> count);
+                                        if (count == 1) Registers.OverflowFlag = (wSrc & 0x8000) != 0;
+                                        break;
+                                    default: // case 7: SAR
+                                        Registers.CarryFlag = (((short)wSrc >> (count - 1)) & 1) != 0;
+                                        wVal = (ushort)((short)wSrc >> count);
+                                        if (count == 1) Registers.OverflowFlag = false;
+                                        break;
+                                }
+                                EvalSzp16(wVal);
+                                if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                                else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                            }
+                            break;
+                        }
+
+                        // Group 4 (FE): INC/DEC r/m8
+                        case 0xFE:
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            if (subOp > 1) goto FallbackInstruction;
+                            ea = 0;
+                            segBase = null;
+                            if (modrm >= 0xC0)
+                            {
+                                bSrc = *GetReg8Ptr(gpr, modrm & 7);
+                            }
+                            else
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                                bSrc = ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                            }
+                            if (subOp == 0) // INC
+                            {
+                                bVal = (byte)(bSrc + 1);
+                                Registers.OverflowFlag = (bSrc == 0x7F);
+                                Registers.AuxiliaryCarryFlag = (bVal & 0xF) == 0;
+                            }
+                            else // DEC
+                            {
+                                bVal = (byte)(bSrc - 1);
+                                Registers.OverflowFlag = (bSrc == 0x80);
+                                Registers.AuxiliaryCarryFlag = (bSrc & 0xF) == 0;
+                            }
+                            EvalSzp8(bVal);
+                            if (modrm >= 0xC0) *GetReg8Ptr(gpr, modrm & 7) = bVal;
+                            else WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                            break;
+
+                        // Group 5 (FF): INC, DEC, CALL near/far, JMP near/far, PUSH
+                        case 0xFF:
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            if (subOp == 3 || subOp == 5 || subOp == 7)
+                                goto FallbackInstruction;
+                            ea = 0;
+                            segBase = null;
+                            if (modrm < 0xC0)
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                            }
+                            switch (subOp)
+                            {
+                                case 0: // INC r/m16
+                                    wSrc = (modrm >= 0xC0) ? gpr[modrm & 7] : ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                    wVal = (ushort)(wSrc + 1);
+                                    Registers.OverflowFlag = (wSrc == 0x7FFF);
+                                    Registers.AuxiliaryCarryFlag = (wVal & 0xF) == 0;
+                                    EvalSzp16(wVal);
+                                    if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                                    else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                                    break;
+                                case 1: // DEC r/m16
+                                    wSrc = (modrm >= 0xC0) ? gpr[modrm & 7] : ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                    wVal = (ushort)(wSrc - 1);
+                                    Registers.OverflowFlag = (wSrc == 0x8000);
+                                    Registers.AuxiliaryCarryFlag = (wSrc & 0xF) == 0;
+                                    EvalSzp16(wVal);
+                                    if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                                    else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                                    break;
+                                case 2: // CALL near indirect
+                                    wVal = (modrm >= 0xC0) ? gpr[modrm & 7] : ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                    gpr[4] -= 2; StackW16(ssBase, gpr[4], (ushort)ip, ipBeforeInstruction);
+                                    ip = wVal;
+                                    break;
+                                case 4: // JMP near indirect
+                                    ip = (modrm >= 0xC0) ? gpr[modrm & 7] : ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                    break;
+                                default: // case 6: PUSH r/m16
+                                    wVal = (modrm >= 0xC0) ? gpr[modrm & 7] : ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                    gpr[4] -= 2; StackW16(ssBase, gpr[4], wVal, ipBeforeInstruction);
+                                    break;
+                            }
+                            break;
+
+                        // Group 3: F6 (8-bit), F7 (16-bit)
+                        case 0xF6: case 0xF7:
+                            modrm = csBase[ip++];
+                            subOp = (modrm >> 3) & 7;
+                            if (subOp == 1 || subOp >= 6)
+                                goto FallbackInstruction;
+                            ea = 0;
+                            segBase = null;
+                            if (modrm < 0xC0)
+                            {
+                                ea = CalcEa16(csBase, ref ip, gpr, modrm, segOverride, ssBase, dsBase, out segBase);
+                            }
+
+                            if (op == 0xF6)
+                            {
+                                bSrc = (modrm >= 0xC0) ? *GetReg8Ptr(gpr, modrm & 7) : ReadEa8(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                switch (subOp)
+                                {
+                                    case 0: // TEST
+                                        bVal = csBase[ip++];
+                                        Registers.CarryFlag = Registers.OverflowFlag = false;
+                                        EvalSzp8((byte)(bSrc & bVal));
+                                        break;
+                                    case 2: // NOT
+                                        bVal = (byte)~bSrc;
+                                        if (modrm >= 0xC0) *GetReg8Ptr(gpr, modrm & 7) = bVal;
+                                        else WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                                        break;
+                                    case 3: // NEG
+                                        bVal = (byte)-bSrc;
+                                        Registers.CarryFlag = (bSrc != 0);
+                                        Registers.OverflowFlag = (bSrc == 0x80);
+                                        Registers.AuxiliaryCarryFlag = (bSrc & 0xF) != 0;
+                                        EvalSzp8(bVal);
+                                        if (modrm >= 0xC0) *GetReg8Ptr(gpr, modrm & 7) = bVal;
+                                        else WriteEa8(segBase, modrm, segOverride, ea, bVal, ipBeforeInstruction);
+                                        break;
+                                    case 4: // MUL
+                                        wVal = (ushort)(*GetReg8Ptr(gpr, 0) * bSrc);
+                                        gpr[0] = wVal;
+                                        Registers.CarryFlag = Registers.OverflowFlag = (wVal >> 8) != 0;
+                                        break;
+                                    default: // case 5: IMUL
+                                    {
+                                        short sRes = (short)((sbyte)*GetReg8Ptr(gpr, 0) * (sbyte)bSrc);
+                                        gpr[0] = (ushort)sRes;
+                                        Registers.CarryFlag = Registers.OverflowFlag = (sRes < -128 || sRes > 127);
+                                        break;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                wSrc = (modrm >= 0xC0) ? gpr[modrm & 7] : ReadEa16(segBase, modrm, segOverride, ea, ipBeforeInstruction);
+                                switch (subOp)
+                                {
+                                    case 0: // TEST
+                                        wVal = *(ushort*)(csBase + ip); ip += 2;
+                                        Registers.CarryFlag = Registers.OverflowFlag = false;
+                                        EvalSzp16((ushort)(wSrc & wVal));
+                                        break;
+                                    case 2: // NOT
+                                        wVal = (ushort)~wSrc;
+                                        if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                                        else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                                        break;
+                                    case 3: // NEG
+                                        wVal = (ushort)-wSrc;
+                                        Registers.CarryFlag = (wSrc != 0);
+                                        Registers.OverflowFlag = (wSrc == 0x8000);
+                                        Registers.AuxiliaryCarryFlag = (wSrc & 0xF) != 0;
+                                        EvalSzp16(wVal);
+                                        if (modrm >= 0xC0) gpr[modrm & 7] = wVal;
+                                        else WriteEa16(segBase, modrm, segOverride, ea, wVal, ipBeforeInstruction);
+                                        break;
+                                    case 4: // MUL
+                                    {
+                                        uint uRes = (uint)gpr[0] * wSrc;
+                                        gpr[0] = (ushort)uRes;
+                                        gpr[2] = (ushort)(uRes >> 16);
+                                        Registers.CarryFlag = Registers.OverflowFlag = (gpr[2] != 0);
+                                        break;
+                                    }
+                                    default: // case 5: IMUL
+                                    {
+                                        int iRes = (short)gpr[0] * (short)wSrc;
+                                        gpr[0] = (ushort)iRes;
+                                        gpr[2] = (ushort)((uint)iRes >> 16);
+                                        Registers.CarryFlag = Registers.OverflowFlag = (iRes < -32768 || iRes > 32767);
+                                        break;
+                                    }
+                                }
+                            }
+                            break;
+
+                        // ================= Control Flow =================
+                        case 0xEB: // JMP rel8
+                            ip = (ushort)(ip + 1 + (sbyte)csBase[ip]);
+                            break;
+
+                        case 0xE9: // JMP rel16
+                            ip = (ushort)(ip + 2 + *(short*)(csBase + ip));
+                            break;
+
+                        case 0xE8: // CALL rel16
+                            wVal = *(ushort*)(csBase + ip); ip += 2;
+                            gpr[4] -= 2;
+                            StackW16(ssBase, gpr[4], (ushort)ip, ipBeforeInstruction);
+                            ip = (ushort)(ip + wVal);
+                            break;
+
+                        case 0xC3: // RET near
+                            ip = StackR16(ssBase, gpr[4], ipBeforeInstruction); gpr[4] += 2;
+                            if (Registers.CS == 0xFFFF)
+                            {
+                                Registers.Halt = true;
+                                rem--;
+                                goto ExitHalt;
+                            }
+                            break;
+
+                        case 0xC2: // RET near imm16
+                            wVal = *(ushort*)(csBase + ip);
+                            ip = StackR16(ssBase, gpr[4], ipBeforeInstruction); gpr[4] += (ushort)(2 + wVal);
+                            if (Registers.CS == 0xFFFF)
+                            {
+                                Registers.Halt = true;
+                                rem--;
+                                goto ExitHalt;
+                            }
+                            break;
+
+                        case 0xCA: // RET far imm16
+                        case 0xCB: // RET far
+                            wVal = op == 0xCA ? *(ushort*)(csBase + ip) : (ushort)0;
+                            ip = StackR16(ssBase, gpr[4], ipBeforeInstruction); gpr[4] += 2;
+                            wSrc = StackR16(ssBase, gpr[4], ipBeforeInstruction); gpr[4] += (ushort)(2 + wVal);
+                            Registers.CS = wSrc;
+                            if (wSrc == 0xFFFF)
+                            {
+                                Registers.Halt = true;
+                                rem--;
+                                goto ExitHalt;
+                            }
+                            csBase = GetSegPtr(wSrc);
+                            if (csBase == null) goto CheckCsBase;
+                            break;
+
+                        case 0x9A: // CALL FAR
+                            wVal = *(ushort*)(csBase + ip); ip += 2;
+                            wSrc = *(ushort*)(csBase + ip); ip += 2;
+
+                            if (wSrc > 0xFF00)
+                            {
+                                // External Host SDK call bridge
+                                gpr[4] -= 2; StackW16(ssBase, gpr[4], Registers.CS, ipBeforeInstruction);
+                                gpr[4] -= 2; StackW16(ssBase, gpr[4], (ushort)ip, ipBeforeInstruction);
+                                gpr[4] -= 2; StackW16(ssBase, gpr[4], gpr[5], ipBeforeInstruction); // PUSH BP
+                                gpr[5] = gpr[4];                                  // MOV BP, SP
+
+                                // Sync registers before call (preserving CALL starting IP for setjmp/longjmp)
+                                ushort csBeforeCall = Registers.CS;
+                                Registers.AX = gpr[0]; Registers.CX = gpr[1]; Registers.DX = gpr[2]; Registers.BX = gpr[3];
+                                Registers.SP = gpr[4]; Registers.BP = gpr[5]; Registers.SI = gpr[6]; Registers.DI = gpr[7];
+                                Registers.IP = ipBeforeInstruction;
+                                InstructionCounter -= rem - 1;
+                                _stateSynced = true;
+
+                                _invokeExternalFunctionDelegate?.Invoke(wSrc, wVal);
+
+                                // Reload registers after call
+                                gpr[0] = Registers.AX; gpr[1] = Registers.CX; gpr[2] = Registers.DX; gpr[3] = Registers.BX;
+                                gpr[4] = Registers.SP; gpr[5] = Registers.BP; gpr[6] = Registers.SI; gpr[7] = Registers.DI;
+                                ip = Registers.IP;
+                                InstructionCounter += rem - 1;
+                                _stateSynced = false;
+                                ssBase = GetSegPtr(Registers.SS);
+
+                                if (ip == ipBeforeInstruction && Registers.CS == csBeforeCall)
+                                {
+                                    // Simulate LEAVE & RETF
+                                    gpr[4] = gpr[5];
+                                    gpr[5] = StackR16(ssBase, gpr[4], ipBeforeInstruction); gpr[4] += 2;
+                                    ip = StackR16(ssBase, gpr[4], ipBeforeInstruction); gpr[4] += 2;
+                                    Registers.CS = StackR16(ssBase, gpr[4], ipBeforeInstruction); gpr[4] += 2;
+                                }
+
+                                if (Registers.CS == 0xFFFF || Registers.Halt)
+                                {
+                                    Registers.Halt = true;
+                                    rem--;
+                                    goto ExitHalt;
+                                }
+                                csBase = GetSegPtr(Registers.CS);
+                                dsBase = GetSegPtr(Registers.DS);
+                                esBase = GetSegPtr(Registers.ES);
+                                if (csBase == null) goto CheckCsBase;
+                            }
+                            else
+                            {
+                                gpr[4] -= 2; StackW16(ssBase, gpr[4], Registers.CS, ipBeforeInstruction);
+                                gpr[4] -= 2; StackW16(ssBase, gpr[4], (ushort)ip, ipBeforeInstruction);
+                                Registers.CS = wSrc;
+                                ip = wVal;
+                                csBase = GetSegPtr(wSrc);
+                                if (csBase == null) goto CheckCsBase;
+                            }
+                            break;
+
+                        // Conditional Jumps Jcc: 70..7F (unrolled to avoid nested switch jump table)
+                        case 0x70: bVal = csBase[ip++]; if (Registers.OverflowFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x71: bVal = csBase[ip++]; if (!Registers.OverflowFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x72: bVal = csBase[ip++]; if (Registers.CarryFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x73: bVal = csBase[ip++]; if (!Registers.CarryFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x74: bVal = csBase[ip++]; if (Registers.ZeroFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x75: bVal = csBase[ip++]; if (!Registers.ZeroFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x76: bVal = csBase[ip++]; if (Registers.CarryFlag || Registers.ZeroFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x77: bVal = csBase[ip++]; if (!Registers.CarryFlag && !Registers.ZeroFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x78: bVal = csBase[ip++]; if (Registers.SignFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x79: bVal = csBase[ip++]; if (!Registers.SignFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x7A: bVal = csBase[ip++]; if (Registers.ParityFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x7B: bVal = csBase[ip++]; if (!Registers.ParityFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x7C: bVal = csBase[ip++]; if (Registers.SignFlag != Registers.OverflowFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x7D: bVal = csBase[ip++]; if (Registers.SignFlag == Registers.OverflowFlag) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x7E: bVal = csBase[ip++]; if (Registers.ZeroFlag || (Registers.SignFlag != Registers.OverflowFlag)) ip = (ushort)(ip + (sbyte)bVal); break;
+                        case 0x7F: bVal = csBase[ip++]; if (!Registers.ZeroFlag && (Registers.SignFlag == Registers.OverflowFlag)) ip = (ushort)(ip + (sbyte)bVal); break;
+
+                        case 0xE2: // LOOP
+                            bVal = csBase[ip++];
+                            if (--gpr[1] != 0) ip = (ushort)(ip + (sbyte)bVal);
+                            break;
+
+                        // ================= String Operations =================
+                        case 0xA4: // MOVSB
+                            segBase = segOverride < 0 ? dsBase : GetOverrideSegBase(segOverride);
+                            if (segBase != null && esBase != null && repPrefix == 0)
+                            {
+                                esBase[gpr[7]] = segBase[gpr[6]];
+                                subOp = Registers.DirectionFlag ? -1 : 1;
+                                gpr[6] = (ushort)(gpr[6] + subOp);
+                                gpr[7] = (ushort)(gpr[7] + subOp);
+                                break;
+                            }
+                            MovsbSlow(segBase, esBase, segOverride, repPrefix, ipBeforeInstruction);
+                            break;
+
+                        case 0xA5: // MOVSW
+                            segBase = segOverride < 0 ? dsBase : GetOverrideSegBase(segOverride);
+                            if (segBase != null && esBase != null && repPrefix == 0 && gpr[6] != 0xFFFF && gpr[7] != 0xFFFF)
+                            {
+                                *(ushort*)(esBase + gpr[7]) = *(ushort*)(segBase + gpr[6]);
+                                subOp = Registers.DirectionFlag ? -2 : 2;
+                                gpr[6] = (ushort)(gpr[6] + subOp);
+                                gpr[7] = (ushort)(gpr[7] + subOp);
+                                break;
+                            }
+                            MovswSlow(segBase, esBase, segOverride, repPrefix, ipBeforeInstruction);
+                            break;
+
+                        case 0xAA: // STOSB
+                            bVal = *GetReg8Ptr(gpr, 0);
+                            if (esBase != null && repPrefix == 0)
+                            {
+                                esBase[gpr[7]] = bVal;
+                                gpr[7] = (ushort)(gpr[7] + (Registers.DirectionFlag ? -1 : 1));
+                                break;
+                            }
+                            StosbSlow(esBase, bVal, repPrefix, ipBeforeInstruction);
+                            break;
+
+                        case 0xAB: // STOSW
+                            wVal = gpr[0];
+                            if (esBase != null && repPrefix == 0 && gpr[7] != 0xFFFF)
+                            {
+                                *(ushort*)(esBase + gpr[7]) = wVal;
+                                gpr[7] = (ushort)(gpr[7] + (Registers.DirectionFlag ? -2 : 2));
+                                break;
+                            }
+                            StoswSlow(esBase, wVal, repPrefix, ipBeforeInstruction);
+                            break;
+
+                        // ================= Flags =================
+                        case 0xF8: Registers.CarryFlag = false; break;
+                        case 0xF9: Registers.CarryFlag = true; break;
+                        case 0xFC: Registers.DirectionFlag = false; break;
+                        case 0xFD: Registers.DirectionFlag = true; break;
+                        case 0xFA: Registers.InterruptFlag = false; break;
+                        case 0xFB: Registers.InterruptFlag = true; break;
+
+                        default:
+                            goto FallbackInstruction;
+                    }
+
+                    continue;
+
+                NextPrefix:
+                    if (ip - ipBeforeInstruction <= 9) goto PrefixLoop;
+                    goto FallbackInstruction;
+
+                CheckCsBase:
+                    if (--rem == 0) break;
+                    ipBeforeInstruction = (ushort)ip;
+                    ip = ipBeforeInstruction;
+
+                FallbackInstruction:
+                    // Synchronize registers before fallback
+                    Registers.AX = gpr[0]; Registers.CX = gpr[1]; Registers.DX = gpr[2]; Registers.BX = gpr[3];
+                    Registers.SP = gpr[4]; Registers.BP = gpr[5]; Registers.SI = gpr[6]; Registers.DI = gpr[7];
+                    Registers.IP = ipBeforeInstruction;
+                    InstructionCounter -= rem;
+                    _stateSynced = true;
+
+                    do
+                    {
+                        TickFallback();
+                        if (Registers.Halt || singleStep)
+                            return;
+                    } while ((csBase = GetSegPtr(Registers.CS)) == null);
+
+                    // Re-sync state from registers
+                    gpr[0] = Registers.AX; gpr[1] = Registers.CX; gpr[2] = Registers.DX; gpr[3] = Registers.BX;
+                    gpr[4] = Registers.SP; gpr[5] = Registers.BP; gpr[6] = Registers.SI; gpr[7] = Registers.DI;
+                    ip = Registers.IP;
+                    rem = long.MaxValue;
+                    InstructionCounter += rem - 1;
+                    _stateSynced = false;
+
+                    dsBase = GetSegPtr(Registers.DS);
+                    ssBase = GetSegPtr(Registers.SS);
+                    esBase = GetSegPtr(Registers.ES);
+                } while (--rem != 0);
+
+            ExitHalt:
+                Registers.AX = gpr[0]; Registers.CX = gpr[1]; Registers.DX = gpr[2]; Registers.BX = gpr[3];
+                Registers.SP = gpr[4]; Registers.BP = gpr[5]; Registers.SI = gpr[6]; Registers.DI = gpr[7];
+                Registers.IP = (ushort)ip;
+                InstructionCounter -= rem;
+            }
+            catch
+            {
+                SyncFromException(rem);
+                throw;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private byte ExecAlu8(int aluOp, byte dst, byte src)
+        {
+            int wide, x;
+            byte res;
+            switch (aluOp)
+            {
+                case 0: // ADD
+                    wide = dst + src;
+                    res = (byte)wide;
+                    Registers.CarryFlag = wide > 0xFF;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((~x & (dst ^ res)) & 0x80) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+                case 2: // ADC
+                    wide = dst + src + (Registers.CarryFlag ? 1 : 0);
+                    res = (byte)wide;
+                    Registers.CarryFlag = wide > 0xFF;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((~x & (dst ^ res)) & 0x80) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+                case 1: // OR
+                    res = (byte)(dst | src);
+                    Registers.CarryFlag = Registers.OverflowFlag = false;
+                    break;
+                case 4: // AND
+                    res = (byte)(dst & src);
+                    Registers.CarryFlag = Registers.OverflowFlag = false;
+                    break;
+                case 6: // XOR
+                    res = (byte)(dst ^ src);
+                    Registers.CarryFlag = Registers.OverflowFlag = false;
+                    break;
+                case 3: // SBB
+                    wide = dst - src - (Registers.CarryFlag ? 1 : 0);
+                    res = (byte)wide;
+                    Registers.CarryFlag = wide < 0;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((x & (dst ^ res)) & 0x80) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+                default: // 5 (SUB), 7 (CMP)
+                    wide = dst - src;
+                    res = (byte)wide;
+                    Registers.CarryFlag = wide < 0;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((x & (dst ^ res)) & 0x80) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+            }
+            EvalSzp8(res);
+            return res;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ushort ExecAlu16(int aluOp, ushort dst, ushort src)
+        {
+            int wide, x;
+            ushort res;
+            switch (aluOp)
+            {
+                case 0: // ADD
+                    wide = dst + src;
+                    res = (ushort)wide;
+                    Registers.CarryFlag = (uint)wide > 0xFFFFu;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((~x & (dst ^ res)) & 0x8000) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+                case 2: // ADC
+                    wide = dst + src + (Registers.CarryFlag ? 1 : 0);
+                    res = (ushort)wide;
+                    Registers.CarryFlag = (uint)wide > 0xFFFFu;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((~x & (dst ^ res)) & 0x8000) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+                case 1: // OR
+                    res = (ushort)(dst | src);
+                    Registers.CarryFlag = Registers.OverflowFlag = false;
+                    break;
+                case 4: // AND
+                    res = (ushort)(dst & src);
+                    Registers.CarryFlag = Registers.OverflowFlag = false;
+                    break;
+                case 6: // XOR
+                    res = (ushort)(dst ^ src);
+                    Registers.CarryFlag = Registers.OverflowFlag = false;
+                    break;
+                case 3: // SBB
+                    wide = dst - src - (Registers.CarryFlag ? 1 : 0);
+                    res = (ushort)wide;
+                    Registers.CarryFlag = wide < 0;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((x & (dst ^ res)) & 0x8000) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+                default: // 5 (SUB), 7 (CMP)
+                    wide = dst - src;
+                    res = (ushort)wide;
+                    Registers.CarryFlag = wide < 0;
+                    x = dst ^ src;
+                    Registers.OverflowFlag = ((x & (dst ^ res)) & 0x8000) != 0;
+                    Registers.AuxiliaryCarryFlag = ((x ^ res) & 0x10) != 0;
+                    break;
+            }
+            EvalSzp16(res);
+            return res;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EvalSzp8(byte res)
+        {
+            Registers.ZeroFlag = (res == 0);
+            Registers.SignFlag = (res & 0x80) != 0;
+            Registers.ParityFlag = (BitOperations.PopCount(res) & 1) == 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void EvalSzp16(ushort res)
+        {
+            Registers.ZeroFlag = (res == 0);
+            Registers.SignFlag = (res & 0x8000) != 0;
+            Registers.ParityFlag = (BitOperations.PopCount((byte)res) & 1) == 0;
+        }
+
+        /// <summary>
+        ///     Fallback execution for unhandled, complex, or FPU instructions
+        /// </summary>
+        [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.AggressiveOptimization)]
+        private void TickFallback()
+        {
+            _currentInstruction = Memory.GetInstruction(Registers.CS, Registers.IP);
+            _currentOperationSize = GetCurrentOperationSize();
 
             InstructionCounter++;
 
@@ -408,6 +2026,8 @@ namespace MBBSEmu.CPU
             {
                 case Mnemonic.INVALID:
                     _currentInstruction = Memory.Recompile(Registers.CS, Registers.IP);
+                    if (_currentInstruction.Mnemonic == Mnemonic.INVALID)
+                        throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
                     _currentOperationSize = GetCurrentOperationSize();
                     goto Switch;
                 //Instructions that will set the IP -- we just return
@@ -535,6 +2155,12 @@ namespace MBBSEmu.CPU
                     break;
                 case Mnemonic.Pop:
                     Op_Pop();
+                    break;
+                case Mnemonic.Pusha:
+                    Op_Pusha();
+                    break;
+                case Mnemonic.Popa:
+                    Op_Popa();
                     break;
                 case Mnemonic.Mov:
                     Op_Mov();
@@ -856,22 +2482,7 @@ namespace MBBSEmu.CPU
                     throw new ArgumentOutOfRangeException($"Unsupported OpCode: {_currentInstruction.Mnemonic}");
             }
 
-#if DEBUG
-            _previousInstructionPointer.Offset = Registers.IP;
-            _previousInstructionPointer.Segment = Registers.CS;
-#endif
-
             Registers.IP += (ushort)_currentInstruction.Length;
-
-#if DEBUG
-            if (_showDebug)
-            {
-                //_logger.InfoRegisters(this);
-
-                if (CPUDebugBreak)
-                    Debugger.Break();
-            }
-#endif
         }
 
         /// <summary>
@@ -2599,6 +4210,12 @@ namespace MBBSEmu.CPU
         {
             if (_currentInstruction.FlowControl == FlowControl.IndirectBranch)
             {
+                if (_currentInstruction.Op0Kind == OpKind.Register)
+                {
+                    Registers.IP = Registers.GetValue(_currentInstruction.Op0Register);
+                    return;
+                }
+
                 //Get the destination offset
                 var offsetToDestinationValue = GetOperandOffset(_currentInstruction.Op0Kind);
 
@@ -3326,6 +4943,33 @@ namespace MBBSEmu.CPU
             }
         }
 
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Pusha()
+        {
+            var sp = Registers.SP;
+            Push(Registers.AX);
+            Push(Registers.CX);
+            Push(Registers.DX);
+            Push(Registers.BX);
+            Push(sp);
+            Push(Registers.BP);
+            Push(Registers.SI);
+            Push(Registers.DI);
+        }
+
+        [MethodImpl(OpcodeCompilerOptimizations)]
+        private void Op_Popa()
+        {
+            Registers.DI = Pop();
+            Registers.SI = Pop();
+            Registers.BP = Pop();
+            Pop();
+            Registers.BX = Pop();
+            Registers.DX = Pop();
+            Registers.CX = Pop();
+            Registers.AX = Pop();
+        }
+
         /// <summary>
         ///     MOV Op Code
         /// </summary>
@@ -3382,9 +5026,6 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Call()
         {
-            _previousCallPointer.Segment = Registers.CS;
-            _previousCallPointer.Offset = Registers.IP;
-
             switch (_currentInstruction.Op0Kind)
             {
                 case OpKind.FarBranch16 when _currentInstruction.FarBranchSelector > 0xFF00:
@@ -3398,18 +5039,14 @@ namespace MBBSEmu.CPU
                         Push(Registers.BP);
                         Registers.BP = Registers.SP;
 
+                        var csBeforeCall = Registers.CS;
                         var ipBeforeCall = Registers.IP;
-
-#if DEBUG
-                        if (_showDebug)
-                            _logger.Info($"CALL {_currentInstruction.FarBranchSelector:X4}:{_currentInstruction.Immediate16:X4}");
-#endif
 
                         _invokeExternalFunctionDelegate(_currentInstruction.FarBranchSelector,
                             _currentInstruction.Immediate16);
 
                         //Control Transfer occurred in the CALL, so we clean up the stack and return
-                        if (ipBeforeCall != Registers.IP)
+                        if (ipBeforeCall != Registers.IP || csBeforeCall != Registers.CS)
                             return;
 
                         //Simulate a LEAVE & retf
@@ -3427,11 +5064,6 @@ namespace MBBSEmu.CPU
 
                         Registers.CS = _currentInstruction.FarBranchSelector;
                         Registers.IP = _currentInstruction.FarBranch16;
-
-#if DEBUG
-                        if (_showDebug)
-                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
-#endif
                         break;
                     }
                 case OpKind.NearBranch16:
@@ -3440,11 +5072,12 @@ namespace MBBSEmu.CPU
                         //Push the IP of the **NEXT** instruction to the stack
                         Push((ushort)(Registers.IP + _currentInstruction.Length));
                         Registers.IP = _currentInstruction.NearBranch16;
-
-#if DEBUG
-                        if (_showDebug)
-                            _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
-#endif
+                        break;
+                    }
+                case OpKind.Register:
+                    {
+                        Push((ushort)(Registers.IP + _currentInstruction.Length));
+                        Registers.IP = Registers.GetValue(_currentInstruction.Op0Register);
                         break;
                     }
                 case OpKind.Memory when _currentInstruction.IsCallFarIndirect:
@@ -3462,12 +5095,6 @@ namespace MBBSEmu.CPU
                             var destinationOffset =
                                 Memory.GetWord(Registers.GetValue(_currentInstruction.MemorySegment), offset);
                             Registers.IP = destinationOffset;
-
-#if DEBUG
-                            if (_showDebug)
-                                _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
-#endif
-
                         }
                         else
                         {
@@ -3505,24 +5132,20 @@ namespace MBBSEmu.CPU
             Registers.CS = destinationPointer.Segment;
             Registers.IP = destinationPointer.Offset;
 
-#if DEBUG
-            if (_showDebug)
-                _logger.Info($"CALL {Registers.CS:X4}:{Registers.IP:X4}");
-#endif
-
             //Loaded an Exported Function Delegate from Memory
             if (Registers.CS > 0xFF00)
             {
                 Push(Registers.BP);
                 Registers.BP = Registers.SP;
 
+                var csBeforeCall = Registers.CS;
                 var ipBeforeCall = Registers.IP;
 
                 _invokeExternalFunctionDelegate(Registers.CS,
                     Registers.IP);
 
                 //Control Transfer occurred in the CALL, so we clean up the stack and return
-                if (ipBeforeCall != Registers.IP)
+                if (ipBeforeCall != Registers.IP || csBeforeCall != Registers.CS)
                     return;
 
                 Registers.SP = Registers.BP;
@@ -4029,7 +5652,7 @@ namespace MBBSEmu.CPU
         {
             Repeat(() =>
             {
-                var destination = Memory.GetByte(Registers.DS, Registers.SI);
+                var destination = Memory.GetByte(Registers.GetValue(_currentInstruction.MemorySegment), Registers.SI);
                 var source = Memory.GetByte(Registers.ES, Registers.DI);
                 var result = (byte)(destination - source);
                 Flags_EvaluateCarry(EnumArithmeticOperation.Subtraction, result, destination);
@@ -4879,14 +6502,16 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsb()
         {
+            var srcSegment = Registers.GetValue(_currentInstruction.MemorySegment);
             if (IsRepInstruction() && !Registers.DirectionFlag && !_currentInstruction.HasRepnePrefix)
             {
                 var count = Registers.CX;
-                if ((uint)Registers.SI + count <= 0x10000 && (uint)Registers.DI + count <= 0x10000)
+                if ((uint)Registers.SI + count <= 0x10000 && (uint)Registers.DI + count <= 0x10000 &&
+                    (srcSegment != Registers.ES || Registers.DI + count <= Registers.SI || Registers.SI + count <= Registers.DI))
                 {
                     if (count > 0)
                     {
-                        var source = Memory.GetArray(Registers.DS, Registers.SI, count);
+                        var source = Memory.GetArray(srcSegment, Registers.SI, count);
                         Memory.SetArray(Registers.ES, Registers.DI, source);
                         Registers.SI += count;
                         Registers.DI += count;
@@ -4899,7 +6524,7 @@ namespace MBBSEmu.CPU
 
             Repeat(() =>
             {
-                Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(Registers.DS, Registers.SI));
+                Memory.SetByte(Registers.ES, Registers.DI, Memory.GetByte(srcSegment, Registers.SI));
 
                 if (Registers.DirectionFlag)
                 {
@@ -4922,15 +6547,17 @@ namespace MBBSEmu.CPU
         [MethodImpl(OpcodeCompilerOptimizations)]
         private void Op_Movsw()
         {
+            var srcSegment = Registers.GetValue(_currentInstruction.MemorySegment);
             if (IsRepInstruction() && !Registers.DirectionFlag && !_currentInstruction.HasRepnePrefix)
             {
                 var count = Registers.CX;
                 var byteCount = count * 2;
-                if (byteCount <= ushort.MaxValue && (uint)Registers.SI + byteCount <= 0x10000 && (uint)Registers.DI + byteCount <= 0x10000)
+                if (byteCount <= ushort.MaxValue && (uint)Registers.SI + byteCount <= 0x10000 && (uint)Registers.DI + byteCount <= 0x10000 &&
+                    (srcSegment != Registers.ES || Registers.DI + byteCount <= Registers.SI || Registers.SI + byteCount <= Registers.DI))
                 {
                     if (count > 0)
                     {
-                        var source = Memory.GetArray(Registers.DS, Registers.SI, (ushort)byteCount);
+                        var source = Memory.GetArray(srcSegment, Registers.SI, (ushort)byteCount);
                         Memory.SetArray(Registers.ES, Registers.DI, source);
                         Registers.SI += (ushort)byteCount;
                         Registers.DI += (ushort)byteCount;
@@ -4943,7 +6570,7 @@ namespace MBBSEmu.CPU
 
             Repeat(() =>
             {
-                Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(Registers.DS, Registers.SI));
+                Memory.SetWord(Registers.ES, Registers.DI, Memory.GetWord(srcSegment, Registers.SI));
 
                 if (Registers.DirectionFlag)
                 {

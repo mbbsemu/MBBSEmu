@@ -1,4 +1,4 @@
-﻿using MBBSEmu.Logging;
+using MBBSEmu.Logging;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
@@ -146,7 +146,10 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe ushort GetWord(ushort segment, ushort offset)
         {
-            fixed (byte* p = VirtualToPhysical(segment, offset))
+            var span = VirtualToPhysical(segment, offset);
+            if (span.Length == 1)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            fixed (byte* p = span)
             {
                 return *((ushort*)p);
             }
@@ -155,7 +158,10 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe uint GetDWord(ushort segment, ushort offset)
         {
-            fixed (byte* p = VirtualToPhysical(segment, offset))
+            var span = VirtualToPhysical(segment, offset);
+            if ((uint)(span.Length - 1) < 3)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            fixed (byte* p = span)
             {
                 return *((uint*)p);
             }
@@ -202,7 +208,10 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe void SetWord(ushort segment, ushort offset, ushort value)
         {
-            fixed (byte* dst = VirtualToPhysical(segment, offset))
+            var span = VirtualToPhysical(segment, offset);
+            if (span.Length == 1)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            fixed (byte* dst = span)
             {
                 *((ushort*)dst) = value;
             }
@@ -211,7 +220,10 @@ namespace MBBSEmu.Memory
         [MethodImpl(CompilerOptimizations)]
         public unsafe void SetDWord(ushort segment, ushort offset, uint value)
         {
-            fixed (byte* dst = VirtualToPhysical(segment, offset))
+            var span = VirtualToPhysical(segment, offset);
+            if ((uint)(span.Length - 1) < 3)
+                throw new ArgumentOutOfRangeException(nameof(offset));
+            fixed (byte* dst = span)
             {
                 *((uint*)dst) = value;
             }
@@ -256,5 +268,8 @@ namespace MBBSEmu.Memory
         {
             Clear();
         }
+
+        public virtual unsafe byte* GetSegmentPointer(ushort segment) => null;
+        public virtual unsafe byte** GetSegmentPointerTable() => null;
     }
 }

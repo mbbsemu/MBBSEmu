@@ -1,4 +1,4 @@
-﻿using MBBSEmu.BIOS;
+using MBBSEmu.BIOS;
 using MBBSEmu.CPU;
 using MBBSEmu.Date;
 using MBBSEmu.DOS.Interrupts;
@@ -127,8 +127,7 @@ namespace MBBSEmu.HostProcess.ExecutionUnits
             }
 
             //Run until complete
-            while (!ModuleCpuRegisters.Halt)
-                ModuleCpu.Tick();
+            ModuleCpu.Run();
 
             //Return Registers if we're not updating state on exit
             if (bypassState || initialStackValues is { Count: > 0 })

@@ -1,9 +1,10 @@
-﻿using Iced.Intel;
+using Iced.Intel;
 using MBBSEmu.Disassembler.Artifacts;
 using MBBSEmu.Logging;
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Decoder = Iced.Intel.Decoder;
 
 namespace MBBSEmu.Memory
@@ -13,11 +14,16 @@ namespace MBBSEmu.Memory
     ///
     ///     Information of x86 Memory Segmentation: https://en.wikipedia.org/wiki/X86_memory_segmentation
     /// </summary>
-    public class ProtectedModeMemoryCore : AbstractMemoryCore, IMemoryCore
+    public unsafe class ProtectedModeMemoryCore : AbstractMemoryCore, IMemoryCore
     {
         private readonly byte[][] _memorySegments = new byte[0x10000][];
+        private readonly int[] _segmentLengths = new int[0x10000];
+        private readonly nint[] _segmentPointerTable = GC.AllocateArray<nint>(0x10000, pinned: true);
+        private readonly byte** _segmentPointers;
         private readonly Segment[] _segments = new Segment[0x10000];
         private readonly Instruction[][] _decompiledSegments = new Instruction[0x10000][];
+
+        public override byte** GetSegmentPointerTable() => _segmentPointers;
 
         private const ushort HEAP_BASE_SEGMENT = 0x1000; //0x1000->0x1FFF == 256MB
         private FarPtr _nextHeapPointer = new FarPtr(HEAP_BASE_SEGMENT, 0);
@@ -29,6 +35,8 @@ namespace MBBSEmu.Memory
 
         public ProtectedModeMemoryCore(IMessageLogger logger) : base(logger)
         {
+            _segmentPointers = (byte**)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(_segmentPointerTable));
+
             //Add Segment 0 by default, stack segment
             AddSegment(0);
         }
@@ -104,6 +112,8 @@ namespace MBBSEmu.Memory
             base.Clear();
 
             Array.Clear(_memorySegments, 0, _memorySegments.Length);
+            Array.Clear(_segmentLengths, 0, _segmentLengths.Length);
+            Array.Clear(_segmentPointerTable, 0, _segmentPointerTable.Length);
             Array.Clear(_segments, 0, _segments.Length);
             Array.Clear(_decompiledSegments, 0, _decompiledSegments.Length);
 
@@ -124,7 +134,13 @@ namespace MBBSEmu.Memory
             if (_memorySegments[segmentNumber] != null)
                 throw new Exception($"Segment with number {segmentNumber} already defined");
 
-            _memorySegments[segmentNumber] = new byte[size];
+            var allocSize = size >= 0x10000 ? size + 16 : size;
+            var segmentMemory = GC.AllocateArray<byte>(allocSize, pinned: true);
+            _memorySegments[segmentNumber] = segmentMemory;
+            _segmentLengths[segmentNumber] = size;
+            _segmentPointers[segmentNumber] = size >= 0x10000
+                ? (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(segmentMemory))
+                : null;
         }
 
         /// <summary>
@@ -135,6 +151,8 @@ namespace MBBSEmu.Memory
         {
             _realModeSegments.Remove(segment);
             _memorySegments[segment] = null;
+            _segmentLengths[segment] = 0;
+            _segmentPointers[segment] = null;
             _segments[segment] = null;
             _decompiledSegments[segment] = null;
         }
@@ -145,12 +163,22 @@ namespace MBBSEmu.Memory
         /// <param name="segment"></param>
         public void AddSegment(Segment segment)
         {
-            //Get Address for this Segment
-            var segmentMemory = new byte[0x10000];
+            //Get Address for this Segment, reusing existing buffer if already allocated
+            var segmentMemory = _memorySegments[segment.Ordinal];
+            if (segmentMemory == null || segmentMemory.Length < 0x10010)
+            {
+                segmentMemory = GC.AllocateArray<byte>(0x10010, pinned: true);
+                _memorySegments[segment.Ordinal] = segmentMemory;
+            }
+            else
+            {
+                Array.Clear(segmentMemory, 0, segmentMemory.Length);
+            }
+            _segmentLengths[segment.Ordinal] = 0x10000;
 
             //Add the data to memory and record the segment offset in memory
             Array.Copy(segment.Data, 0, segmentMemory, 0, segment.Data.Length);
-            _memorySegments[segment.Ordinal] = segmentMemory;
+            _segmentPointers[segment.Ordinal] = (byte*)Unsafe.AsPointer(ref MemoryMarshal.GetArrayDataReference(segmentMemory));
 
             if (segment.Flags.Contains(EnumSegmentFlags.Code))
             {
@@ -170,6 +198,10 @@ namespace MBBSEmu.Memory
                 {
                     _decompiledSegments[segment.Ordinal][i.IP16] = i;
                 }
+            }
+            else
+            {
+                _decompiledSegments[segment.Ordinal] = null;
             }
 
             _segments[segment.Ordinal] = segment;
@@ -212,26 +244,42 @@ namespace MBBSEmu.Memory
         /// <param name="instructionPointer"></param>
         /// <returns></returns>
         [MethodImpl(CompilerOptimizations)]
-        public Instruction GetInstruction(ushort segment, ushort instructionPointer) => _decompiledSegments[segment][instructionPointer];
+        public Instruction GetInstruction(ushort segment, ushort instructionPointer)
+        {
+            var seg = _decompiledSegments[segment];
+            if (seg == null)
+                return Recompile(segment, instructionPointer);
+            return seg[instructionPointer];
+        }
 
         [MethodImpl(CompilerOptimizations)]
         public Instruction Recompile(ushort segment, ushort instructionPointer)
         {
             //If it wasn't able to decompile linear through the data, there might have been
             //data in the path of the code that messed up decoding, in this case, we grab up to
-            //6 bytes at the IP and decode the instruction manually. This works 9 times out of 10
-            ReadOnlySpan<byte> segmentData = GetArray(segment, instructionPointer, 6);
+            //15 bytes (max x86 instruction length) bounded by the remaining segment data
+            var segLen = _segmentLengths[segment];
+            var remaining = segLen > 0 ? segLen - instructionPointer : 15;
+            var bytesToRead = (ushort)Math.Clamp(remaining, 0, 15);
+            ReadOnlySpan<byte> segmentData = GetArray(segment, instructionPointer, bytesToRead);
             var reader = new ByteArrayCodeReader(segmentData.ToArray());
             var decoder = Decoder.Create(16, reader);
             decoder.IP = instructionPointer;
             decoder.Decode(out var outputInstruction);
+
+            if (_decompiledSegments[segment] == null)
+                _decompiledSegments[segment] = new Instruction[0x10000];
 
             _decompiledSegments[segment][instructionPointer] = outputInstruction;
             return outputInstruction;
         }
 
         [MethodImpl(CompilerOptimizations)]
-        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) => _memorySegments[segment].AsSpan(offset);
+        public override unsafe byte* GetSegmentPointer(ushort segmentNumber) => _segmentPointers[segmentNumber];
+
+        [MethodImpl(CompilerOptimizations)]
+        public override Span<byte> VirtualToPhysical(ushort segment, ushort offset) =>
+            _memorySegments[segment].AsSpan(0, _segmentLengths[segment]).Slice(offset);
 
         /// <summary>
         ///     Allocates the specific number of Big Memory Blocks with the desired size
@@ -271,6 +319,7 @@ namespace MBBSEmu.Memory
             return realModeSegment;
         }
 
-        public ReadOnlySpan<byte> GetMemorySegment(ushort segment) => _memorySegments[segment];
+        public ReadOnlySpan<byte> GetMemorySegment(ushort segment) =>
+            _memorySegments[segment].AsSpan(0, _segmentLengths[segment]);
     }
 }
